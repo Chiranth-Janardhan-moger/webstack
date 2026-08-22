@@ -29,6 +29,14 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 ---
 
+## Screenshots
+
+| Visual Bookmark Stack | Save Link Sheet | Settings & Layout Modes |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/webstack-home.png" width="260" alt="WebStack Home Feed" /> | <img src="docs/screenshots/webstack-save-link.png" width="260" alt="Save Link Sheet" /> | <img src="docs/screenshots/webstack-settings.png" width="260" alt="Settings Sheet" /> |
+
+---
+
 ## Architecture & Tech Stack
 
 ```
