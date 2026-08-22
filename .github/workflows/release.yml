@@ -50,7 +50,7 @@ jobs:
 
       - name: Build Release APKs
         run: |
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-configuration-cache
         env:
           KEYSTORE_PATH: release.keystore
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'webstack123' }}
