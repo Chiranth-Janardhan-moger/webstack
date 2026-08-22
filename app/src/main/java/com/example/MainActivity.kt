@@ -77,6 +77,9 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
@@ -142,11 +145,18 @@ import coil.request.ImageRequest
 import com.example.data.Website
 import com.example.ui.theme.AppleBlue
 import com.example.ui.theme.AppleBlueDark
+import com.example.ui.theme.AppleCyan
 import com.example.ui.theme.AppleGray
+import com.example.ui.theme.AppleGreen
+import com.example.ui.theme.AppleGreenDark
 import com.example.ui.theme.AppleIndigo
 import com.example.ui.theme.AppleOrange
+import com.example.ui.theme.ApplePink
 import com.example.ui.theme.ApplePurple
+import com.example.ui.theme.AppleRed
+import com.example.ui.theme.AppleRedDark
 import com.example.ui.theme.AppleTeal
+import com.example.ui.theme.AppleYellow
 import com.example.ui.theme.LocalAppleColors
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.WebsiteViewModel
@@ -207,14 +217,41 @@ class MainActivity : ComponentActivity() {
 val DEFAULT_CATEGORIES = listOf("Personal", "Design", "Tools", "Work", "Reading")
 
 fun getCategoryAccentColor(category: String, isDark: Boolean): Color {
-    return when (category.lowercase()) {
-        "design" -> AppleIndigo
-        "tools" -> if (isDark) AppleBlueDark else AppleBlue
-        "reading" -> AppleOrange
-        "work" -> AppleTeal
-        "personal" -> ApplePurple
-        else -> AppleGray
+    val clean = category.trim().lowercase()
+    if (clean.isEmpty() || clean == "all" || clean == "uncategorized") {
+        return if (isDark) AppleGray else AppleGray
     }
+
+    // Explicit curated mappings for common standard categories
+    when (clean) {
+        "personal" -> return ApplePurple
+        "design" -> return AppleIndigo
+        "tools", "dev", "development", "coding", "code" -> return if (isDark) AppleBlueDark else AppleBlue
+        "reading", "books", "news", "articles", "article" -> return AppleOrange
+        "work", "business", "office" -> return AppleTeal
+        "social", "chat", "media" -> return ApplePink
+        "finance", "money", "crypto" -> return if (isDark) AppleGreenDark else AppleGreen
+        "entertainment", "video", "youtube", "music" -> return if (isDark) AppleRedDark else AppleRed
+        "learning", "education", "study" -> return AppleYellow
+        "travel", "places" -> return AppleCyan
+    }
+
+    // Deterministic vibrant Apple system color palette hashing for ANY custom tag
+    val dynamicPalette = listOf(
+        AppleIndigo,
+        if (isDark) AppleBlueDark else AppleBlue,
+        AppleTeal,
+        AppleCyan,
+        if (isDark) AppleGreenDark else AppleGreen,
+        AppleOrange,
+        ApplePink,
+        ApplePurple,
+        if (isDark) AppleRedDark else AppleRed,
+        AppleYellow
+    )
+
+    val hash = kotlin.math.abs(clean.hashCode())
+    return dynamicPalette[hash % dynamicPalette.size]
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -239,6 +276,7 @@ fun WebStackScreen(
     var showMenuSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showWhatsNewSheet by remember { mutableStateOf(false) }
+    var showAppInfoSheet by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
@@ -600,6 +638,11 @@ fun WebStackScreen(
                         showSettingsSheet = false
                         showWhatsNewSheet = true
                     },
+                    onOpenAppInfo = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showSettingsSheet = false
+                        showAppInfoSheet = true
+                    },
                     onDismiss = { showSettingsSheet = false }
                 )
             }
@@ -616,6 +659,21 @@ fun WebStackScreen(
             ) {
                 AppleWhatsNewBottomSheetContent(
                     onDismiss = { showWhatsNewSheet = false }
+                )
+            }
+        }
+
+        // Apple "App Info" Sheet
+        if (showAppInfoSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAppInfoSheet = false },
+                containerColor = appleColors.secondaryGroupedBackground,
+                scrimColor = Color.Black.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                dragHandle = { AppleSheetDragHandle() }
+            ) {
+                AppleAppInfoBottomSheetContent(
+                    onDismiss = { showAppInfoSheet = false }
                 )
             }
         }
@@ -2451,6 +2509,7 @@ fun AppleSettingsBottomSheetContent(
     isCompactList: Boolean,
     onSetCompactList: (Boolean) -> Unit,
     onOpenWhatsNew: () -> Unit,
+    onOpenAppInfo: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val appleColors = LocalAppleColors.current
@@ -2691,6 +2750,59 @@ fun AppleSettingsBottomSheetContent(
             }
         }
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // App Info Entry
+        Surface(
+            onClick = onOpenAppInfo,
+            shape = RoundedCornerShape(14.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        color = appleColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = appleColors.label
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "App Info",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = appleColors.label
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = appleColors.tertiaryLabel,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
@@ -2869,6 +2981,298 @@ fun AppleWhatsNewFeatureItem(
                 lineHeight = 17.sp
             )
         }
+    }
+}
+
+@Composable
+fun AppleAppInfoBottomSheetContent(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val appleColors = LocalAppleColors.current
+    val versionName = BuildConfig.VERSION_NAME
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        // Header with Close Button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = appleColors.label,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = appleColors.systemBackground,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "App Info",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = appleColors.label,
+                    letterSpacing = (-0.4).sp
+                )
+            }
+
+            IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = appleColors.secondaryLabel
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Hero App Branding Card
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    color = appleColors.fill,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.size(68.dp),
+                    border = BorderStroke(1.dp, appleColors.separator.copy(alpha = 0.5f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_hexagon),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                            colorFilter = ColorFilter.tint(appleColors.label)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "WebStack",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    color = appleColors.label,
+                    letterSpacing = (-0.6).sp
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Version $versionName • by Chiranth Moger",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = appleColors.secondaryLabel
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    color = appleColors.fill,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = "Free & Open Source Software",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = appleColors.secondaryLabel,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Section: Links & Community
+        Text(
+            text = "RESOURCES & COMMUNITY",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appleColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Grouped Actions Card (Apple HIG List)
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Source Code / GitHub Row
+                Surface(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Chiranth-Janardhan-moger/webstack"))
+                        context.startActivity(intent)
+                    },
+                    color = Color.Transparent,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Surface(
+                                color = appleColors.fill,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Code,
+                                        contentDescription = null,
+                                        tint = appleColors.label,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Column {
+                                Text(
+                                    text = "Source Code",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = appleColors.label
+                                )
+                                Text(
+                                    text = "github.com/Chiranth-Janardhan-moger/webstack",
+                                    fontSize = 11.sp,
+                                    color = appleColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_github),
+                            contentDescription = "GitHub",
+                            modifier = Modifier.size(22.dp),
+                            colorFilter = ColorFilter.tint(appleColors.label)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appleColors.separator
+                )
+
+                // Report Bugs / Suggest Features Row
+                Surface(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Chiranth-Janardhan-moger/webstack/issues"))
+                        context.startActivity(intent)
+                    },
+                    color = Color.Transparent,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Surface(
+                                color = appleColors.fill,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.BugReport,
+                                        contentDescription = null,
+                                        tint = appleColors.label,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Column {
+                                Text(
+                                    text = "Help Us Improve",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = appleColors.label
+                                )
+                                Text(
+                                    text = "Report bugs or suggest features on GitHub Issues",
+                                    fontSize = 11.sp,
+                                    color = appleColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = appleColors.tertiaryLabel,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onDismiss,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = appleColors.label,
+                contentColor = appleColors.systemBackground
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text("Done", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -3308,19 +3712,12 @@ fun AppleItemOptionsBottomSheetContent(
                     tint = appleColors.label,
                     modifier = Modifier.size(20.dp)
                 )
-                Column {
-                    Text(
-                        text = "Edit Details & Tag",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = appleColors.label
-                    )
-                    Text(
-                        text = "Change title, URL or tag assignment",
-                        fontSize = 11.sp,
-                        color = appleColors.secondaryLabel
-                    )
-                }
+                Text(
+                    text = "Edit Details & Tag",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = appleColors.label
+                )
             }
         }
 
