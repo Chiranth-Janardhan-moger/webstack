@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Sleek Geometric Hexagon -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,2.5 L20.2,7.2 L20.2,16.8 L12,21.5 L3.8,16.8 L3.8,7.2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,5 L18,8.5 L18,15.5 L12,19 L6,15.5 L6,8.5 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M12,8 L15,9.7 L15,14.3 L12,16 L9,14.3 L9,9.7 Z" />
+</vector>

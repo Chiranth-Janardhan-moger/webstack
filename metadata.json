@@ -1,0 +1,6 @@
+{
+  "name": "WebStack",
+  "description": "A premium, minimalist single-screen website bookmark and launcher app with Apple-level design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
