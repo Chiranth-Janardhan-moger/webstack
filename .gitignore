@@ -11,6 +11,7 @@ captures/
 .externalNativeBuild
 .cxx
 .env
-debug.keystore
+*.keystore
+*.jks
 *.apk
 *.aab

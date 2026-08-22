@@ -1,0 +1,7 @@
+- Initial release of WebStack visual bookmark manager for Android
+- Automated website snapshot rendering and local offline caching
+- Dual layout modes: full visual cards and high-density list rows
+- Hardware-accelerated search with instant category tag filtering
+- Interactive tag management (create, rename, delete custom categories)
+- Android Share Sheet receiver and clipboard quick-paste integration
+- Optimized ABI split builds for arm64-v8a and armeabi-v7a

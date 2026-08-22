@@ -1,0 +1,13 @@
+WebStack is an open-source visual bookmark manager and website stack built with modern Android engineering, Jetpack Compose, and Material Design 3.
+
+Rather than juggling endless open browser tabs or struggling to remember URLs, WebStack provides Android users with a unified visual bookmarking experience.
+
+Key Capabilities:
+* Visual Website Snapshots: Generates and displays responsive page snapshots and favicons.
+* Dual Layout System: Effortlessly toggle between rich visual screenshot cards and dense compact row listings.
+* Fast Filter & Search: Hardware-accelerated search across titles, URLs, and custom tags with smooth 60/120 FPS animations.
+* Interactive Tag Management: Create, edit, and filter custom category tags with haptic-enabled context sheets.
+* Offline Snapshot Caching: Snapshots and metadata are preserved locally on-device for instantaneous offline access.
+* System Share Sheet Integration: Save links directly from Google Chrome, Firefox, or any app in a single tap.
+* Smart Clipboard Detection: Auto-detects URLs on the system clipboard for one-tap bookmarking.
+* 100% Privacy & Zero Trackers: Fully open source with no advertising SDKs, tracking pixels, or remote telemetry.

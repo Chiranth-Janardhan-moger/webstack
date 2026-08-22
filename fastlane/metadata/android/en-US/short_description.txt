@@ -1,0 +1,1 @@
+Visual bookmark stack and website manager for Android with offline snapshots.

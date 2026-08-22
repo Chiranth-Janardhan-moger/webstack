@@ -1,0 +1,115 @@
+name: Android CD (Release Build & Publish)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Version tag for this release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    name: Build Signed Release & Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Release Tag Environment Variable
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=${{ inputs.release_tag }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Java Development Kit (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode Android Keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Build Release APKs
+        run: |
+          ./gradlew assembleRelease
+        env:
+          KEYSTORE_PATH: release.keystore
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'webstack123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'webstack' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'webstack123' }}
+
+      - name: Prepare Release Artifacts
+        run: |
+          mkdir -p build-assets
+          cp app/build/outputs/apk/release/app-arm64-v8a-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk
+          cp app/build/outputs/apk/release/app-armeabi-v7a-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
+          cp app/build/outputs/apk/release/app-universal-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk
+
+      - name: Generate SHA256 Checksums
+        run: |
+          cd build-assets
+          sha256sum *.apk > checksums-sha256.txt
+          cat checksums-sha256.txt
+
+      - name: Upload Artifacts to GitHub Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: webstack-release-builds
+          path: build-assets/
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          body: |
+            ## WebStack Release ${{ env.RELEASE_TAG }}
+            
+            This release was compiled automatically via GitHub Actions CI/CD pipeline.
+            
+            ### Included Binaries
+            - `webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk`: Optimized for modern 64-bit Android devices.
+            - `webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk`: Optimized for 32-bit legacy devices.
+            - `webstack-${{ env.RELEASE_TAG }}-universal.apk`: Compatible across all hardware targets.
+            
+            ### Checksums for Verification
+            Refer to the attached `checksums-sha256.txt` file to verify downloaded assets locally.
+          files: |
+            build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk
+            build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
+            build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk
+            build-assets/checksums-sha256.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Release to GitLab
+        if: env.GITLAB_PAT != ''
+        run: |
+          python scripts/gitlab_release_upload.py \
+            build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk \
+            build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk \
+            build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk \
+            build-assets/checksums-sha256.txt
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          GITLAB_PROJECT_ID: ${{ secrets.GITLAB_PROJECT_ID }}
+          GITLAB_API_URL: ${{ secrets.GITLAB_API_URL }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}

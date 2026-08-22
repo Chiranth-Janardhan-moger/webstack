@@ -31,11 +31,13 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystoreFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/release.keystore")
+      if (keystoreFile.exists()) {
+        storeFile = keystoreFile
+        storePassword = System.getenv("STORE_PASSWORD") ?: "webstack123"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "webstack"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "webstack123"
+      }
     }
     val debugKeystore = file("${rootDir}/debug.keystore")
     if (debugKeystore.exists()) {
