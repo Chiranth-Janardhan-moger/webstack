@@ -43,16 +43,16 @@ jobs:
         run: |
           chmod +x gradlew
           if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "${GITHUB_WORKSPACE}/release.keystore"
           else
-            keytool -genkey -v -keystore release.keystore -alias webstack -keyalg RSA -keysize 2048 -validity 10000 -storepass webstack123 -keypass webstack123 -dname "CN=WebStack, OU=Mobile, O=Chiranth, L=Bangalore, ST=Karnataka, C=IN"
+            keytool -genkey -v -keystore "${GITHUB_WORKSPACE}/release.keystore" -alias webstack -keyalg RSA -keysize 2048 -validity 10000 -storepass webstack123 -keypass webstack123 -dname "CN=WebStack, OU=Mobile, O=Chiranth, L=Bangalore, ST=Karnataka, C=IN"
           fi
 
       - name: Build Release APKs
         run: |
           ./gradlew assembleRelease --no-configuration-cache
         env:
-          KEYSTORE_PATH: release.keystore
+          KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'webstack123' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'webstack' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'webstack123' }}
