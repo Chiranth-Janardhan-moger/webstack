@@ -39,12 +39,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode Android Keystore
-        if: env.ANDROID_KEYSTORE_BASE64 != ''
+      - name: Setup Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          chmod +x gradlew
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+          else
+            keytool -genkey -v -keystore release.keystore -alias webstack -keyalg RSA -keysize 2048 -validity 10000 -storepass webstack123 -keypass webstack123 -dname "CN=WebStack, OU=Mobile, O=Chiranth, L=Bangalore, ST=Karnataka, C=IN"
+          fi
 
       - name: Build Release APKs
         run: |
