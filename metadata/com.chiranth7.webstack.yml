@@ -1,6 +1,6 @@
 Categories:
-  - Internet
   - Bookmark
+  - Internet
 License: MIT
 AuthorName: Chiranth Moger
 SourceCode: https://github.com/Chiranth-Janardhan-moger/webstack
@@ -10,7 +10,8 @@ AutoName: WebStack
 
 RepoType: git
 Repo: https://github.com/Chiranth-Janardhan-moger/webstack
-Binaries: https://github.com/Chiranth-Janardhan-moger/webstack/releases/download/%v/app-universal-release.apk
+Binaries:
+  https://github.com/Chiranth-Janardhan-moger/webstack/releases/download/%v/app-universal-release.apk
 
 Builds:
   - versionName: 1.0.0
@@ -20,8 +21,7 @@ Builds:
     gradle:
       - yes
 
-AllowedAPKSigningKeys:
-  - fc5583b63c4fa578dad3def3838878ac9e2e138d47c61b6624cc155e615566be
+AllowedAPKSigningKeys: fc5583b63c4fa578dad3def3838878ac9e2e138d47c61b6624cc155e615566be
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
