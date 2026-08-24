@@ -60,6 +60,11 @@ android {
     compose = true
     buildConfig = true
   }
+  packaging {
+    resources {
+      excludes += "META-INF/version-control-info.textproto"
+    }
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
