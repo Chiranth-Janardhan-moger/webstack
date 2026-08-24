@@ -126,10 +126,9 @@ WebStack complies with F-Droid inclusion policies:
 - Offline build capability
 - Recipe file: [`metadata/com.chiranth7.webstack.yml`](metadata/com.chiranth7.webstack.yml)
 
+
 ---
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-<img src="https://chiranthmoger.vercel.app/api/telemetry/pixel.svg?target=WebStack%20Repository" width="1" height="1" alt="" style="display:none;" />
