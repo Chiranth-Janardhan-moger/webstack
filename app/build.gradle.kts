@@ -26,6 +26,10 @@ android {
       storePassword = System.getenv("STORE_PASSWORD") ?: "webstack123"
       keyAlias = System.getenv("KEY_ALIAS") ?: "webstack"
       keyPassword = System.getenv("KEY_PASSWORD") ?: "webstack123"
+      enableV1Signing = true
+      enableV2Signing = true
+      enableV3Signing = false
+      enableV4Signing = false
     }
     val debugKeystore = file("${rootDir}/debug.keystore")
     if (debugKeystore.exists()) {
