@@ -101,8 +101,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -280,7 +284,9 @@ fun WebStackScreen(
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
-    var isCompactList by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
+    var isCompactList by remember { mutableStateOf(prefs.getBoolean("is_compact_list", false)) }
+    var fetchWebPreviews by remember { mutableStateOf(prefs.getBoolean("fetch_web_previews", false)) }
     var websiteForOptions by remember { mutableStateOf<Website?>(null) }
     var websiteToEdit by remember { mutableStateOf<Website?>(null) }
     var websiteToDelete by remember { mutableStateOf<Website?>(null) }
@@ -460,6 +466,7 @@ fun WebStackScreen(
                             AppleCompactWebsiteRow(
                                 website = website,
                                 refreshToken = refreshToken,
+                                fetchWebPreviews = fetchWebPreviews,
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     openWebsiteInBrowser(context, website.url)
@@ -470,15 +477,20 @@ fun WebStackScreen(
                                 },
                                 onRefreshScreenshot = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.refreshScreenshot(website.id)
-                                    refreshTokens[website.id] = System.currentTimeMillis()
-                                    Toast.makeText(context, "Refreshing ${website.title}...", Toast.LENGTH_SHORT).show()
+                                    if (!fetchWebPreviews) {
+                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        viewModel.refreshScreenshot(website.id)
+                                        refreshTokens[website.id] = System.currentTimeMillis()
+                                        Toast.makeText(context, "Refreshing ${website.title}...", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
                         } else {
                             AppleWebsiteCard(
                                 website = website,
                                 refreshToken = refreshToken,
+                                fetchWebPreviews = fetchWebPreviews,
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     openWebsiteInBrowser(context, website.url)
@@ -489,9 +501,13 @@ fun WebStackScreen(
                                 },
                                 onRefreshScreenshot = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.refreshScreenshot(website.id)
-                                    refreshTokens[website.id] = System.currentTimeMillis()
-                                    Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                    if (!fetchWebPreviews) {
+                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        viewModel.refreshScreenshot(website.id)
+                                        refreshTokens[website.id] = System.currentTimeMillis()
+                                        Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
                         }
@@ -632,6 +648,13 @@ fun WebStackScreen(
                     onSetCompactList = { compact ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         isCompactList = compact
+                        prefs.edit().putBoolean("is_compact_list", compact).apply()
+                    },
+                    fetchWebPreviews = fetchWebPreviews,
+                    onToggleFetchWebPreviews = { enabled ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        fetchWebPreviews = enabled
+                        prefs.edit().putBoolean("fetch_web_previews", enabled).apply()
                     },
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -738,9 +761,13 @@ fun WebStackScreen(
                     },
                     onRefresh = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.refreshScreenshot(targetWebsite.id)
-                        refreshTokens[targetWebsite.id] = System.currentTimeMillis()
-                        Toast.makeText(context, "Refreshing ${targetWebsite.title}...", Toast.LENGTH_SHORT).show()
+                        if (!fetchWebPreviews) {
+                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                        } else {
+                            viewModel.refreshScreenshot(targetWebsite.id)
+                            refreshTokens[targetWebsite.id] = System.currentTimeMillis()
+                            Toast.makeText(context, "Refreshing ${targetWebsite.title}...", Toast.LENGTH_SHORT).show()
+                        }
                         websiteForOptions = null
                     },
                     onShare = {
@@ -1267,6 +1294,7 @@ fun AppleCapsule(
 fun AppleWebsiteCard(
     website: Website,
     refreshToken: Long,
+    fetchWebPreviews: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -1323,25 +1351,35 @@ fun AppleWebsiteCard(
                     .height(185.dp)
                     .background(appleColors.secondaryBackground)
             ) {
-                val previewUrl = remember(website.url, refreshToken) {
-                    try {
-                        val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
-                        val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
-                        "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
-                    } catch (e: Exception) {
-                        website.url
+                if (hasLocalImage) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(localFile)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Preview snapshot of ${website.title}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (fetchWebPreviews) {
+                    val previewUrl = remember(website.url, refreshToken) {
+                        try {
+                            val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
+                            val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
+                            "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
+                        } catch (e: Exception) {
+                            website.url
+                        }
                     }
-                }
 
-                val imageSource = if (hasLocalImage) localFile else previewUrl
-
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageSource)
-                        .crossfade(true)
-                        .build(),
-                    onSuccess = { state ->
-                        if (!hasLocalImage) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(previewUrl)
+                            .crossfade(true)
+                            .build(),
+                        onSuccess = { state ->
                             val drawable = state.result.drawable
                             coroutineScope.launch(Dispatchers.IO) {
                                 try {
@@ -1354,77 +1392,125 @@ fun AppleWebsiteCard(
                                     e.printStackTrace()
                                 }
                             }
-                        }
-                    },
-                    contentDescription = "Preview snapshot of ${website.title}",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
-                    contentScale = ContentScale.Crop,
-                    loading = {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = appleColors.accent,
-                                strokeWidth = 2.5.dp
-                            )
-                        }
-                    },
-                    error = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(appleColors.fill),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        },
+                        contentDescription = "Preview snapshot of ${website.title}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInBrowser,
-                                    contentDescription = null,
-                                    tint = appleColors.secondaryLabel,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Text(
-                                    text = website.domain,
-                                    fontSize = 14.sp,
-                                    color = appleColors.secondaryLabel,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-0.2).sp
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = appleColors.accent,
+                                    strokeWidth = 2.5.dp
                                 )
                             }
+                        },
+                        error = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(appleColors.fill),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.OpenInBrowser,
+                                        contentDescription = null,
+                                        tint = appleColors.secondaryLabel,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = website.domain,
+                                        fontSize = 14.sp,
+                                        color = appleColors.secondaryLabel,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-0.2).sp
+                                    )
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    // Local Apple Card representation when Fetch Web Previews is OFF
+                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
+                                        appleColors.secondaryBackground
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                                border = BorderStroke(1.dp, catAccent.copy(alpha = 0.40f)),
+                                modifier = Modifier.size(54.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = domainInitial,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = catAccent
+                                    )
+                                }
+                            }
+                            Text(
+                                text = website.domain,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appleColors.secondaryLabel,
+                                letterSpacing = (-0.2).sp
+                            )
                         }
                     }
-                )
+                }
 
-                // Top-Right Action: Refresh Snapshot with 44dp Touch Target
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(44.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        onClick = onRefreshScreenshot,
-                        color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
-                        shape = CircleShape,
-                        border = BorderStroke(0.5.dp, appleColors.glassHighlight),
-                        shadowElevation = 3.dp,
-                        modifier = Modifier.size(32.dp)
+                // Top-Right Action: Refresh Snapshot with 44dp Touch Target (only when previews enabled or local file exists)
+                if (fetchWebPreviews || hasLocalImage) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(44.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Refresh,
-                                contentDescription = "Refresh Screenshot",
-                                tint = appleColors.label,
-                                modifier = Modifier.size(15.dp)
-                            )
+                        Surface(
+                            onClick = onRefreshScreenshot,
+                            color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
+                            shape = CircleShape,
+                            border = BorderStroke(0.5.dp, appleColors.glassHighlight),
+                            shadowElevation = 3.dp,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Refresh,
+                                    contentDescription = "Refresh Screenshot",
+                                    tint = appleColors.label,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1487,6 +1573,7 @@ fun AppleWebsiteCard(
 fun AppleCompactWebsiteRow(
     website: Website,
     refreshToken: Long,
+    fetchWebPreviews: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -1523,53 +1610,87 @@ fun AppleCompactWebsiteRow(
                     .clip(RoundedCornerShape(10.dp))
                     .background(appleColors.secondaryBackground)
             ) {
-                val previewUrl = remember(website.url, refreshToken) {
-                    try {
-                        val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
-                        val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
-                        "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
-                    } catch (e: Exception) {
-                        website.url
+                if (hasLocalImage) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(localFile)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (fetchWebPreviews) {
+                    val previewUrl = remember(website.url, refreshToken) {
+                        try {
+                            val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
+                            val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
+                            "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
+                        } catch (e: Exception) {
+                            website.url
+                        }
                     }
-                }
 
-                val imageSource = if (hasLocalImage) localFile else previewUrl
-
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageSource)
-                        .crossfade(true)
-                        .build(),
-                    onSuccess = { state ->
-                        if (!hasLocalImage) {
-                            val drawable = state.result.drawable
-                            coroutineScope.launch(Dispatchers.IO) {
-                                try {
-                                    val bitmap = drawable.toBitmap()
-                                    FileOutputStream(localFile).use { out ->
-                                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(previewUrl)
+                            .crossfade(true)
+                            .build(),
+                        onSuccess = { state ->
+                            if (!hasLocalImage) {
+                                val drawable = state.result.drawable
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val bitmap = drawable.toBitmap()
+                                        FileOutputStream(localFile).use { out ->
+                                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                                        }
+                                        hasLocalImage = true
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
                                     }
-                                    hasLocalImage = true
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
                                 }
                             }
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = null,
+                                    tint = appleColors.secondaryLabel,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                    },
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    error = {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.OpenInBrowser,
-                                contentDescription = null,
-                                tint = appleColors.secondaryLabel,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    )
+                } else {
+                    // Local Compact Monogram when Fetch Web Previews is OFF
+                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        catAccent.copy(alpha = if (appleColors.isDark) 0.22f else 0.12f),
+                                        appleColors.secondaryBackground
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = domainInitial,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = catAccent
+                        )
                     }
-                )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -2508,6 +2629,8 @@ fun AppleDeleteTagConfirmDialog(
 fun AppleSettingsBottomSheetContent(
     isCompactList: Boolean,
     onSetCompactList: (Boolean) -> Unit,
+    fetchWebPreviews: Boolean,
+    onToggleFetchWebPreviews: (Boolean) -> Unit,
     onOpenWhatsNew: () -> Unit,
     onOpenAppInfo: () -> Unit,
     onDismiss: () -> Unit
@@ -2682,6 +2805,71 @@ fun AppleSettingsBottomSheetContent(
                     contentDescription = null,
                     tint = if (isCompactList) appleColors.accent else appleColors.tertiaryLabel,
                     modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section: Privacy & Network
+        Text(
+            text = "PRIVACY & NETWORK",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appleColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = if (fetchWebPreviews) appleColors.accent else appleColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Public,
+                                contentDescription = null,
+                                tint = if (fetchWebPreviews) Color.White else appleColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Fetch Web Previews",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = appleColors.label
+                    )
+                }
+
+                Switch(
+                    checked = fetchWebPreviews,
+                    onCheckedChange = onToggleFetchWebPreviews,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = appleColors.accent
+                    )
                 )
             }
         }
@@ -3594,18 +3782,20 @@ fun AppleItemOptionsBottomSheetContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
+                val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
                 Surface(
-                    color = appleColors.fill,
+                    color = catAccent.copy(alpha = if (appleColors.isDark) 0.22f else 0.12f),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(0.5.dp, appleColors.separator),
+                    border = BorderStroke(0.5.dp, catAccent.copy(alpha = 0.35f)),
                     modifier = Modifier.size(38.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        AsyncImage(
-                            model = website.faviconUrl,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            contentScale = ContentScale.Fit
+                        Text(
+                            text = domainInitial,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp,
+                            color = catAccent
                         )
                     }
                 }
@@ -4011,7 +4201,7 @@ fun AppleEditWebsiteSheetContent(
                 } catch (e: Exception) {
                     website.domain
                 }
-                val faviconUrl = "https://www.google.com/s2/favicons?sz=128&domain=$domain"
+                val faviconUrl = ""
 
                 val updated = website.copy(
                     title = title.trim().ifBlank { website.title },

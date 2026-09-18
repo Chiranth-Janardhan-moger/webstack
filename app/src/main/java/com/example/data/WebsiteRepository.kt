@@ -69,7 +69,7 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
             title = domain.split(".")[0].replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         }
 
-        val faviconUrl = "https://www.google.com/s2/favicons?sz=128&domain=$domain"
+        val faviconUrl = ""
         val category = if (!customCategory.isNullOrBlank() && customCategory != "All") {
             customCategory
         } else {
