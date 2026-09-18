@@ -10,13 +10,13 @@ AutoName: WebStack
 
 RepoType: git
 Repo: https://github.com/Chiranth-Janardhan-moger/webstack
-Binaries: 
+Binaries:
   https://github.com/Chiranth-Janardhan-moger/webstack/releases/download/v%v/app-release.apk
 
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: ff84096d28d5dd7d77c67a4452f5b70829465a34
+    commit: 50cc3ce83ce16b2303d4cb1cbcaa2c5ec1c1da90
     subdir: app
     gradle:
       - yes
