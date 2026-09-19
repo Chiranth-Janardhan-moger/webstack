@@ -60,9 +60,8 @@ jobs:
       - name: Prepare Release Artifacts
         run: |
           mkdir -p build-assets
-          cp app/build/outputs/apk/release/app-arm64-v8a-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk
-          cp app/build/outputs/apk/release/app-armeabi-v7a-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
-          cp app/build/outputs/apk/release/app-universal-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk
+          cp app/build/outputs/apk/release/app-release.apk build-assets/app-release.apk
+          cp app/build/outputs/apk/release/app-release.apk build-assets/webstack-${{ env.RELEASE_TAG }}.apk
 
       - name: Generate SHA256 Checksums
         run: |
@@ -88,16 +87,14 @@ jobs:
             This release was compiled automatically via GitHub Actions CI/CD pipeline.
             
             ### Included Binaries
-            - `webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk`: Optimized for modern 64-bit Android devices.
-            - `webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk`: Optimized for 32-bit legacy devices.
-            - `webstack-${{ env.RELEASE_TAG }}-universal.apk`: Compatible across all hardware targets.
+            - `app-release.apk`: Universal release APK for F-Droid and direct install.
+            - `webstack-${{ env.RELEASE_TAG }}.apk`: Versioned release APK.
             
             ### Checksums for Verification
             Refer to the attached `checksums-sha256.txt` file to verify downloaded assets locally.
           files: |
-            build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk
-            build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
-            build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk
+            build-assets/app-release.apk
+            build-assets/webstack-${{ env.RELEASE_TAG }}.apk
             build-assets/checksums-sha256.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,9 +103,8 @@ jobs:
         if: env.GITLAB_PAT != ''
         run: |
           python scripts/gitlab_release_upload.py \
-            build-assets/webstack-${{ env.RELEASE_TAG }}-arm64-v8a.apk \
-            build-assets/webstack-${{ env.RELEASE_TAG }}-armeabi-v7a.apk \
-            build-assets/webstack-${{ env.RELEASE_TAG }}-universal.apk \
+            build-assets/app-release.apk \
+            build-assets/webstack-${{ env.RELEASE_TAG }}.apk \
             build-assets/checksums-sha256.txt
         env:
           GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
