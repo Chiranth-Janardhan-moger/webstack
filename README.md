@@ -6,7 +6,7 @@ A high-performance visual bookmark manager and website stack for Android built w
 [![Platform](https://img.shields.io/badge/Platform-Android_8.0+-green.svg)](https://android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-purple.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack_Compose-BOM_2024.09.00-4285F4.svg)](https://developer.android.com/jetpack/compose)
-[![F-Droid](https://img.shields.io/badge/F--Droid-Ready-3DDC84.svg)](metadata/com.chiranth7.webstack.yml)
+[![F-Droid](https://img.shields.io/badge/F--Droid-Official_Repository-3DDC84.svg)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46490)
 
 ---
 
@@ -33,7 +33,7 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 | Visual Bookmark Stack | Save Link Sheet | Settings & Layout Modes |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/webstack-home.png" width="260" alt="WebStack Home Feed" /> | <img src="docs/screenshots/webstack-save-link.png" width="260" alt="Save Link Sheet" /> | <img src="docs/screenshots/webstack-settings.png" width="260" alt="Settings Sheet" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_home.png" width="260" alt="WebStack Home Feed" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_save_link.png" width="260" alt="Save Link Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_settings.png" width="260" alt="Settings Sheet" /> |
 
 ---
 
@@ -118,13 +118,15 @@ Pre-compiled release APKs are available on the [GitHub Releases](https://github.
 
 ---
 
-## F-Droid Submission
+## F-Droid Inclusion
 
-WebStack complies with F-Droid inclusion policies:
+WebStack is officially included in the upstream F-Droid catalog:
+- Merge Request: [fdroid/fdroiddata!46490](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46490) (Merged into master)
 - Free and Open Source (MIT License)
-- Reproducible Gradle builds without proprietary dependencies
-- Offline build capability
+- Reproducible Gradle builds verified against upstream signing keys
+- Package ID: `com.chiranth7.webstack`
 - Recipe file: [`metadata/com.chiranth7.webstack.yml`](metadata/com.chiranth7.webstack.yml)
+
 
 
 ---
