@@ -2,11 +2,19 @@
 
 A high-performance visual bookmark manager and website stack for Android built with Jetpack Compose, Material Design 3, Room Database, and Kotlin Coroutines.
 
+[![F-Droid](https://img.shields.io/f-droid/v/com.chiranth7.webstack?logo=f-droid&logoColor=white&color=blue)](https://f-droid.org/packages/com.chiranth7.webstack/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android_8.0+-green.svg)](https://android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-purple.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack_Compose-BOM_2024.09.00-4285F4.svg)](https://developer.android.com/jetpack/compose)
-[![F-Droid](https://img.shields.io/badge/F--Droid-Official_Repository-3DDC84.svg)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46490)
+
+<br>
+
+<a href="https://f-droid.org/packages/com.chiranth7.webstack/">
+  <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">
+</a>
+
+<br>
 
 ---
 
@@ -108,24 +116,40 @@ Run local unit tests and Robolectric verification:
 
 ---
 
-## Download Binaries
+## Download & Installation
 
-Pre-compiled release APKs are available on the [GitHub Releases](https://github.com/Chiranth-Janardhan-moger/webstack/releases) page:
+WebStack is available on F-Droid and GitHub Releases for Android.
 
-- **ARM 64-bit (`arm64-v8a`)**: Recommended for modern Android smartphones and tablets.
-- **ARM 32-bit (`armeabi-v7a`)**: Compatible with older 32-bit hardware.
-- **Universal**: Contains all ABI binaries in a single package.
+<div align="center">
+
+<a href="https://f-droid.org/packages/com.chiranth7.webstack/">
+  <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="75">
+</a>
+
+<p>
+  <a href="https://f-droid.org/packages/com.chiranth7.webstack/"><strong>Get it on F-Droid</strong></a> &bull; 
+  <a href="https://github.com/Chiranth-Janardhan-moger/webstack/releases/latest"><strong>Download GitHub Release APK</strong></a>
+</p>
+
+</div>
+
+### Installation Channels
+
+- **F-Droid Store (Recommended)**: Install via the official F-Droid client app or download directly from the [WebStack F-Droid Package Page](https://f-droid.org/packages/com.chiranth7.webstack/). Automatic updates and reproducible builds are guaranteed through F-Droid.
+- **GitHub Releases**: Download standalone signed release APK (`app-release.apk`) directly from [GitHub Releases](https://github.com/Chiranth-Janardhan-moger/webstack/releases/latest).
 
 ---
 
-## F-Droid Inclusion
+## F-Droid Package Details
 
-WebStack is officially included in the upstream F-Droid catalog:
+WebStack is officially published in the upstream F-Droid repository:
+- Package Page: [https://f-droid.org/packages/com.chiranth7.webstack/](https://f-droid.org/packages/com.chiranth7.webstack/)
 - Merge Request: [fdroid/fdroiddata!46490](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46490) (Merged into master)
 - Free and Open Source (MIT License)
-- Reproducible Gradle builds verified against upstream signing keys
+- Reproducible Gradle builds verified against upstream signing keys (`fc5583b...`)
 - Package ID: `com.chiranth7.webstack`
 - Recipe file: [`metadata/com.chiranth7.webstack.yml`](metadata/com.chiranth7.webstack.yml)
+
 
 
 
