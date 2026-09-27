@@ -10,9 +10,9 @@ import androidx.compose.ui.graphics.Color
 
 // System Backgrounds (Light)
 val AppleSystemBackgroundLight = Color(0xFFFFFFFF)
-val AppleSecondaryBackgroundLight = Color(0xFFF2F2F7)
+val AppleSecondaryBackgroundLight = Color(0xFFF6F7FA)
 val AppleTertiaryBackgroundLight = Color(0xFFFFFFFF)
-val AppleGroupedBackgroundLight = Color(0xFFF2F2F7)
+val AppleGroupedBackgroundLight = Color(0xFFF6F7FA)
 val AppleSecondaryGroupedBackgroundLight = Color(0xFFFFFFFF)
 
 // System Backgrounds (Dark)
@@ -35,7 +35,7 @@ val AppleTertiaryLabelDark = Color(0x4DFFFFFF)  // ~30%
 val AppleQuaternaryLabelDark = Color(0x29FFFFFF) // ~16%
 
 // System Separators & Hairlines
-val AppleSeparatorLight = Color(0x1F000000) // ~12%
+val AppleSeparatorLight = Color(0x14000000) // ~8% softer hairline
 val AppleOpaqueSeparatorLight = Color(0xFFC6C6C8)
 val AppleSeparatorDark = Color(0x38FFFFFF)   // ~22%
 val AppleOpaqueSeparatorDark = Color(0xFF38383A)

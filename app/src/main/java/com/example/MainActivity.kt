@@ -48,8 +48,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -258,6 +262,12 @@ fun getCategoryAccentColor(category: String, isDark: Boolean): Color {
     return dynamicPalette[hash % dynamicPalette.size]
 }
 
+enum class WebStackLayoutMode(val title: String) {
+    LARGE_CARDS("Large Cards"),
+    GRID_CARDS("2-Card Grid"),
+    COMPACT_LIST("Compact List")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebStackScreen(
@@ -285,7 +295,21 @@ fun WebStackScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
-    var isCompactList by remember { mutableStateOf(prefs.getBoolean("is_compact_list", false)) }
+    val savedLayoutMode = prefs.getString("layout_mode", null)
+    var layoutMode by remember {
+        mutableStateOf(
+            if (savedLayoutMode != null) {
+                try {
+                    WebStackLayoutMode.valueOf(savedLayoutMode)
+                } catch (_: Exception) {
+                    WebStackLayoutMode.LARGE_CARDS
+                }
+            } else {
+                if (prefs.getBoolean("is_compact_list", false)) WebStackLayoutMode.COMPACT_LIST else WebStackLayoutMode.LARGE_CARDS
+            }
+        )
+    }
+    val isCompactList = layoutMode == WebStackLayoutMode.COMPACT_LIST
     var fetchWebPreviews by remember { mutableStateOf(prefs.getBoolean("fetch_web_previews", false)) }
     var websiteForOptions by remember { mutableStateOf<Website?>(null) }
     var websiteToEdit by remember { mutableStateOf<Website?>(null) }
@@ -449,67 +473,109 @@ fun WebStackScreen(
                     }
                 )
             } else {
-                LazyColumn(
+                val gridColumns = when (layoutMode) {
+                    WebStackLayoutMode.GRID_CARDS -> GridCells.Fixed(2)
+                    else -> GridCells.Fixed(1)
+                }
+                LazyVerticalGrid(
+                    columns = gridColumns,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .testTag("websites_list"),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (isCompactList) 10.dp else 18.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(
+                        when (layoutMode) {
+                            WebStackLayoutMode.COMPACT_LIST -> 10.dp
+                            WebStackLayoutMode.GRID_CARDS -> 12.dp
+                            WebStackLayoutMode.LARGE_CARDS -> 18.dp
+                        }
+                    )
                 ) {
                     items(
                         items = filteredWebsites,
                         key = { it.id }
                     ) { website ->
                         val refreshToken = refreshTokens[website.id] ?: 0L
-                        if (isCompactList) {
-                            AppleCompactWebsiteRow(
-                                website = website,
-                                refreshToken = refreshToken,
-                                fetchWebPreviews = fetchWebPreviews,
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    openWebsiteInBrowser(context, website.url)
-                                },
-                                onLongClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    websiteForOptions = website
-                                },
-                                onRefreshScreenshot = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (!fetchWebPreviews) {
-                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                    } else {
-                                        viewModel.refreshScreenshot(website.id)
-                                        refreshTokens[website.id] = System.currentTimeMillis()
-                                        Toast.makeText(context, "Refreshing ${website.title}...", Toast.LENGTH_SHORT).show()
-                                    }
+                        Box(modifier = Modifier.animateItem()) {
+                            when (layoutMode) {
+                                WebStackLayoutMode.COMPACT_LIST -> {
+                                    AppleCompactWebsiteRow(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            openWebsiteInBrowser(context, website.url)
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            websiteForOptions = website
+                                        },
+                                        onRefreshScreenshot = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (!fetchWebPreviews) {
+                                                Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                viewModel.refreshScreenshot(website.id)
+                                                refreshTokens[website.id] = System.currentTimeMillis()
+                                                Toast.makeText(context, "Refreshing ${website.title}...", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    )
                                 }
-                            )
-                        } else {
-                            AppleWebsiteCard(
-                                website = website,
-                                refreshToken = refreshToken,
-                                fetchWebPreviews = fetchWebPreviews,
-                                onClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    openWebsiteInBrowser(context, website.url)
-                                },
-                                onLongClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    websiteForOptions = website
-                                },
-                                onRefreshScreenshot = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (!fetchWebPreviews) {
-                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                    } else {
-                                        viewModel.refreshScreenshot(website.id)
-                                        refreshTokens[website.id] = System.currentTimeMillis()
-                                        Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
-                                    }
+                                WebStackLayoutMode.GRID_CARDS -> {
+                                    AppleGridWebsiteCard(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            openWebsiteInBrowser(context, website.url)
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            websiteForOptions = website
+                                        },
+                                        onRefreshScreenshot = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (!fetchWebPreviews) {
+                                                Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                viewModel.refreshScreenshot(website.id)
+                                                refreshTokens[website.id] = System.currentTimeMillis()
+                                                Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                                WebStackLayoutMode.LARGE_CARDS -> {
+                                    AppleWebsiteCard(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            openWebsiteInBrowser(context, website.url)
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            websiteForOptions = website
+                                        },
+                                        onRefreshScreenshot = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (!fetchWebPreviews) {
+                                                Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                viewModel.refreshScreenshot(website.id)
+                                                refreshTokens[website.id] = System.currentTimeMillis()
+                                                Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -644,11 +710,14 @@ fun WebStackScreen(
                 dragHandle = { AppleSheetDragHandle() }
             ) {
                 AppleSettingsBottomSheetContent(
-                    isCompactList = isCompactList,
-                    onSetCompactList = { compact ->
+                    layoutMode = layoutMode,
+                    onSetLayoutMode = { mode ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        isCompactList = compact
-                        prefs.edit().putBoolean("is_compact_list", compact).apply()
+                        layoutMode = mode
+                        prefs.edit()
+                            .putString("layout_mode", mode.name)
+                            .putBoolean("is_compact_list", mode == WebStackLayoutMode.COMPACT_LIST)
+                            .apply()
                     },
                     fetchWebPreviews = fetchWebPreviews,
                     onToggleFetchWebPreviews = { enabled ->
@@ -879,6 +948,51 @@ fun AppleSheetDragHandle() {
 }
 
 @Composable
+fun AppleFloatingIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    testTag: String,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 42.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp
+) {
+    val appleColors = LocalAppleColors.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "floating_btn_scale"
+    )
+
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = CircleShape,
+        color = if (appleColors.isDark) Color(0x26FFFFFF) else Color(0x12000000),
+        border = BorderStroke(0.5.dp, if (appleColors.isDark) Color(0x33FFFFFF) else Color(0x0F000000)),
+        shadowElevation = if (appleColors.isDark) 0.dp else 0.5.dp,
+        modifier = modifier
+            .size(size)
+            .scale(scale)
+            .testTag(testTag)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = appleColors.label,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@Composable
 fun AppleNavigationHeader(
     selectedCategory: String,
     searchQuery: String,
@@ -943,19 +1057,19 @@ fun AppleNavigationHeader(
             label = "header_search_transition"
         ) { expanded ->
             if (expanded) {
-                // Active Search State: Capsule Search Input + 44dp X Close Button
+                // Active Search State: Capsule Search Input + Floating Close Button
                 Row(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = appleColors.fill,
-                        border = BorderStroke(0.75.dp, appleColors.separator.copy(alpha = 0.5f)),
+                        border = BorderStroke(0.5.dp, appleColors.separator.copy(alpha = 0.35f)),
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(42.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -1026,56 +1140,30 @@ fun AppleNavigationHeader(
                         }
                     }
 
-                    Surface(
+                    AppleFloatingIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onClearQuery()
                             onSearchExpandedChange(false)
                         },
-                        color = appleColors.surface,
-                        border = BorderStroke(0.75.dp, appleColors.separator),
-                        shape = RoundedCornerShape(12.dp),
-                        shadowElevation = if (appleColors.isDark) 0.dp else 1.dp,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .testTag("close_search_button")
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Search",
-                                tint = appleColors.label,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close Search",
+                        testTag = "close_search_button"
+                    )
                 }
             } else {
-                // Resting State: Settings Button + Centered WebStack Title + Search Button
+                // Resting State: Floating Settings Button + Centered WebStack Title + Floating Search Button
                 Row(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
+                    AppleFloatingIconButton(
                         onClick = onOpenSettings,
-                        color = appleColors.surface,
-                        border = BorderStroke(0.75.dp, appleColors.separator),
-                        shape = RoundedCornerShape(12.dp),
-                        shadowElevation = if (appleColors.isDark) 0.dp else 1.dp,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .testTag("settings_button")
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                imageVector = Icons.Outlined.Settings,
-                                contentDescription = "Settings and Preferences",
-                                tint = appleColors.label,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                        icon = Icons.Outlined.Settings,
+                        contentDescription = "Settings and Preferences",
+                        testTag = "settings_button"
+                    )
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1099,28 +1187,15 @@ fun AppleNavigationHeader(
                         )
                     }
 
-                    Surface(
+                    AppleFloatingIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSearchExpandedChange(true)
                         },
-                        color = appleColors.surface,
-                        border = BorderStroke(0.75.dp, appleColors.separator),
-                        shape = RoundedCornerShape(12.dp),
-                        shadowElevation = if (appleColors.isDark) 0.dp else 1.dp,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .testTag("search_button")
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = "Search Bookmarks",
-                                tint = appleColors.label,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                        icon = Icons.Outlined.Search,
+                        contentDescription = "Search Bookmarks",
+                        testTag = "search_button"
+                    )
                 }
             }
         }
@@ -1220,15 +1295,15 @@ fun AppleCapsule(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "capsule_scale"
     )
 
     Surface(
         color = if (isSelected) appleColors.label else appleColors.surface,
         border = BorderStroke(
-            0.75.dp,
+            0.5.dp,
             if (isSelected) Color.Transparent else appleColors.separator
         ),
         shape = RoundedCornerShape(18.dp),
@@ -1309,8 +1384,11 @@ fun AppleWebsiteCard(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.975f else 1f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 450f),
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "apple_card_scale"
     )
 
@@ -1336,13 +1414,13 @@ fun AppleWebsiteCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (appleColors.isDark) 4.dp else 10.dp,
+                    elevation = if (appleColors.isDark) 3.dp else 6.dp,
                     shape = RoundedCornerShape(22.dp),
-                    ambientColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.2f else 0.04f),
-                    spotColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.35f else 0.07f)
+                    ambientColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.2f else 0.03f),
+                    spotColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.35f else 0.05f)
                 )
                 .background(appleColors.surface, RoundedCornerShape(22.dp))
-                .border(BorderStroke(0.75.dp, appleColors.separator), RoundedCornerShape(22.dp))
+                .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(22.dp))
         ) {
             // Top Preview Slot displaying Website Screenshot
             Box(
@@ -1570,6 +1648,249 @@ fun AppleWebsiteCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+fun AppleGridWebsiteCard(
+    website: Website,
+    refreshToken: Long,
+    fetchWebPreviews: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onRefreshScreenshot: () -> Unit
+) {
+    val context = LocalContext.current
+    val appleColors = LocalAppleColors.current
+    val coroutineScope = rememberCoroutineScope()
+    val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
+    var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "apple_grid_card_scale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.foundation.LocalIndication.current,
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .testTag("website_grid_card_${website.id}"),
+        colors = CardDefaults.cardColors(containerColor = appleColors.surface),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = if (appleColors.isDark) 3.dp else 6.dp,
+                    shape = RoundedCornerShape(18.dp),
+                    ambientColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.2f else 0.03f),
+                    spotColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.3f else 0.05f)
+                )
+                .background(appleColors.surface, RoundedCornerShape(18.dp))
+                .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(18.dp))
+        ) {
+            // Snapshot Preview Header (105dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(105.dp)
+                    .background(appleColors.secondaryBackground)
+            ) {
+                if (hasLocalImage) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(localFile)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Preview snapshot of ${website.title}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (fetchWebPreviews) {
+                    val previewUrl = remember(website.url, refreshToken) {
+                        try {
+                            val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
+                            val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
+                            "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
+                        } catch (e: Exception) {
+                            website.url
+                        }
+                    }
+
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(previewUrl)
+                            .crossfade(true)
+                            .build(),
+                        onSuccess = { state ->
+                            val drawable = state.result.drawable
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    val bitmap = drawable.toBitmap()
+                                    FileOutputStream(localFile).use { out ->
+                                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                                    }
+                                    hasLocalImage = true
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        },
+                        contentDescription = "Preview snapshot of ${website.title}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = appleColors.accent,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        },
+                        error = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(appleColors.fill),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = null,
+                                    tint = appleColors.secondaryLabel,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
+                                        appleColors.secondaryBackground
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                            border = BorderStroke(0.75.dp, catAccent.copy(alpha = 0.40f)),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = domainInitial,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = catAccent
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Small Refresh Button on Top Right
+                if (fetchWebPreviews || hasLocalImage) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                    ) {
+                        Surface(
+                            onClick = onRefreshScreenshot,
+                            color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
+                            shape = CircleShape,
+                            border = BorderStroke(0.5.dp, appleColors.glassHighlight),
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Refresh,
+                                    contentDescription = "Refresh Screenshot",
+                                    tint = appleColors.label,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Info Details (Title & Domain with Category dot)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 9.dp)
+            ) {
+                Text(
+                    text = website.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = appleColors.label,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(catAccent, CircleShape)
+                    )
+                    Text(
+                        text = website.domain,
+                        fontSize = 11.sp,
+                        color = appleColors.secondaryLabel,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 fun AppleCompactWebsiteRow(
     website: Website,
     refreshToken: Long,
@@ -1584,17 +1905,35 @@ fun AppleCompactWebsiteRow(
     val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
     var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "apple_compact_scale"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.foundation.LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
             .testTag("compact_website_row_${website.id}"),
         colors = CardDefaults.cardColors(containerColor = appleColors.surface),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(0.75.dp, appleColors.separator),
+        border = BorderStroke(0.5.dp, appleColors.separator),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -2627,8 +2966,8 @@ fun AppleDeleteTagConfirmDialog(
 
 @Composable
 fun AppleSettingsBottomSheetContent(
-    isCompactList: Boolean,
-    onSetCompactList: (Boolean) -> Unit,
+    layoutMode: WebStackLayoutMode,
+    onSetLayoutMode: (WebStackLayoutMode) -> Unit,
     fetchWebPreviews: Boolean,
     onToggleFetchWebPreviews: (Boolean) -> Unit,
     onOpenWhatsNew: () -> Unit,
@@ -2699,14 +3038,15 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Card Grid View Option
+        // Large Cards Option
+        val isLarge = layoutMode == WebStackLayoutMode.LARGE_CARDS
         Surface(
-            onClick = { onSetCompactList(false) },
+            onClick = { onSetLayoutMode(WebStackLayoutMode.LARGE_CARDS) },
             shape = RoundedCornerShape(14.dp),
-            color = if (!isCompactList) appleColors.surface else appleColors.secondaryGroupedBackground,
+            color = if (isLarge) appleColors.surface else appleColors.secondaryGroupedBackground,
             border = BorderStroke(
-                width = if (!isCompactList) 1.5.dp else 0.75.dp,
-                color = if (!isCompactList) appleColors.accent else appleColors.separator
+                width = if (isLarge) 1.5.dp else 0.5.dp,
+                color = if (isLarge) appleColors.accent else appleColors.separator
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -2722,7 +3062,71 @@ fun AppleSettingsBottomSheetContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Surface(
-                        color = if (!isCompactList) appleColors.accent else appleColors.fill,
+                        color = if (isLarge) appleColors.accent else appleColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.Layers,
+                                contentDescription = null,
+                                tint = if (isLarge) Color.White else appleColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            text = "Large Cards",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appleColors.label
+                        )
+                        Text(
+                            text = "Full previews & detailed cards",
+                            fontSize = 11.sp,
+                            color = appleColors.secondaryLabel
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = if (isLarge) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isLarge) appleColors.accent else appleColors.tertiaryLabel,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 2-Card Grid Option
+        val isGrid = layoutMode == WebStackLayoutMode.GRID_CARDS
+        Surface(
+            onClick = { onSetLayoutMode(WebStackLayoutMode.GRID_CARDS) },
+            shape = RoundedCornerShape(14.dp),
+            color = if (isGrid) appleColors.surface else appleColors.secondaryGroupedBackground,
+            border = BorderStroke(
+                width = if (isGrid) 1.5.dp else 0.5.dp,
+                color = if (isGrid) appleColors.accent else appleColors.separator
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        color = if (isGrid) appleColors.accent else appleColors.fill,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -2730,24 +3134,31 @@ fun AppleSettingsBottomSheetContent(
                             Icon(
                                 imageVector = Icons.Default.GridView,
                                 contentDescription = null,
-                                tint = if (!isCompactList) Color.White else appleColors.label,
+                                tint = if (isGrid) Color.White else appleColors.label,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
 
-                    Text(
-                        text = "Card Grid View",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appleColors.label
-                    )
+                    Column {
+                        Text(
+                            text = "2-Card Grid",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appleColors.label
+                        )
+                        Text(
+                            text = "Side-by-side visual collection",
+                            fontSize = 11.sp,
+                            color = appleColors.secondaryLabel
+                        )
+                    }
                 }
 
                 Icon(
-                    imageVector = if (!isCompactList) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                    imageVector = if (isGrid) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (!isCompactList) appleColors.accent else appleColors.tertiaryLabel,
+                    tint = if (isGrid) appleColors.accent else appleColors.tertiaryLabel,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -2756,13 +3167,14 @@ fun AppleSettingsBottomSheetContent(
         Spacer(modifier = Modifier.height(10.dp))
 
         // Compact List View Option
+        val isCompact = layoutMode == WebStackLayoutMode.COMPACT_LIST
         Surface(
-            onClick = { onSetCompactList(true) },
+            onClick = { onSetLayoutMode(WebStackLayoutMode.COMPACT_LIST) },
             shape = RoundedCornerShape(14.dp),
-            color = if (isCompactList) appleColors.surface else appleColors.secondaryGroupedBackground,
+            color = if (isCompact) appleColors.surface else appleColors.secondaryGroupedBackground,
             border = BorderStroke(
-                width = if (isCompactList) 1.5.dp else 0.75.dp,
-                color = if (isCompactList) appleColors.accent else appleColors.separator
+                width = if (isCompact) 1.5.dp else 0.5.dp,
+                color = if (isCompact) appleColors.accent else appleColors.separator
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -2778,7 +3190,7 @@ fun AppleSettingsBottomSheetContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Surface(
-                        color = if (isCompactList) appleColors.accent else appleColors.fill,
+                        color = if (isCompact) appleColors.accent else appleColors.fill,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -2786,24 +3198,31 @@ fun AppleSettingsBottomSheetContent(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ViewList,
                                 contentDescription = null,
-                                tint = if (isCompactList) Color.White else appleColors.label,
+                                tint = if (isCompact) Color.White else appleColors.label,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
 
-                    Text(
-                        text = "Compact List View",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appleColors.label
-                    )
+                    Column {
+                        Text(
+                            text = "Compact List",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appleColors.label
+                        )
+                        Text(
+                            text = "Streamlined single-line row view",
+                            fontSize = 11.sp,
+                            color = appleColors.secondaryLabel
+                        )
+                    }
                 }
 
                 Icon(
-                    imageVector = if (isCompactList) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                    imageVector = if (isCompact) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (isCompactList) appleColors.accent else appleColors.tertiaryLabel,
+                    tint = if (isCompact) appleColors.accent else appleColors.tertiaryLabel,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -3009,6 +3428,27 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+}
+
+@Composable
+fun AppleSettingsBottomSheetContent(
+    isCompactList: Boolean,
+    onSetCompactList: (Boolean) -> Unit,
+    fetchWebPreviews: Boolean,
+    onToggleFetchWebPreviews: (Boolean) -> Unit,
+    onOpenWhatsNew: () -> Unit,
+    onOpenAppInfo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AppleSettingsBottomSheetContent(
+        layoutMode = if (isCompactList) WebStackLayoutMode.COMPACT_LIST else WebStackLayoutMode.LARGE_CARDS,
+        onSetLayoutMode = { onSetCompactList(it == WebStackLayoutMode.COMPACT_LIST) },
+        fetchWebPreviews = fetchWebPreviews,
+        onToggleFetchWebPreviews = onToggleFetchWebPreviews,
+        onOpenWhatsNew = onOpenWhatsNew,
+        onOpenAppInfo = onOpenAppInfo,
+        onDismiss = onDismiss
+    )
 }
 
 @Composable
