@@ -973,9 +973,9 @@ fun AppleFloatingIconButton(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = CircleShape,
-        color = if (appleColors.isDark) Color(0x26FFFFFF) else Color(0x12000000),
-        border = BorderStroke(0.5.dp, if (appleColors.isDark) Color(0x33FFFFFF) else Color(0x0F000000)),
-        shadowElevation = if (appleColors.isDark) 0.dp else 0.5.dp,
+        color = if (appleColors.isDark) Color(0x24FFFFFF) else Color(0x0D000000),
+        border = BorderStroke(0.5.dp, if (appleColors.isDark) Color(0x26FFFFFF) else Color(0x12000000)),
+        shadowElevation = 0.dp,
         modifier = modifier
             .size(size)
             .scale(scale)
