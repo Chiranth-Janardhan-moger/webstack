@@ -36,6 +36,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -138,9 +139,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1345,17 +1349,30 @@ fun AppleCapsule(
                 Surface(
                     color = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill,
                     shape = CircleShape,
-                    modifier = Modifier.height(18.dp)
+                    modifier = Modifier
+                        .height(18.dp)
+                        .defaultMinSize(minWidth = 18.dp)
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 6.dp)
+                        modifier = Modifier.padding(horizontal = 5.dp)
                     ) {
                         Text(
                             text = "$count",
                             color = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(
+                                platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                                    includeFontPadding = false
+                                ),
+                                lineHeight = 10.sp,
+                                lineHeightStyle = LineHeightStyle(
+                                    alignment = LineHeightStyle.Alignment.Center,
+                                    trim = LineHeightStyle.Trim.Both
+                                )
+                            )
                         )
                     }
                 }
@@ -1392,6 +1409,7 @@ fun AppleWebsiteCard(
         label = "apple_card_scale"
     )
 
+    val cardShape = RoundedCornerShape(22.dp)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1399,15 +1417,16 @@ fun AppleWebsiteCard(
                 scaleX = scale
                 scaleY = scale
             }
+            .clip(cardShape)
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = androidx.compose.foundation.LocalIndication.current,
+                indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
             .testTag("website_card_${website.id}"),
         colors = CardDefaults.cardColors(containerColor = appleColors.surface),
-        shape = RoundedCornerShape(22.dp),
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -1674,6 +1693,7 @@ fun AppleGridWebsiteCard(
         label = "apple_grid_card_scale"
     )
 
+    val cardShape = RoundedCornerShape(18.dp)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1681,15 +1701,16 @@ fun AppleGridWebsiteCard(
                 scaleX = scale
                 scaleY = scale
             }
+            .clip(cardShape)
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = androidx.compose.foundation.LocalIndication.current,
+                indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
             .testTag("website_grid_card_${website.id}"),
         colors = CardDefaults.cardColors(containerColor = appleColors.surface),
-        shape = RoundedCornerShape(18.dp),
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -1917,6 +1938,7 @@ fun AppleCompactWebsiteRow(
         label = "apple_compact_scale"
     )
 
+    val cardShape = RoundedCornerShape(16.dp)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1924,15 +1946,16 @@ fun AppleCompactWebsiteRow(
                 scaleX = scale
                 scaleY = scale
             }
+            .clip(cardShape)
             .combinedClickable(
                 interactionSource = interactionSource,
-                indication = androidx.compose.foundation.LocalIndication.current,
+                indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
             .testTag("compact_website_row_${website.id}"),
         colors = CardDefaults.cardColors(containerColor = appleColors.surface),
-        shape = RoundedCornerShape(16.dp),
+        shape = cardShape,
         border = BorderStroke(0.5.dp, appleColors.separator),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
