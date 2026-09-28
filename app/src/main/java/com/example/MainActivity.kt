@@ -2692,19 +2692,12 @@ fun AppleAddTagDialog(
                         )
                     }
                 }
-                Column {
-                    Text(
-                        text = "New Tag",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = appleColors.label
-                    )
-                    Text(
-                        text = "Organize bookmarks with custom tags",
-                        fontSize = 12.sp,
-                        color = appleColors.secondaryLabel
-                    )
-                }
+                Text(
+                    text = "New Tag",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appleColors.label
+                )
             }
         },
         text = {
@@ -2887,19 +2880,12 @@ fun AppleEditTagDialog(
                         )
                     }
                 }
-                Column {
-                    Text(
-                        text = "Edit Tag",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = appleColors.label
-                    )
-                    Text(
-                        text = "Update tag name across bookmarks",
-                        fontSize = 12.sp,
-                        color = appleColors.secondaryLabel
-                    )
-                }
+                Text(
+                    text = "Edit Tag",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appleColors.label
+                )
             }
         },
         text = {
@@ -3713,7 +3699,7 @@ fun AppleVersionUpdateScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(appleColors.systemBackground.copy(alpha = if (appleColors.isDark) 0.96f else 0.94f))
+            .background(if (appleColors.isDark) Color(0xFF000000) else Color(0xFFFFFFFF))
             .statusBarsPadding()
             .navigationBarsPadding()
             .testTag("version_101_screen")
