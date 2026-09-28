@@ -23,7 +23,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -37,6 +39,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +47,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -299,6 +303,8 @@ fun WebStackScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
+    val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
+    var showVersion101Screen by remember { mutableStateOf(lastSeenVersion < 2) }
     val savedLayoutMode = prefs.getString("layout_mode", null)
     var layoutMode by remember {
         mutableStateOf(
@@ -369,46 +375,48 @@ fun WebStackScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = appleColors.groupedBackground,
         floatingActionButton = {
-            // Apple Liquid Glass Floating Action Button
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val fabScale by animateFloatAsState(
-                targetValue = if (isPressed) 0.92f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                label = "fab_scale_anim"
-            )
-
-            FloatingActionButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    initialAddUrl = ""
-                    showAddSheet = true
-                },
-                containerColor = appleColors.label,
-                contentColor = appleColors.systemBackground,
-                shape = CircleShape,
-                interactionSource = interactionSource,
-                modifier = Modifier
-                    .padding(bottom = 12.dp, end = 8.dp)
-                    .size(58.dp)
-                    .graphicsLayer {
-                        scaleX = fabScale
-                        scaleY = fabScale
-                    }
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        ambientColor = appleColors.label.copy(alpha = 0.25f),
-                        spotColor = appleColors.label.copy(alpha = 0.35f)
-                    )
-                    .border(BorderStroke(1.dp, appleColors.glassHighlight), CircleShape)
-                    .testTag("add_website_fab")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Website Link",
-                    modifier = Modifier.size(26.dp)
+            if (!showVersion101Screen) {
+                // Apple Liquid Glass Floating Action Button
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val fabScale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.92f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "fab_scale_anim"
                 )
+
+                FloatingActionButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        initialAddUrl = ""
+                        showAddSheet = true
+                    },
+                    containerColor = appleColors.label,
+                    contentColor = appleColors.systemBackground,
+                    shape = CircleShape,
+                    interactionSource = interactionSource,
+                    modifier = Modifier
+                        .padding(bottom = 12.dp, end = 8.dp)
+                        .size(58.dp)
+                        .graphicsLayer {
+                            scaleX = fabScale
+                            scaleY = fabScale
+                        }
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = CircleShape,
+                            ambientColor = appleColors.label.copy(alpha = 0.25f),
+                            spotColor = appleColors.label.copy(alpha = 0.35f)
+                        )
+                        .border(BorderStroke(1.dp, appleColors.glassHighlight), CircleShape)
+                        .testTag("add_website_fab")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Website Link",
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End
@@ -732,7 +740,7 @@ fun WebStackScreen(
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
-                        showWhatsNewSheet = true
+                        showVersion101Screen = true
                     },
                     onOpenAppInfo = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -934,6 +942,20 @@ fun WebStackScreen(
                 },
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier.border(BorderStroke(1.dp, appleColors.separator), RoundedCornerShape(22.dp))
+            )
+        }
+
+        // Version 1.0.1 Update Screen
+        AnimatedVisibility(
+            visible = showVersion101Screen,
+            enter = fadeIn() + scaleIn(initialScale = 0.95f),
+            exit = fadeOut() + scaleOut(targetScale = 0.95f)
+        ) {
+            AppleVersionUpdateScreen(
+                onDismiss = {
+                    prefs.edit().putInt("last_seen_version_code", 2).apply()
+                    showVersion101Screen = false
+                }
             )
         }
     }
@@ -1346,35 +1368,35 @@ fun AppleCapsule(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
             if (count > 0) {
-                Surface(
-                    color = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill,
-                    shape = CircleShape,
+                Box(
                     modifier = Modifier
                         .height(18.dp)
                         .defaultMinSize(minWidth = 18.dp)
+                        .background(
+                            color = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill,
+                            shape = CircleShape
+                        )
+                        .padding(horizontal = if (count > 9) 5.dp else 0.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 5.dp)
-                    ) {
-                        Text(
-                            text = "$count",
-                            color = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            style = TextStyle(
-                                platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
-                                    includeFontPadding = false
-                                ),
-                                lineHeight = 10.sp,
-                                lineHeightStyle = LineHeightStyle(
-                                    alignment = LineHeightStyle.Alignment.Center,
-                                    trim = LineHeightStyle.Trim.Both
-                                )
+                    Text(
+                        text = "$count",
+                        color = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.offset(y = (-1).dp),
+                        style = TextStyle(
+                            platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                                includeFontPadding = false
+                            ),
+                            lineHeight = 10.sp,
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
                             )
                         )
-                    }
+                    )
                 }
             }
         }
@@ -2349,6 +2371,8 @@ fun AppleFilterMenuBottomSheetContent(
                     .padding(vertical = 3.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
                         onClick = { onSelectCategory(category) },
                         onLongClick = { onTagLongPress(category) }
                     )
@@ -3632,6 +3656,240 @@ fun AppleWhatsNewFeatureItem(
                 color = appleColors.secondaryLabel,
                 lineHeight = 17.sp
             )
+        }
+    }
+}
+
+@Composable
+fun AppleVersionUpdateScreen(
+    onDismiss: () -> Unit
+) {
+    val appleColors = LocalAppleColors.current
+    val haptics = LocalHapticFeedback.current
+    var targetDigit by remember { mutableStateOf("0") }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(450)
+        targetDigit = "1"
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
+    BackHandler {
+        onDismiss()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(appleColors.systemBackground.copy(alpha = if (appleColors.isDark) 0.96f else 0.94f))
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .testTag("version_101_screen")
+    ) {
+        // Main Centered Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Version Odometer (1.0.0 -> 1.0.1)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "1.0.",
+                    fontSize = 58.sp,
+                    fontWeight = FontWeight.Black,
+                    color = appleColors.label,
+                    letterSpacing = (-1.5).sp
+                )
+                AnimatedContent(
+                    targetState = targetDigit,
+                    transitionSpec = {
+                        (slideInVertically(
+                            animationSpec = spring(
+                                dampingRatio = 0.72f,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        ) { height -> height } + fadeIn()) togetherWith
+                        (slideOutVertically(
+                            animationSpec = spring(
+                                dampingRatio = 0.72f,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        ) { height -> -height } + fadeOut())
+                    },
+                    label = "odometer_digit"
+                ) { digit ->
+                    Text(
+                        text = digit,
+                        fontSize = 58.sp,
+                        fontWeight = FontWeight.Black,
+                        color = appleColors.label,
+                        letterSpacing = (-1.5).sp
+                    )
+                }
+            }
+
+            // Compact Frosted What's New Card
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = appleColors.surface,
+                border = BorderStroke(0.5.dp, appleColors.separator),
+                shadowElevation = if (appleColors.isDark) 0.dp else 2.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    // Feature 1: 2-Card Grid
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = appleColors.fill,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.GridView,
+                                    contentDescription = null,
+                                    tint = appleColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "2-Card Grid",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = appleColors.label,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Text(
+                                text = "New 2-column layout mode",
+                                fontSize = 13.sp,
+                                color = appleColors.secondaryLabel
+                            )
+                        }
+                    }
+
+                    // Feature 2: Enhanced UI
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = appleColors.fill,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Speed,
+                                    contentDescription = null,
+                                    tint = appleColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Enhanced UI",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = appleColors.label,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Text(
+                                text = "Softer feel & refined animations",
+                                fontSize = 13.sp,
+                                color = appleColors.secondaryLabel
+                            )
+                        }
+                    }
+
+                    // Feature 3: Bug Fixes
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = appleColors.fill,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = appleColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Bug Fixes",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = appleColors.label,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Text(
+                                text = "Stability & visual improvements",
+                                fontSize = 13.sp,
+                                color = appleColors.secondaryLabel
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bottom-Right Black Pill Action Button
+        val pillInteractionSource = remember { MutableInteractionSource() }
+        val isPillPressed by pillInteractionSource.collectIsPressedAsState()
+        val pillScale by animateFloatAsState(
+            targetValue = if (isPillPressed) 0.90f else 1f,
+            animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+            label = "pill_enter_scale"
+        )
+
+        Surface(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onDismiss()
+            },
+            interactionSource = pillInteractionSource,
+            shape = CircleShape,
+            color = if (appleColors.isDark) Color.White else Color(0xFF0F0F12),
+            contentColor = if (appleColors.isDark) Color.Black else Color.White,
+            shadowElevation = if (appleColors.isDark) 0.dp else 4.dp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 28.dp, end = 24.dp)
+                .size(width = 68.dp, height = 48.dp)
+                .scale(pillScale)
+                .testTag("version_101_enter_button")
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Enter WebStack",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
