@@ -3101,7 +3101,7 @@ fun AppleSettingsBottomSheetContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -3124,19 +3124,12 @@ fun AppleSettingsBottomSheetContent(
                         }
                     }
 
-                    Column {
-                        Text(
-                            text = "Large Cards",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = appleColors.label
-                        )
-                        Text(
-                            text = "Full previews & detailed cards",
-                            fontSize = 11.sp,
-                            color = appleColors.secondaryLabel
-                        )
-                    }
+                    Text(
+                        text = "Large Cards",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appleColors.label
+                    )
                 }
 
                 Icon(
@@ -3165,7 +3158,7 @@ fun AppleSettingsBottomSheetContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -3188,19 +3181,12 @@ fun AppleSettingsBottomSheetContent(
                         }
                     }
 
-                    Column {
-                        Text(
-                            text = "2-Card Grid",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = appleColors.label
-                        )
-                        Text(
-                            text = "Side-by-side visual collection",
-                            fontSize = 11.sp,
-                            color = appleColors.secondaryLabel
-                        )
-                    }
+                    Text(
+                        text = "2-Card Grid",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appleColors.label
+                    )
                 }
 
                 Icon(
@@ -3229,7 +3215,7 @@ fun AppleSettingsBottomSheetContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -3252,19 +3238,12 @@ fun AppleSettingsBottomSheetContent(
                         }
                     }
 
-                    Column {
-                        Text(
-                            text = "Compact List",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = appleColors.label
-                        )
-                        Text(
-                            text = "Streamlined single-line row view",
-                            fontSize = 11.sp,
-                            color = appleColors.secondaryLabel
-                        )
-                    }
+                    Text(
+                        text = "Compact List",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appleColors.label
+                    )
                 }
 
                 Icon(
