@@ -163,6 +163,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -1538,6 +1539,222 @@ private fun AppleCapsuleCountBadge(
     }
 }
 
+@Composable
+fun WebsiteSnapshotImage(
+    website: Website,
+    refreshToken: Long,
+    fetchWebPreviews: Boolean,
+    height: Dp,
+    topCornerRadius: Dp,
+    onRefreshScreenshot: () -> Unit,
+    isGrid: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val appleColors = LocalAppleColors.current
+    val coroutineScope = rememberCoroutineScope()
+    val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
+    var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(appleColors.secondaryBackground)
+    ) {
+        if (hasLocalImage) {
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(localFile)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Preview snapshot of ${website.title}",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topStart = topCornerRadius, topEnd = topCornerRadius)),
+                contentScale = ContentScale.Crop
+            )
+        } else if (fetchWebPreviews) {
+            val previewUrl = remember(website.url, refreshToken) {
+                try {
+                    val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
+                    val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
+                    "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
+                } catch (e: Exception) {
+                    website.url
+                }
+            }
+
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(previewUrl)
+                    .crossfade(true)
+                    .build(),
+                onSuccess = { state ->
+                    val drawable = state.result.drawable
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            val bitmap = drawable.toBitmap()
+                            FileOutputStream(localFile).use { out ->
+                                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                            }
+                            hasLocalImage = true
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                },
+                contentDescription = "Preview snapshot of ${website.title}",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topStart = topCornerRadius, topEnd = topCornerRadius)),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(if (isGrid) 20.dp else 24.dp),
+                            color = appleColors.accent,
+                            strokeWidth = if (isGrid) 2.dp else 2.5.dp
+                        )
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(appleColors.fill),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isGrid) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInBrowser,
+                                contentDescription = null,
+                                tint = appleColors.secondaryLabel,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInBrowser,
+                                    contentDescription = null,
+                                    tint = appleColors.secondaryLabel,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = website.domain,
+                                    fontSize = 14.sp,
+                                    color = appleColors.secondaryLabel,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.2).sp
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        } else {
+            // Local Apple Card representation when Fetch Web Previews is OFF
+            val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+            val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(topStart = topCornerRadius, topEnd = topCornerRadius))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
+                                appleColors.secondaryBackground
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isGrid) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                        border = BorderStroke(0.75.dp, catAccent.copy(alpha = 0.40f)),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = domainInitial,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                color = catAccent
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                            border = BorderStroke(1.dp, catAccent.copy(alpha = 0.40f)),
+                            modifier = Modifier.size(54.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = domainInitial,
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = catAccent
+                                )
+                            }
+                        }
+                        Text(
+                            text = website.domain,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = appleColors.secondaryLabel,
+                            letterSpacing = (-0.2).sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Top-Right Action: Refresh Snapshot
+        if (fetchWebPreviews || hasLocalImage) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .then(if (!isGrid) Modifier.size(44.dp) else Modifier),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    onClick = onRefreshScreenshot,
+                    color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
+                    shape = CircleShape,
+                    border = BorderStroke(0.5.dp, if (!isGrid) appleColors.separator else appleColors.glassHighlight),
+                    shadowElevation = if (!isGrid) 3.dp else 2.dp,
+                    modifier = Modifier.size(if (!isGrid) 32.dp else 28.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = "Refresh Screenshot",
+                            tint = appleColors.label,
+                            modifier = Modifier.size(if (!isGrid) 15.dp else 13.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppleWebsiteCard(
@@ -1548,11 +1765,7 @@ fun AppleWebsiteCard(
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
 ) {
-    val context = LocalContext.current
     val appleColors = LocalAppleColors.current
-    val coroutineScope = rememberCoroutineScope()
-    val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
-    var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1599,176 +1812,14 @@ fun AppleWebsiteCard(
                 .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(22.dp))
         ) {
             // Top Preview Slot displaying Website Screenshot
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(185.dp)
-                    .background(appleColors.secondaryBackground)
-            ) {
-                if (hasLocalImage) {
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(localFile)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Preview snapshot of ${website.title}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (fetchWebPreviews) {
-                    val previewUrl = remember(website.url, refreshToken) {
-                        try {
-                            val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
-                            val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
-                            "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
-                        } catch (e: Exception) {
-                            website.url
-                        }
-                    }
-
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(previewUrl)
-                            .crossfade(true)
-                            .build(),
-                        onSuccess = { state ->
-                            val drawable = state.result.drawable
-                            coroutineScope.launch(Dispatchers.IO) {
-                                try {
-                                    val bitmap = drawable.toBitmap()
-                                    FileOutputStream(localFile).use { out ->
-                                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
-                                    }
-                                    hasLocalImage = true
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                        },
-                        contentDescription = "Preview snapshot of ${website.title}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = appleColors.accent,
-                                    strokeWidth = 2.5.dp
-                                )
-                            }
-                        },
-                        error = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(appleColors.fill),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.OpenInBrowser,
-                                        contentDescription = null,
-                                        tint = appleColors.secondaryLabel,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = website.domain,
-                                        fontSize = 14.sp,
-                                        color = appleColors.secondaryLabel,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = (-0.2).sp
-                                    )
-                                }
-                            }
-                        }
-                    )
-                } else {
-                    // Local Apple Card representation when Fetch Web Previews is OFF
-                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
-                    val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
-                                        appleColors.secondaryBackground
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
-                                border = BorderStroke(1.dp, catAccent.copy(alpha = 0.40f)),
-                                modifier = Modifier.size(54.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = domainInitial,
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = catAccent
-                                    )
-                                }
-                            }
-                            Text(
-                                text = website.domain,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = appleColors.secondaryLabel,
-                                letterSpacing = (-0.2).sp
-                            )
-                        }
-                    }
-                }
-
-                // Top-Right Action: Refresh Snapshot with 44dp Touch Target (only when previews enabled or local file exists)
-                if (fetchWebPreviews || hasLocalImage) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(44.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            onClick = onRefreshScreenshot,
-                            color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
-                            shape = CircleShape,
-                            border = BorderStroke(0.5.dp, appleColors.glassHighlight),
-                            shadowElevation = 3.dp,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Refresh,
-                                    contentDescription = "Refresh Screenshot",
-                                    tint = appleColors.label,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            WebsiteSnapshotImage(
+                website = website,
+                refreshToken = refreshToken,
+                fetchWebPreviews = fetchWebPreviews,
+                height = 185.dp,
+                topCornerRadius = 22.dp,
+                onRefreshScreenshot = onRefreshScreenshot
+            )
 
             // Bottom Informational Metadata
             Row(
@@ -1832,11 +1883,7 @@ fun AppleGridWebsiteCard(
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
 ) {
-    val context = LocalContext.current
     val appleColors = LocalAppleColors.current
-    val coroutineScope = rememberCoroutineScope()
-    val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
-    var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1883,149 +1930,15 @@ fun AppleGridWebsiteCard(
                 .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(18.dp))
         ) {
             // Snapshot Preview Header (105dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(105.dp)
-                    .background(appleColors.secondaryBackground)
-            ) {
-                if (hasLocalImage) {
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(localFile)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Preview snapshot of ${website.title}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (fetchWebPreviews) {
-                    val previewUrl = remember(website.url, refreshToken) {
-                        try {
-                            val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
-                            val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
-                            "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
-                        } catch (e: Exception) {
-                            website.url
-                        }
-                    }
-
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(previewUrl)
-                            .crossfade(true)
-                            .build(),
-                        onSuccess = { state ->
-                            val drawable = state.result.drawable
-                            coroutineScope.launch(Dispatchers.IO) {
-                                try {
-                                    val bitmap = drawable.toBitmap()
-                                    FileOutputStream(localFile).use { out ->
-                                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
-                                    }
-                                    hasLocalImage = true
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                        },
-                        contentDescription = "Preview snapshot of ${website.title}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = appleColors.accent,
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                        },
-                        error = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(appleColors.fill),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInBrowser,
-                                    contentDescription = null,
-                                    tint = appleColors.secondaryLabel,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    )
-                } else {
-                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
-                    val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
-                                        appleColors.secondaryBackground
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
-                            border = BorderStroke(0.75.dp, catAccent.copy(alpha = 0.40f)),
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = domainInitial,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = catAccent
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Small Refresh Button on Top Right
-                if (fetchWebPreviews || hasLocalImage) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                    ) {
-                        Surface(
-                            onClick = onRefreshScreenshot,
-                            color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
-                            shape = CircleShape,
-                            border = BorderStroke(0.5.dp, appleColors.glassHighlight),
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Refresh,
-                                    contentDescription = "Refresh Screenshot",
-                                    tint = appleColors.label,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            WebsiteSnapshotImage(
+                website = website,
+                refreshToken = refreshToken,
+                fetchWebPreviews = fetchWebPreviews,
+                height = 105.dp,
+                topCornerRadius = 18.dp,
+                isGrid = true,
+                onRefreshScreenshot = onRefreshScreenshot
+            )
 
             // Info Details (Title & Domain with Category dot)
             Column(
