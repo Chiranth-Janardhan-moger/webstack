@@ -1348,6 +1348,9 @@ fun AppleCategoryCapsuleBar(
     onAddNewTag: () -> Unit
 ) {
     val appleColors = LocalAppleColors.current
+    val categoryCounts = remember(allWebsites) {
+        allWebsites.groupingBy { it.category.lowercase() }.eachCount()
+    }
 
     LazyRow(
         modifier = Modifier
@@ -1372,7 +1375,7 @@ fun AppleCategoryCapsuleBar(
         // Category Capsules (Supports single-tap filter & long-press options)
         items(categories) { cat ->
             val isSelected = selectedCategory.equals(cat, ignoreCase = true)
-            val count = allWebsites.count { it.category.equals(cat, ignoreCase = true) }
+            val count = categoryCounts[cat.lowercase()] ?: 0
             val accentColor = getCategoryAccentColor(cat, appleColors.isDark)
 
             AppleCapsule(
@@ -2308,6 +2311,9 @@ fun AppleFilterMenuBottomSheetContent(
     onTagLongPress: (String) -> Unit
 ) {
     val appleColors = LocalAppleColors.current
+    val categoryCounts = remember(allWebsites) {
+        allWebsites.groupingBy { it.category.lowercase() }.eachCount()
+    }
 
     Column(
         modifier = Modifier
@@ -2409,7 +2415,7 @@ fun AppleFilterMenuBottomSheetContent(
 
         // Custom & Default Categories List
         categories.forEach { category ->
-            val count = allWebsites.count { it.category.equals(category, ignoreCase = true) }
+            val count = categoryCounts[category.lowercase()] ?: 0
             val isSelected = selectedCategory.equals(category, ignoreCase = true)
             val catAccent = getCategoryAccentColor(category, appleColors.isDark)
 
@@ -3495,27 +3501,6 @@ fun AppleSettingsBottomSheetContent(
 }
 
 @Composable
-fun AppleSettingsBottomSheetContent(
-    isCompactList: Boolean,
-    onSetCompactList: (Boolean) -> Unit,
-    fetchWebPreviews: Boolean,
-    onToggleFetchWebPreviews: (Boolean) -> Unit,
-    onOpenWhatsNew: () -> Unit,
-    onOpenAppInfo: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AppleSettingsBottomSheetContent(
-        layoutMode = if (isCompactList) WebStackLayoutMode.COMPACT_LIST else WebStackLayoutMode.LARGE_CARDS,
-        onSetLayoutMode = { onSetCompactList(it == WebStackLayoutMode.COMPACT_LIST) },
-        fetchWebPreviews = fetchWebPreviews,
-        onToggleFetchWebPreviews = onToggleFetchWebPreviews,
-        onOpenWhatsNew = onOpenWhatsNew,
-        onOpenAppInfo = onOpenAppInfo,
-        onDismiss = onDismiss
-    )
-}
-
-@Composable
 fun AppleWhatsNewBottomSheetContent(
     onDismiss: () -> Unit
 ) {
@@ -3707,14 +3692,23 @@ fun AppleVersionUpdateScreen(
         onDismiss()
     }
 
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (appleColors.isDark) Color(0xFF000000) else Color(0xFFFFFFFF))
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .testTag("version_101_screen")
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+            .testTag("version_101_screen"),
+        color = if (appleColors.isDark) Color(0xFF000000) else Color(0xFFFFFFFF)
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
         // Main Centered Content
         Column(
             modifier = Modifier
@@ -3980,6 +3974,7 @@ fun AppleVersionUpdateScreen(
             }
         }
     }
+}
 }
 
 @Composable

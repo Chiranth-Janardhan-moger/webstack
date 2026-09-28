@@ -64,30 +64,10 @@ val AppleGreenDark = Color(0xFF30D158)
 val AppleTeal = Color(0xFF30B0C7)
 val AppleCyan = Color(0xFF32ADE6)
 val AppleGray = Color(0xFF8E8E93)
-val AppleGray2 = Color(0xFFAEAEC2)
-val AppleGray3 = Color(0xFFC7C7CC)
-val AppleGray4 = Color(0xFFD1D1D6)
-val AppleGray5 = Color(0xFFE5E5EA)
-val AppleGray6 = Color(0xFFF2F2F7)
 
-// Liquid Glass & Specular Effects
-val GlassSurfaceLight = Color(0xCCFFFFFF)
-val GlassSurfaceDark = Color(0xD91C1C1E)
-val GlassBorderLight = Color(0x1F000000)
-val GlassBorderDark = Color(0x33FFFFFF)
+// Liquid Glass Specular Effects
 val GlassHighlightLight = Color(0x66FFFFFF)
 val GlassHighlightDark = Color(0x1AFFFFFF)
-
-// Backward compatibility tokens
-val PureWhite = AppleSystemBackgroundLight
-val PitchBlack = AppleSystemBackgroundDark
-val Slate900 = Color(0xFF0F172A)
-val Slate400 = Color(0xFF94A3B8)
-val Slate300 = Color(0xFFCBD5E1)
-val Slate200 = Color(0xFFE2E8F0)
-val Slate100 = Color(0xFFF1F5F9)
-val Slate50 = Color(0xFFF8FAFC)
-val SoftShadow = Color(0x0A000000)
 
 /**
  * Extended semantic Apple color palette provided through CompositionLocal
@@ -111,8 +91,6 @@ data class AppleColors(
     val accent: Color,
     val destructive: Color,
     val success: Color,
-    val glassSurface: Color,
-    val glassBorder: Color,
     val glassHighlight: Color,
     val isDark: Boolean
 )
@@ -136,8 +114,6 @@ val LocalAppleColors = staticCompositionLocalOf {
         accent = AppleBlue,
         destructive = AppleRed,
         success = AppleGreen,
-        glassSurface = GlassSurfaceLight,
-        glassBorder = GlassBorderLight,
         glassHighlight = GlassHighlightLight,
         isDark = false
     )

@@ -72,8 +72,6 @@ fun MyApplicationTheme(
             accent = AppleBlueDark,
             destructive = AppleRedDark,
             success = AppleGreenDark,
-            glassSurface = GlassSurfaceDark,
-            glassBorder = GlassBorderDark,
             glassHighlight = GlassHighlightDark,
             isDark = true
         )
@@ -95,8 +93,6 @@ fun MyApplicationTheme(
             accent = AppleBlue,
             destructive = AppleRed,
             success = AppleGreen,
-            glassSurface = GlassSurfaceLight,
-            glassBorder = GlassBorderLight,
             glassHighlight = GlassHighlightLight,
             isDark = false
         )

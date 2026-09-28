@@ -141,16 +141,6 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
     }
 
     private fun decodeHtmlEntities(input: String): String {
-        return input
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&apos;", "'")
-            .replace("&#39;", "'")
-            .replace("&#x27;", "'")
-            .replace("&#x2F;", "/")
-            .replace("&nbsp;", " ")
-            .trim()
+        return android.text.Html.fromHtml(input, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
     }
 }

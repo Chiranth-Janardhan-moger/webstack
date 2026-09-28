@@ -122,15 +122,17 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun refreshScreenshot(id: Long) {
+    private fun deleteLocalScreenshot(id: Long) {
         try {
             val file = java.io.File(getApplication<Application>().filesDir, "screenshot_${id}.jpg")
-            if (file.exists()) {
-                file.delete()
-            }
+            if (file.exists()) file.delete()
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun refreshScreenshot(id: Long) {
+        deleteLocalScreenshot(id)
     }
 
     fun updateWebsite(website: Website) {
@@ -142,14 +144,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     fun deleteWebsite(id: Long) {
         viewModelScope.launch {
             repository.delete(id)
-            try {
-                val file = java.io.File(getApplication<Application>().filesDir, "screenshot_${id}.jpg")
-                if (file.exists()) {
-                    file.delete()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            deleteLocalScreenshot(id)
         }
     }
 
@@ -159,11 +154,6 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 }
 
 class WebsiteViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(WebsiteViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return WebsiteViewModel(application) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = WebsiteViewModel(application) as T
 }
