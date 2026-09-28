@@ -122,25 +122,10 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
 
     private fun extractDomain(url: String): String {
         return try {
-            val uri = java.net.URI(url)
-            val host = uri.host
-            if (host != null) {
-                if (host.startsWith("www.")) host.substring(4) else host
-            } else {
-                var cleaned = url.replace("https://", "").replace("http://", "")
-                val slashIdx = cleaned.indexOf('/')
-                if (slashIdx != -1) {
-                    cleaned = cleaned.substring(0, slashIdx)
-                }
-                if (cleaned.startsWith("www.")) cleaned.substring(4) else cleaned
-            }
-        } catch (e: Exception) {
-            var cleaned = url.replace("https://", "").replace("http://", "")
-            val slashIdx = cleaned.indexOf('/')
-            if (slashIdx != -1) {
-                cleaned = cleaned.substring(0, slashIdx)
-            }
-            if (cleaned.startsWith("www.")) cleaned.substring(4) else cleaned
+            val target = if (url.contains("://")) url else "https://$url"
+            android.net.Uri.parse(target).host?.removePrefix("www.") ?: url
+        } catch (_: Exception) {
+            url
         }
     }
 
