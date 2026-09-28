@@ -28,10 +28,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -93,6 +95,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -131,14 +134,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -955,6 +963,9 @@ fun WebStackScreen(
                 onDismiss = {
                     prefs.edit().putInt("last_seen_version_code", 2).apply()
                     showVersion101Screen = false
+                },
+                onViewAllFeatures = {
+                    showWhatsNewSheet = true
                 }
             )
         }
@@ -1368,37 +1379,63 @@ fun AppleCapsule(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
             if (count > 0) {
-                Box(
-                    modifier = Modifier
-                        .height(18.dp)
-                        .defaultMinSize(minWidth = 18.dp)
-                        .background(
-                            color = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill,
-                            shape = CircleShape
-                        )
-                        .padding(horizontal = if (count > 9) 5.dp else 0.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "$count",
-                        color = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.offset(y = (-1).dp),
-                        style = TextStyle(
-                            platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
-                                includeFontPadding = false
-                            ),
-                            lineHeight = 10.sp,
-                            lineHeightStyle = LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both
-                            )
-                        )
-                    )
-                }
+                AppleCapsuleCountBadge(
+                    count = count,
+                    isSelected = isSelected
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun AppleCapsuleCountBadge(
+    count: Int,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val appleColors = LocalAppleColors.current
+    val density = LocalDensity.current
+    val text = "$count"
+    val textColor = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel
+    val bgColor = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill
+
+    val textPaint = remember(textColor, density) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = with(density) { 10.sp.toPx() }
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            color = textColor.toArgb()
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+    }
+
+    val bounds = remember(text, textPaint) {
+        android.graphics.Rect().also {
+            textPaint.getTextBounds(text, 0, text.length, it)
+        }
+    }
+
+    val badgeWidthDp = remember(count, bounds, density) {
+        if (count > 9) {
+            val textWidthDp = with(density) { bounds.width().toDp() }
+            maxOf(18.dp, textWidthDp + 10.dp)
+        } else {
+            18.dp
+        }
+    }
+
+    Canvas(
+        modifier = modifier
+            .height(18.dp)
+            .width(badgeWidthDp)
+    ) {
+        drawRoundRect(
+            color = bgColor,
+            cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+        )
+        val baselineY = size.height / 2f - (bounds.top + bounds.bottom) / 2f
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawText(text, size.width / 2f, baselineY, textPaint)
         }
     }
 }
@@ -2188,21 +2225,24 @@ fun AppleEmptyState(
                 letterSpacing = (-0.3).sp
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            val descriptionText = when {
+                searchQuery.isNotBlank() -> "No bookmarks matched \"$searchQuery\". Try checking for typos or searching another term."
+                selectedCategory == "All" -> "Tap the '+' button below or share links from Safari, Chrome, or any app."
+                else -> null
+            }
 
-            Text(
-                text = when {
-                    searchQuery.isNotBlank() -> "No bookmarks matched \"$searchQuery\". Try checking for typos or searching another term."
-                    selectedCategory == "All" -> "Tap the '+' button below or share links from Safari, Chrome, or any app."
-                    else -> "No links tagged with '$selectedCategory'. Tap 'Show All' or create a new bookmark with this tag."
-                },
-                fontSize = 13.sp,
-                color = appleColors.secondaryLabel,
-                textAlign = TextAlign.Center,
-                lineHeight = 18.sp
-            )
+            if (descriptionText != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = descriptionText,
+                    fontSize = 13.sp,
+                    color = appleColors.secondaryLabel,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(if (descriptionText != null) 20.dp else 16.dp))
 
             when {
                 searchQuery.isNotBlank() -> {
@@ -3359,7 +3399,7 @@ fun AppleSettingsBottomSheetContent(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_hexagon),
+                                painter = painterResource(id = R.drawable.ic_logo),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                                 colorFilter = ColorFilter.tint(appleColors.label)
@@ -3501,13 +3541,13 @@ fun AppleWhatsNewBottomSheetContent(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_hexagon),
+                    painter = painterResource(id = R.drawable.ic_logo),
                     contentDescription = null,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(24.dp),
                     colorFilter = ColorFilter.tint(appleColors.label)
                 )
                 Text(
-                    text = "What's New",
+                    text = "WebStack Features",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = appleColors.label,
@@ -3536,6 +3576,12 @@ fun AppleWhatsNewBottomSheetContent(
 
         // Feature items
         AppleWhatsNewFeatureItem(
+            icon = Icons.Default.GridView,
+            title = "3 Distinct Layout Modes",
+            description = "Effortlessly toggle between Large Visual Cards, 2-Card Grid, and high-density Compact List in Settings."
+        )
+
+        AppleWhatsNewFeatureItem(
             icon = Icons.Outlined.Speed,
             title = "Offline Snapshot Caching",
             description = "Screenshots are saved locally on your device. After the first load, previews appear instantly with zero data consumption."
@@ -3554,21 +3600,27 @@ fun AppleWhatsNewBottomSheetContent(
         )
 
         AppleWhatsNewFeatureItem(
-            icon = Icons.Default.GridView,
-            title = "Dual Layout Switcher",
-            description = "Toggle effortlessly between large visual screenshot cards and high-density compact list view."
+            icon = Icons.Default.FilterList,
+            title = "Smart Categories & Filter",
+            description = "Organize bookmarks by All, Personal, Design, Tools, Work, and Reading with color-coded count badges."
+        )
+
+        AppleWhatsNewFeatureItem(
+            icon = Icons.Outlined.Search,
+            title = "Fast Instant Search",
+            description = "Search through your entire bookmark library in real time by title, website URL, or domain."
+        )
+
+        AppleWhatsNewFeatureItem(
+            icon = Icons.Outlined.Layers,
+            title = "Offline Data & Backup",
+            description = "100% on-device private SQLite database. Safely export your stack to JSON and restore anytime."
         )
 
         AppleWhatsNewFeatureItem(
             icon = Icons.Outlined.Refresh,
             title = "Manual Snapshot Refresh",
             description = "Re-capture any website snapshot whenever page visuals change with the instant refresh action."
-        )
-
-        AppleWhatsNewFeatureItem(
-            icon = Icons.Default.FilterList,
-            title = "Smart Categories & Filter",
-            description = "Organize and filter by All, Personal, Design, Tools, Work, and Reading with the hexagonal menu."
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -3641,7 +3693,8 @@ fun AppleWhatsNewFeatureItem(
 
 @Composable
 fun AppleVersionUpdateScreen(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onViewAllFeatures: () -> Unit = {}
 ) {
     val appleColors = LocalAppleColors.current
     val haptics = LocalHapticFeedback.current
@@ -3832,6 +3885,65 @@ fun AppleVersionUpdateScreen(
                             )
                         }
                     }
+
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = appleColors.separator.copy(alpha = 0.5f)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onViewAllFeatures()
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = appleColors.fill,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Star,
+                                        contentDescription = null,
+                                        tint = appleColors.label,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "WebStack Features",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = appleColors.label,
+                                    letterSpacing = (-0.2).sp
+                                )
+                                Text(
+                                    text = "See all capabilities & tools",
+                                    fontSize = 13.sp,
+                                    color = appleColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = appleColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -3953,9 +4065,9 @@ fun AppleAppInfoBottomSheetContent(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_hexagon),
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp),
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = "WebStack Logo",
+                            modifier = Modifier.size(34.dp),
                             colorFilter = ColorFilter.tint(appleColors.label)
                         )
                     }
@@ -3979,22 +4091,6 @@ fun AppleAppInfoBottomSheetContent(
                     fontWeight = FontWeight.Medium,
                     color = appleColors.secondaryLabel
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Surface(
-                    color = appleColors.fill,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = "Free & Open Source Software",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appleColors.secondaryLabel,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                    )
-                }
             }
         }
 
