@@ -64,4 +64,35 @@ class ExampleRobolectricTest {
     val bottomGap = circleSize - 1 - maxTextY
     assertEquals("Top and bottom gap must be equal for dead-center alignment", topGap, bottomGap)
   }
+
+  @Test
+  fun `extractUrlFromText extracts valid URLs from diverse text formats`() {
+    assertEquals("https://linear.app", extractUrlFromText("https://linear.app"))
+    assertEquals("https://linear.app", extractUrlFromText("  https://linear.app \n"))
+    assertEquals("https://github.com/foo/bar", extractUrlFromText("Check out https://github.com/foo/bar!"))
+    assertEquals("www.google.com", extractUrlFromText("www.google.com"))
+    assertEquals("linear.app", extractUrlFromText("linear.app"))
+    assertEquals("https://example.com/test", extractUrlFromText("https://example.com/test."))
+    org.junit.Assert.assertNull(extractUrlFromText("hello world"))
+    org.junit.Assert.assertNull(extractUrlFromText("1.0.1"))
+    org.junit.Assert.assertNull(extractUrlFromText(""))
+  }
+
+  @Test
+  fun `getClipboardUrl extracts URL from plain text and raw URI clips`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+
+    // Test plain text clip
+    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("URL", "https://news.ycombinator.com"))
+    assertEquals("https://news.ycombinator.com", getClipboardUrl(context))
+
+    // Test raw URI clip
+    clipboard.setPrimaryClip(android.content.ClipData.newRawUri("URI", android.net.Uri.parse("https://github.com")))
+    assertEquals("https://github.com", getClipboardUrl(context))
+
+    // Test non-URL text clip
+    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("text", "just some notes"))
+    org.junit.Assert.assertNull(getClipboardUrl(context))
+  }
 }

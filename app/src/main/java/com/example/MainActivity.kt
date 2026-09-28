@@ -120,6 +120,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -128,6 +129,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -348,6 +352,37 @@ fun WebStackScreen(
     // Refresh token map for forcing screenshot reload
     val refreshTokens = remember { mutableStateMapOf<Long, Long>() }
 
+    // Dynamic clipboard detection for quick save banner
+    var detectedClipboardUrl by remember { mutableStateOf<String?>(null) }
+    var dismissedClipboardUrl by remember { mutableStateOf<String?>(null) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val url = getClipboardUrl(context)
+                val isAlreadySaved = !url.isNullOrBlank() && websitesState.any { it.url.equals(url, ignoreCase = true) }
+                if (!url.isNullOrBlank() && url != dismissedClipboardUrl && !isAlreadySaved) {
+                    detectedClipboardUrl = url
+                } else if (url.isNullOrBlank() || isAlreadySaved) {
+                    detectedClipboardUrl = null
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(websitesState) {
+        val url = getClipboardUrl(context)
+        val isAlreadySaved = !url.isNullOrBlank() && websitesState.any { it.url.equals(url, ignoreCase = true) }
+        if (!url.isNullOrBlank() && url != dismissedClipboardUrl && !isAlreadySaved) {
+            detectedClipboardUrl = url
+        }
+    }
+
     // Handle incoming shared URL from System Share Sheet
     LaunchedEffect(incomingSharedUrl) {
         if (!incomingSharedUrl.isNullOrBlank()) {
@@ -429,12 +464,15 @@ fun WebStackScreen(
         },
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(appleColors.groupedBackground)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Apple Navigation Header (Settings on Left, WebStack in Center, Expanding Search on Right)
             AppleNavigationHeader(
                 selectedCategory = selectedCategory,
@@ -596,6 +634,66 @@ fun WebStackScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Floating Clipboard Quick-Add Pill Banner on Home Screen
+            AnimatedVisibility(
+                visible = !detectedClipboardUrl.isNullOrBlank() && !showAddSheet && !showVersion101Screen,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 16.dp, start = 16.dp, end = 86.dp)
+            ) {
+                val clipUrl = detectedClipboardUrl ?: return@AnimatedVisibility
+                Surface(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        initialAddUrl = clipUrl
+                        showAddSheet = true
+                        detectedClipboardUrl = null
+                    },
+                    shape = RoundedCornerShape(22.dp),
+                    color = appleColors.surface,
+                    border = BorderStroke(0.75.dp, appleColors.separator),
+                    shadowElevation = 6.dp,
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentPaste,
+                            contentDescription = null,
+                            tint = appleColors.accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        val displayClip = if (clipUrl.length > 24) clipUrl.take(22) + "..." else clipUrl
+                        Text(
+                            text = "Save: $displayClip",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = appleColors.label
+                        )
+                        IconButton(
+                            onClick = {
+                                dismissedClipboardUrl = clipUrl
+                                detectedClipboardUrl = null
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = appleColors.tertiaryLabel,
+                                modifier = Modifier.size(14.dp)
+                            )
                         }
                     }
                 }
@@ -4259,11 +4357,27 @@ fun AppleAddWebsiteSheetContent(
 ) {
     val context = LocalContext.current
     val appleColors = LocalAppleColors.current
-    var inputUrl by remember { mutableStateOf(initialUrl) }
+    val haptics = LocalHapticFeedback.current
+    var inputUrl by remember(initialUrl) { mutableStateOf(initialUrl) }
     var selectedCategory by remember { mutableStateOf(categories.firstOrNull() ?: "Personal") }
 
-    // Check system clipboard for a URL
-    val clipboardUrl = remember { getClipboardUrl(context) }
+    // Dynamic, reactive clipboard URL detection
+    var clipboardUrl by remember { mutableStateOf(getClipboardUrl(context)) }
+
+    // Re-check on composition and after short delays to ensure window focus has settled
+    LaunchedEffect(Unit) {
+        if (clipboardUrl.isNullOrBlank()) {
+            clipboardUrl = getClipboardUrl(context)
+        }
+        if (clipboardUrl.isNullOrBlank()) {
+            kotlinx.coroutines.delay(100)
+            clipboardUrl = getClipboardUrl(context)
+        }
+        if (clipboardUrl.isNullOrBlank()) {
+            kotlinx.coroutines.delay(250)
+            clipboardUrl = getClipboardUrl(context)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -4298,10 +4412,14 @@ fun AppleAddWebsiteSheetContent(
         }
 
         // Instant Clipboard Pill Button
-        if (!clipboardUrl.isNullOrBlank() && inputUrl.isBlank()) {
+        val activeClip = clipboardUrl
+        if (!activeClip.isNullOrBlank() && inputUrl.isBlank()) {
             Spacer(modifier = Modifier.height(10.dp))
             Surface(
-                onClick = { inputUrl = clipboardUrl },
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    inputUrl = activeClip
+                },
                 color = appleColors.fill,
                 shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(0.75.dp, appleColors.separator),
@@ -4315,11 +4433,12 @@ fun AppleAddWebsiteSheetContent(
                     Icon(
                         imageVector = Icons.Default.ContentPaste,
                         contentDescription = "Paste from Clipboard",
-                        tint = appleColors.label,
+                        tint = appleColors.accent,
                         modifier = Modifier.size(14.dp)
                     )
+                    val displayUrl = if (activeClip.length > 28) activeClip.take(26) + "..." else activeClip
                     Text(
-                        text = "Clipboard",
+                        text = "Paste: $displayUrl",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = appleColors.label
@@ -4488,23 +4607,56 @@ fun AppleAddWebsiteSheetContent(
     }
 }
 
-private fun getClipboardUrl(context: Context): String? {
+internal fun extractUrlFromText(rawText: String): String? {
+    val trimmed = rawText.trim()
+    if (trimmed.isEmpty()) return null
+
+    // 1. Explicit scheme (http:// or https://) or www.
+    val schemeOrWwwRegex = Regex("""(?i)\b(?:https?://|www\.)[^\s<>"'{}|\\^`]+""")
+    val schemeMatch = schemeOrWwwRegex.find(trimmed)?.value
+    if (schemeMatch != null) {
+        val cleaned = schemeMatch.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '}', '\'', '"')
+        if (cleaned.length >= 4) return cleaned
+    }
+
+    // 2. Standalone domain: e.g., github.com, linear.app/login, sub.domain.co.uk
+    val domainRegex = Regex("""(?i)\b[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,10}(?:/[^\s<>"'{}|\\^`]*)?""")
+    val domainMatch = domainRegex.find(trimmed)?.value
+    if (domainMatch != null) {
+        val cleaned = domainMatch.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '}', '\'', '"')
+        if (cleaned.length >= 4) return cleaned
+    }
+
+    return null
+}
+
+internal fun getClipboardUrl(context: Context): String? {
     return try {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        val clip = clipboard?.primaryClip
-        if (clip != null && clip.itemCount > 0) {
-            val text = clip.getItemAt(0)?.text?.toString()?.trim() ?: ""
-            if (text.startsWith("http://") || text.startsWith("https://") ||
-                (text.contains(".") && !text.contains(" ") && text.length > 3 && !text.endsWith("."))
-            ) {
-                text
-            } else {
-                null
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return null
+        if (!clipboard.hasPrimaryClip()) return null
+        val clip = clipboard.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+
+        for (i in 0 until clip.itemCount) {
+            val item = clip.getItemAt(i) ?: continue
+
+            // 1. Direct URI check
+            val uri = item.uri
+            if (uri != null) {
+                val uriStr = uri.toString().trim()
+                val extracted = extractUrlFromText(uriStr)
+                if (!extracted.isNullOrBlank()) return extracted
             }
-        } else {
-            null
+
+            // 2. Coerced text (handles text, HTML, and rich content safely)
+            val text = item.coerceToText(context)?.toString()?.trim() ?: ""
+            if (text.isNotEmpty()) {
+                val extracted = extractUrlFromText(text)
+                if (!extracted.isNullOrBlank()) return extracted
+            }
         }
-    } catch (e: Exception) {
+        null
+    } catch (_: Exception) {
         null
     }
 }
