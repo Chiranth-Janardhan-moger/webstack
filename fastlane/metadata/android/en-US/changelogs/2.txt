@@ -1,0 +1,8 @@
+- Added 2-Card Grid layout mode for side-by-side visual bookmark browsing
+- Floating circular header controls with cushioned touch feedback
+- Enhanced clipboard detection with automatic URI coercion and home quick-add banner
+- Interactive What's New showcase highlighting all core WebStack features
+- Mathematically centered capsule badge typography
+- Replaced legacy icons with official WebStack vector logo
+- Performance optimization for category tag counting during list scrolling
+- Prevented touch pass-through on full-screen update sheets
