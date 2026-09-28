@@ -2053,6 +2053,7 @@ fun AppleCompactWebsiteRow(
                 ) {
                     Text(
                         text = website.domain,
+                        modifier = Modifier.weight(1f, fill = false),
                         fontSize = 12.sp,
                         color = appleColors.secondaryLabel,
                         maxLines = 1,
