@@ -94,3 +94,10 @@ fun formatMiddleTruncatedDomain(domain: String, maxLength: Int = 32): String {
     val prefixLen = available - half
     return "${domain.take(prefixLen)}...${domain.takeLast(half)}"
 }
+
+fun extractDomain(url: String): String = try {
+    val target = if (url.contains("://")) url else "https://$url"
+    Uri.parse(target).host?.removePrefix("www.") ?: url
+} catch (_: Exception) {
+    url
+}

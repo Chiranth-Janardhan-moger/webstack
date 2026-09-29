@@ -82,7 +82,6 @@ import com.example.ui.model.WebStackLayoutMode
 import com.example.ui.sheets.AppleAddWebsiteSheetContent
 import com.example.ui.sheets.AppleAppInfoBottomSheetContent
 import com.example.ui.sheets.AppleEditWebsiteSheetContent
-import com.example.ui.sheets.AppleFilterMenuBottomSheetContent
 import com.example.ui.sheets.AppleItemOptionsBottomSheetContent
 import com.example.ui.sheets.AppleSettingsBottomSheetContent
 import com.example.ui.sheets.AppleTagOptionsBottomSheetContent
@@ -90,14 +89,15 @@ import com.example.ui.sheets.AppleVersionUpdateScreen
 import com.example.ui.sheets.AppleWhatsNewBottomSheetContent
 import com.example.ui.theme.LocalAppleColors
 import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.util.extractUrlFromText
 import com.example.ui.util.openWebsiteInBrowser
 import com.example.ui.util.shareWebsiteLink
 import com.example.ui.viewmodel.WebsiteViewModel
-import com.example.ui.viewmodel.WebsiteViewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
     private val sharedUrlState = MutableStateFlow<String?>(null)
+    private val sharedBackupUriState = MutableStateFlow<android.net.Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,9 +111,12 @@ class MainActivity : ComponentActivity() {
                     color = appleColors.groupedBackground
                 ) {
                     val sharedUrl by sharedUrlState.collectAsState()
+                    val sharedBackupUri by sharedBackupUriState.collectAsState()
                     WebStackScreen(
                         incomingSharedUrl = sharedUrl,
-                        onClearIncomingUrl = { sharedUrlState.value = null }
+                        onClearIncomingUrl = { sharedUrlState.value = null },
+                        incomingBackupUri = sharedBackupUri,
+                        onClearIncomingBackupUri = { sharedBackupUriState.value = null }
                     )
                 }
             }
@@ -129,17 +132,13 @@ class MainActivity : ComponentActivity() {
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
-            val extracted = extractUrlFromSharedText(text)
+            val extracted = extractUrlFromText(text) ?: text.trim()
             if (extracted.isNotBlank()) {
                 sharedUrlState.value = extracted
             }
+        } else if (intent?.action == Intent.ACTION_VIEW && intent.data != null) {
+            sharedBackupUriState.value = intent.data
         }
-    }
-
-    private fun extractUrlFromSharedText(text: String): String {
-        val urlRegex = """(https?://[^\s]+)""".toRegex()
-        val match = urlRegex.find(text)
-        return match?.value ?: text.trim()
     }
 }
 
@@ -147,14 +146,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WebStackScreen(
     incomingSharedUrl: String? = null,
-    onClearIncomingUrl: () -> Unit = {}
+    onClearIncomingUrl: () -> Unit = {},
+    incomingBackupUri: android.net.Uri? = null,
+    onClearIncomingBackupUri: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val appleColors = LocalAppleColors.current
-    val viewModel: WebsiteViewModel = viewModel(
-        factory = WebsiteViewModelFactory(context.applicationContext as Application)
-    )
+    val viewModel: WebsiteViewModel = viewModel()
     val websitesState by viewModel.websitesList.collectAsState()
     val categoriesState by viewModel.categories.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
@@ -162,7 +161,6 @@ fun WebStackScreen(
 
     var showAddSheet by remember { mutableStateOf(false) }
     var initialAddUrl by remember { mutableStateOf("") }
-    var showMenuSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showWhatsNewSheet by remember { mutableStateOf(false) }
     var showAppInfoSheet by remember { mutableStateOf(false) }
@@ -171,19 +169,13 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion101Screen by remember { mutableStateOf(lastSeenVersion < 2) }
-    val savedLayoutMode = prefs.getString("layout_mode", null)
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 3) }
     var layoutMode by remember {
         mutableStateOf(
-            if (savedLayoutMode != null) {
-                try {
-                    WebStackLayoutMode.valueOf(savedLayoutMode)
-                } catch (_: Exception) {
-                    WebStackLayoutMode.LARGE_CARDS
+            runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
+                .getOrElse {
+                    if (prefs.getBoolean("is_compact_list", false)) WebStackLayoutMode.COMPACT_LIST else WebStackLayoutMode.LARGE_CARDS
                 }
-            } else {
-                if (prefs.getBoolean("is_compact_list", false)) WebStackLayoutMode.COMPACT_LIST else WebStackLayoutMode.LARGE_CARDS
-            }
         )
     }
     var fetchWebPreviews by remember { mutableStateOf(prefs.getBoolean("fetch_web_previews", false)) }
@@ -215,6 +207,31 @@ fun WebStackScreen(
         }
     }
 
+    // Handle incoming .webstack backup file opened from external apps / file manager
+    LaunchedEffect(incomingBackupUri) {
+        incomingBackupUri?.let { uri ->
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val result = viewModel.restoreBackup(stream)
+                    result.onSuccess { (imported, newCats) ->
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val msg = if (imported > 0) {
+                            "Restored $imported bookmarks ($newCats new categories)"
+                        } else {
+                            "All bookmarks in backup are already in your stack"
+                        }
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    }.onFailure { err ->
+                        android.widget.Toast.makeText(context, "Restore failed: ${err.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Could not open backup file", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            onClearIncomingBackupUri()
+        }
+    }
+
     // Filter websites according to selected category and search query
     val filteredWebsites = remember(websitesState, selectedCategory, searchQuery) {
         val categoryFiltered = if (selectedCategory == "All") {
@@ -241,7 +258,7 @@ fun WebStackScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = appleColors.groupedBackground,
         floatingActionButton = {
-            if (!showVersion101Screen) {
+            if (!showVersion110Screen) {
                 // Apple Liquid Glass Floating Action Button
                 val interactionSource = remember { MutableInteractionSource() }
                 val isPressed by interactionSource.collectIsPressedAsState()
@@ -379,117 +396,54 @@ fun WebStackScreen(
                         ) { website ->
                             val refreshToken = refreshTokens[website.id] ?: 0L
                             Box(modifier = Modifier.animateItem()) {
+                                val onCardClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    openWebsiteInBrowser(context, website.url)
+                                }
+                                val onCardLongClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    websiteForOptions = website
+                                }
+                                val onCardRefresh = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (!fetchWebPreviews) {
+                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        viewModel.refreshScreenshot(website.id)
+                                        refreshTokens[website.id] = System.currentTimeMillis()
+                                        Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                                 when (layoutMode) {
-                                    WebStackLayoutMode.COMPACT_LIST -> {
-                                        AppleCompactWebsiteRow(
-                                            website = website,
-                                            refreshToken = refreshToken,
-                                            fetchWebPreviews = fetchWebPreviews,
-                                            onClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                openWebsiteInBrowser(context, website.url)
-                                            },
-                                            onLongClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                websiteForOptions = website
-                                            },
-                                            onRefreshScreenshot = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                if (!fetchWebPreviews) {
-                                                    Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                                } else {
-                                                    viewModel.refreshScreenshot(website.id)
-                                                    refreshTokens[website.id] = System.currentTimeMillis()
-                                                    Toast.makeText(context, "Refreshing ${website.title}...", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        )
-                                    }
-                                    WebStackLayoutMode.GRID_CARDS -> {
-                                        AppleGridWebsiteCard(
-                                            website = website,
-                                            refreshToken = refreshToken,
-                                            fetchWebPreviews = fetchWebPreviews,
-                                            onClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                openWebsiteInBrowser(context, website.url)
-                                            },
-                                            onLongClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                websiteForOptions = website
-                                            },
-                                            onRefreshScreenshot = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                if (!fetchWebPreviews) {
-                                                    Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                                } else {
-                                                    viewModel.refreshScreenshot(website.id)
-                                                    refreshTokens[website.id] = System.currentTimeMillis()
-                                                    Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        )
-                                    }
-                                    WebStackLayoutMode.LARGE_CARDS -> {
-                                        AppleWebsiteCard(
-                                            website = website,
-                                            refreshToken = refreshToken,
-                                            fetchWebPreviews = fetchWebPreviews,
-                                            onClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                openWebsiteInBrowser(context, website.url)
-                                            },
-                                            onLongClick = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                websiteForOptions = website
-                                            },
-                                            onRefreshScreenshot = {
-                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                if (!fetchWebPreviews) {
-                                                    Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                                } else {
-                                                    viewModel.refreshScreenshot(website.id)
-                                                    refreshTokens[website.id] = System.currentTimeMillis()
-                                                    Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        )
-                                    }
+                                    WebStackLayoutMode.COMPACT_LIST -> AppleCompactWebsiteRow(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = onCardClick,
+                                        onLongClick = onCardLongClick,
+                                        onRefreshScreenshot = onCardRefresh
+                                    )
+                                    WebStackLayoutMode.GRID_CARDS -> AppleGridWebsiteCard(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = onCardClick,
+                                        onLongClick = onCardLongClick,
+                                        onRefreshScreenshot = onCardRefresh
+                                    )
+                                    WebStackLayoutMode.LARGE_CARDS -> AppleWebsiteCard(
+                                        website = website,
+                                        refreshToken = refreshToken,
+                                        fetchWebPreviews = fetchWebPreviews,
+                                        onClick = onCardClick,
+                                        onLongClick = onCardLongClick,
+                                        onRefreshScreenshot = onCardRefresh
+                                    )
                                 }
                             }
                         }
                     }
                 }
-            }
-        }
-
-        // Apple Filter & Categories Bottom Sheet
-        if (showMenuSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showMenuSheet = false },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleFilterMenuBottomSheetContent(
-                    allWebsites = websitesState,
-                    categories = categoriesState,
-                    selectedCategory = selectedCategory,
-                    onSelectCategory = { cat ->
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        selectedCategory = cat
-                        showMenuSheet = false
-                    },
-                    onAddTagClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showAddTagDialog = true
-                    },
-                    onTagLongPress = { cat ->
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        categoryForOptions = cat
-                    }
-                )
             }
         }
 
@@ -517,7 +471,6 @@ fun WebStackScreen(
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         selectedCategory = targetTag
                         categoryForOptions = null
-                        showMenuSheet = false
                     },
                     onDismiss = { categoryForOptions = null }
                 )
@@ -609,14 +562,15 @@ fun WebStackScreen(
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
-                        showVersion101Screen = true
+                        showVersion110Screen = true
                     },
                     onOpenAppInfo = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
                         showAppInfoSheet = true
                     },
-                    onDismiss = { showSettingsSheet = false }
+                    onDismiss = { showSettingsSheet = false },
+                    viewModel = viewModel
                 )
             }
         }
@@ -818,14 +772,14 @@ fun WebStackScreen(
 
         // Version Update Screen
         AnimatedVisibility(
-            visible = showVersion101Screen,
+            visible = showVersion110Screen,
             enter = fadeIn() + scaleIn(initialScale = 0.95f),
             exit = fadeOut() + scaleOut(targetScale = 0.95f)
         ) {
             AppleVersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 2).apply()
-                    showVersion101Screen = false
+                    prefs.edit().putInt("last_seen_version_code", 3).apply()
+                    showVersion110Screen = false
                 },
                 onViewAllFeatures = {
                     showWhatsNewSheet = true

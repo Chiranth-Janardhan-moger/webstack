@@ -1,5 +1,9 @@
 package com.example.ui.sheets
 
+import android.provider.OpenableColumns
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -27,17 +31,28 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +60,11 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.model.WebStackLayoutMode
 import com.example.ui.theme.LocalAppleColors
+import com.example.ui.viewmodel.WebsiteViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun AppleSettingsBottomSheetContent(
@@ -54,9 +74,105 @@ fun AppleSettingsBottomSheetContent(
     onToggleFetchWebPreviews: (Boolean) -> Unit,
     onOpenWhatsNew: () -> Unit,
     onOpenAppInfo: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    viewModel: WebsiteViewModel? = null
 ) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
     val appleColors = LocalAppleColors.current
+    var showExportFormatDialog by remember { mutableStateOf(false) }
+
+    val exportWebstackLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        if (uri != null && viewModel != null) {
+            coroutineScope.launch {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val result = viewModel.exportBackup(outputStream)
+                    result.onSuccess { count ->
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        Toast.makeText(context, "Exported $count bookmarks (.webstack)", Toast.LENGTH_SHORT).show()
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Export failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    val exportJsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null && viewModel != null) {
+            coroutineScope.launch {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val result = viewModel.exportBackup(outputStream)
+                    result.onSuccess { count ->
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        Toast.makeText(context, "Exported $count bookmarks (.json)", Toast.LENGTH_SHORT).show()
+                    }.onFailure { err ->
+                        Toast.makeText(context, "Export failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null && viewModel != null) {
+            val displayName = try {
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+                } ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+
+            val isSupported = displayName.endsWith(".webstack", ignoreCase = true) ||
+                    displayName.endsWith(".json", ignoreCase = true)
+
+            if (!isSupported && displayName.isNotEmpty()) {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                Toast.makeText(
+                    context,
+                    "Invalid format. Please select a .webstack or .json backup",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@rememberLauncherForActivityResult
+            }
+
+            coroutineScope.launch {
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        val result = viewModel.restoreBackup(inputStream)
+                        result.onSuccess { (imported, newCats) ->
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val msg = if (imported > 0) {
+                                "Restored $imported bookmarks ($newCats new categories)"
+                            } else {
+                                "All bookmarks in backup are already in your stack"
+                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }.onFailure { err ->
+                            Toast.makeText(context, "Restore failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Could not open backup file", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -109,9 +225,9 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Section: Layout Mode
+        // Section: Display
         Text(
-            text = "LAYOUT MODE",
+            text = "DISPLAY",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appleColors.secondaryLabel,
@@ -291,9 +407,9 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section: Privacy & Network
+        // Section: Network
         Text(
-            text = "PRIVACY & NETWORK",
+            text = "NETWORK",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appleColors.secondaryLabel,
@@ -356,9 +472,289 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section: Discover & Guides
+        // Section: Storage
         Text(
-            text = "DISCOVER",
+            text = "STORAGE",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appleColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Card 1: Export Backup
+        Surface(
+            onClick = {
+                showExportFormatDialog = true
+            },
+            shape = RoundedCornerShape(14.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = appleColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_export),
+                                contentDescription = null,
+                                tint = appleColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Export Backup",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appleColors.label
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = appleColors.tertiaryLabel,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Card 2: Restore Bookmarks
+        Surface(
+            onClick = {
+                restoreLauncher.launch(
+                    arrayOf(
+                        "application/json",
+                        "application/octet-stream",
+                        "text/plain"
+                    )
+                )
+            },
+            shape = RoundedCornerShape(14.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = appleColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_import),
+                                contentDescription = null,
+                                tint = appleColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Restore Bookmarks",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appleColors.label
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = appleColors.tertiaryLabel,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        if (showExportFormatDialog) {
+            Dialog(onDismissRequest = { showExportFormatDialog = false }) {
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = appleColors.secondaryGroupedBackground,
+                    border = BorderStroke(0.75.dp, appleColors.separator),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                color = appleColors.fill,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_export),
+                                        contentDescription = null,
+                                        tint = appleColors.label,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Export Backup",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = appleColors.label
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Option 1: .webstack
+                        Surface(
+                            onClick = {
+                                showExportFormatDialog = false
+                                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                exportWebstackLauncher.launch("webstack_backup_$timeStamp.webstack")
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = appleColors.surface,
+                            border = BorderStroke(0.5.dp, appleColors.separator),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "WebStack Backup",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = appleColors.label
+                                    )
+                                    Text(
+                                        text = "(.webstack)",
+                                        fontSize = 13.sp,
+                                        color = appleColors.secondaryLabel
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = appleColors.tertiaryLabel,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Option 2: .json
+                        Surface(
+                            onClick = {
+                                showExportFormatDialog = false
+                                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                                exportJsonLauncher.launch("webstack_backup_$timeStamp.json")
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = appleColors.surface,
+                            border = BorderStroke(0.5.dp, appleColors.separator),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "Standard JSON",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = appleColors.label
+                                    )
+                                    Text(
+                                        text = "(.json)",
+                                        fontSize = 13.sp,
+                                        color = appleColors.secondaryLabel
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = appleColors.tertiaryLabel,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        TextButton(
+                            onClick = { showExportFormatDialog = false },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text(
+                                text = "Cancel",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = appleColors.secondaryLabel
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section: About
+        Text(
+            text = "ABOUT",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appleColors.secondaryLabel,

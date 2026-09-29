@@ -50,9 +50,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.LocalAppleColors
 import kotlinx.coroutines.delay
 
@@ -100,14 +102,14 @@ fun AppleVersionUpdateScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Version Odometer (1.0.0 -> 1.0.1)
+                // Version Odometer (1.0.0 -> 1.1.0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(bottom = 32.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
                 ) {
                     Text(
-                        text = "1.0.",
+                        text = "1.",
                         fontSize = 58.sp,
                         fontWeight = FontWeight.Black,
                         color = appleColors.label,
@@ -139,6 +141,13 @@ fun AppleVersionUpdateScreen(
                             letterSpacing = (-1.5).sp
                         )
                     }
+                    Text(
+                        text = ".0",
+                        fontSize = 58.sp,
+                        fontWeight = FontWeight.Black,
+                        color = appleColors.label,
+                        letterSpacing = (-1.5).sp
+                    )
                 }
 
                 // Compact Frosted What's New Card
@@ -152,8 +161,8 @@ fun AppleVersionUpdateScreen(
                         .padding(horizontal = 4.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         // Feature 1: 2-Card Grid
                         Row(
@@ -190,7 +199,42 @@ fun AppleVersionUpdateScreen(
                             }
                         }
 
-                        // Feature 2: Enhanced UI
+                        // Feature 2: Backup & Restore
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = appleColors.fill,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_export),
+                                        contentDescription = null,
+                                        tint = appleColors.label,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "Backup & Restore",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = appleColors.label,
+                                    letterSpacing = (-0.2).sp
+                                )
+                                Text(
+                                    text = "Direct .webstack and .json formats",
+                                    fontSize = 13.sp,
+                                    color = appleColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        // Feature 3: Refined UI
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -211,21 +255,21 @@ fun AppleVersionUpdateScreen(
                             }
                             Column {
                                 Text(
-                                    text = "Enhanced UI",
+                                    text = "Refined UI",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = appleColors.label,
                                     letterSpacing = (-0.2).sp
                                 )
                                 Text(
-                                    text = "Softer feel & refined animations",
+                                    text = "Made better, cleaner, and smoother",
                                     fontSize = 13.sp,
                                     color = appleColors.secondaryLabel
                                 )
                             }
                         }
 
-                        // Feature 3: Bug Fixes
+                        // Feature 4: Bug Fixes
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -253,7 +297,7 @@ fun AppleVersionUpdateScreen(
                                     letterSpacing = (-0.2).sp
                                 )
                                 Text(
-                                    text = "Stability & visual improvements",
+                                    text = "Performance & stability improvements",
                                     fontSize = 13.sp,
                                     color = appleColors.secondaryLabel
                                 )

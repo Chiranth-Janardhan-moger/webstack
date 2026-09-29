@@ -36,9 +36,7 @@ val AppleQuaternaryLabelDark = Color(0x29FFFFFF) // ~16%
 
 // System Separators & Hairlines
 val AppleSeparatorLight = Color(0x14000000) // ~8% softer hairline
-val AppleOpaqueSeparatorLight = Color(0xFFC6C6C8)
 val AppleSeparatorDark = Color(0x38FFFFFF)   // ~22%
-val AppleOpaqueSeparatorDark = Color(0xFF38383A)
 
 // System Fills / Capsule Backgrounds
 val AppleFillLight = Color(0x1F787880) // 12%

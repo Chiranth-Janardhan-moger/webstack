@@ -9,7 +9,7 @@ data class Website(
     val url: String,
     val title: String,
     val domain: String,
-    val faviconUrl: String,
+    val faviconUrl: String = "",
     val category: String = "General",
     val createdAt: Long = System.currentTimeMillis()
 )

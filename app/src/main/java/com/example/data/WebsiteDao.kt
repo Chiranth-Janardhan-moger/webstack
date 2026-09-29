@@ -11,8 +11,14 @@ interface WebsiteDao {
     @Query("SELECT * FROM saved_websites ORDER BY createdAt DESC")
     fun getAllWebsites(): Flow<List<Website>>
 
+    @Query("SELECT * FROM saved_websites ORDER BY createdAt DESC")
+    suspend fun getAllWebsitesList(): List<Website>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWebsite(website: Website): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWebsites(websites: List<Website>): List<Long>
 
     @Query("DELETE FROM saved_websites WHERE id = :id")
     suspend fun deleteWebsite(id: Long)

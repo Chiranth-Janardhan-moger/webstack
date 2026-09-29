@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.Website
 import com.example.ui.theme.LocalAppleColors
 import com.example.ui.util.DEFAULT_CATEGORIES
+import com.example.ui.util.extractDomain
 import com.example.ui.util.getClipboardUrl
 import kotlinx.coroutines.delay
 
@@ -72,18 +73,15 @@ fun AppleAddWebsiteSheetContent(
     // Dynamic, reactive clipboard URL detection
     var clipboardUrl by remember { mutableStateOf(getClipboardUrl(context)) }
 
-    // Re-check on composition and after short delays to ensure window focus has settled
     LaunchedEffect(Unit) {
-        if (clipboardUrl.isNullOrBlank()) {
-            clipboardUrl = getClipboardUrl(context)
-        }
-        if (clipboardUrl.isNullOrBlank()) {
-            delay(100)
-            clipboardUrl = getClipboardUrl(context)
-        }
-        if (clipboardUrl.isNullOrBlank()) {
-            delay(250)
-            clipboardUrl = getClipboardUrl(context)
+        if (!clipboardUrl.isNullOrBlank()) return@LaunchedEffect
+        for (d in longArrayOf(100L, 250L)) {
+            delay(d)
+            val url = getClipboardUrl(context)
+            if (!url.isNullOrBlank()) {
+                clipboardUrl = url
+                break
+            }
         }
     }
 
@@ -497,20 +495,12 @@ fun AppleEditWebsiteSheetContent(
                 if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
                     finalUrl = "https://$finalUrl"
                 }
-                val domain = try {
-                    val uri = java.net.URI(finalUrl)
-                    val host = uri.host ?: finalUrl.replace("https://", "").replace("http://", "").split("/")[0]
-                    if (host.startsWith("www.")) host.substring(4) else host
-                } catch (e: Exception) {
-                    website.domain
-                }
-                val faviconUrl = ""
+                val domain = extractDomain(finalUrl)
 
                 val updated = website.copy(
                     title = title.trim().ifBlank { website.title },
                     url = finalUrl,
                     domain = domain,
-                    faviconUrl = faviconUrl,
                     category = selectedCategory
                 )
                 onSave(updated)
