@@ -9,6 +9,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 import org.robolectric.annotation.GraphicsMode
+import com.example.ui.util.extractUrlFromText
+import com.example.ui.util.getClipboardUrl
+import com.example.ui.util.formatMiddleTruncatedDomain
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -94,5 +97,16 @@ class ExampleRobolectricTest {
     // Test non-URL text clip
     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("text", "just some notes"))
     org.junit.Assert.assertNull(getClipboardUrl(context))
+  }
+
+  @Test
+  fun `formatMiddleTruncatedDomain shortens long domains preserving prefix and suffix`() {
+    assertEquals("github.com", formatMiddleTruncatedDomain("github.com", 24))
+    assertEquals("myplacement...vercel.app", formatMiddleTruncatedDomain("myplacementjourneyatbmsitcjm.vercel.app", 24))
+    assertEquals("linear.app", formatMiddleTruncatedDomain("linear.app", 24))
+    assertEquals("ab", formatMiddleTruncatedDomain("abc", 2))
+    // Test with default 32 maxLength
+    assertEquals("myplacementjour...cjm.vercel.app", formatMiddleTruncatedDomain("myplacementjourneyatbmsitcjm.vercel.app"))
+    assertEquals(32, formatMiddleTruncatedDomain("myplacementjourneyatbmsitcjm.vercel.app").length)
   }
 }
