@@ -155,9 +155,9 @@ fun AppleAppInfoBottomSheetContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Section: Links & Community
+        // Section: Community
         Text(
-            text = "RESOURCES & COMMUNITY",
+            text = "COMMUNITY",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appleColors.secondaryLabel,
@@ -209,19 +209,12 @@ fun AppleAppInfoBottomSheetContent(
                                 }
                             }
 
-                            Column {
-                                Text(
-                                    text = "Source Code",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = appleColors.label
-                                )
-                                Text(
-                                    text = "github.com/Chiranth-Janardhan-moger/webstack",
-                                    fontSize = 11.sp,
-                                    color = appleColors.secondaryLabel
-                                )
-                            }
+                            Text(
+                                text = "Source Code",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appleColors.label
+                            )
                         }
 
                         Image(
@@ -257,7 +250,8 @@ fun AppleAppInfoBottomSheetContent(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
                             Surface(
                                 color = appleColors.fill,
@@ -276,13 +270,13 @@ fun AppleAppInfoBottomSheetContent(
 
                             Column {
                                 Text(
-                                    text = "Help Us Improve",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
+                                    text = "Report Bugs or Suggest Features",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
                                     color = appleColors.label
                                 )
                                 Text(
-                                    text = "Report bugs or suggest features on GitHub Issues",
+                                    text = "Submit feedback on GitHub Issues",
                                     fontSize = 11.sp,
                                     color = appleColors.secondaryLabel
                                 )

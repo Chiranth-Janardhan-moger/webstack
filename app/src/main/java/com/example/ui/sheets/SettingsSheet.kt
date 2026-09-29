@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -22,18 +24,24 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -43,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.example.ui.model.AppThemeMode
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.Dialog
@@ -68,6 +77,8 @@ import java.util.Locale
 
 @Composable
 fun AppleSettingsBottomSheetContent(
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    onSetThemeMode: (AppThemeMode) -> Unit = {},
     layoutMode: WebStackLayoutMode,
     onSetLayoutMode: (WebStackLayoutMode) -> Unit,
     fetchWebPreviews: Boolean,
@@ -225,9 +236,152 @@ fun AppleSettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Section: Display
+        // Section: Appearance
         Text(
-            text = "DISPLAY",
+            text = "APPEARANCE",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appleColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        var themeDropdownExpanded by remember { mutableStateOf(false) }
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = appleColors.surface,
+            border = BorderStroke(0.75.dp, appleColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = appleColors.accent,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.BrightnessMedium,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            text = "Appearance",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = appleColors.label
+                        )
+                        Text(
+                            text = "Theme preference",
+                            fontSize = 12.sp,
+                            color = appleColors.secondaryLabel
+                        )
+                    }
+                }
+
+                Box {
+                    Surface(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            themeDropdownExpanded = true
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = appleColors.secondaryGroupedBackground,
+                        border = BorderStroke(0.75.dp, appleColors.separator)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = themeMode.title,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appleColors.label
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                tint = appleColors.secondaryLabel,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    MaterialTheme(
+                        colorScheme = MaterialTheme.colorScheme.copy(
+                            surface = appleColors.surface
+                        ),
+                        shapes = MaterialTheme.shapes.copy(
+                            extraSmall = RoundedCornerShape(14.dp)
+                        )
+                    ) {
+                        DropdownMenu(
+                            expanded = themeDropdownExpanded,
+                            onDismissRequest = { themeDropdownExpanded = false },
+                            modifier = Modifier
+                                .background(appleColors.surface, RoundedCornerShape(14.dp))
+                                .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(14.dp))
+                        ) {
+                            AppThemeMode.entries.forEach { mode ->
+                                val isSelected = themeMode == mode
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = mode.title,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) appleColors.accent else appleColors.label
+                                        )
+                                    },
+                                    trailingIcon = if (isSelected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = appleColors.accent,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSetThemeMode(mode)
+                                        themeDropdownExpanded = false
+                                    },
+                                    modifier = Modifier.height(42.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section: Layout
+        Text(
+            text = "LAYOUT",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appleColors.secondaryLabel,

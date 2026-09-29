@@ -18,6 +18,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.example.ui.model.AppThemeMode
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -104,7 +106,20 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val prefs = remember { getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
+            var themeMode by remember {
+                mutableStateOf(
+                    runCatching { AppThemeMode.valueOf(prefs.getString("app_theme", "") ?: "") }
+                        .getOrDefault(AppThemeMode.SYSTEM)
+                )
+            }
+            val isDark = when (themeMode) {
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+                AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            MyApplicationTheme(darkTheme = isDark) {
                 val appleColors = LocalAppleColors.current
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -113,6 +128,11 @@ class MainActivity : ComponentActivity() {
                     val sharedUrl by sharedUrlState.collectAsState()
                     val sharedBackupUri by sharedBackupUriState.collectAsState()
                     WebStackScreen(
+                        themeMode = themeMode,
+                        onSetThemeMode = { newMode ->
+                            themeMode = newMode
+                            prefs.edit().putString("app_theme", newMode.name).apply()
+                        },
                         incomingSharedUrl = sharedUrl,
                         onClearIncomingUrl = { sharedUrlState.value = null },
                         incomingBackupUri = sharedBackupUri,
@@ -145,6 +165,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebStackScreen(
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    onSetThemeMode: (AppThemeMode) -> Unit = {},
     incomingSharedUrl: String? = null,
     onClearIncomingUrl: () -> Unit = {},
     incomingBackupUri: android.net.Uri? = null,
@@ -561,6 +583,8 @@ fun WebStackScreen(
                 dragHandle = { AppleSheetDragHandle() }
             ) {
                 AppleSettingsBottomSheetContent(
+                    themeMode = themeMode,
+                    onSetThemeMode = onSetThemeMode,
                     layoutMode = layoutMode,
                     onSetLayoutMode = { mode ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
