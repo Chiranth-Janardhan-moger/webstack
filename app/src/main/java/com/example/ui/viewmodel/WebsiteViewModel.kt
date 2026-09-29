@@ -27,10 +27,29 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _categories = MutableStateFlow<List<String>>(emptyList())
     val categories: StateFlow<List<String>> = _categories.asStateFlow()
 
+    private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
+    val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
+
     init {
         val database = WebsiteDatabase.getDatabase(application)
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
+        loadCachedScreenshotIds()
+    }
+
+    private fun loadCachedScreenshotIds() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids = getApplication<Application>().filesDir
+                ?.listFiles { file -> file.name.startsWith("screenshot_") && file.name.endsWith(".jpg") }
+                ?.mapNotNull { file ->
+                    file.name.removePrefix("screenshot_").removeSuffix(".jpg").toLongOrNull()
+                }?.toSet() ?: emptySet()
+            _cachedScreenshotIds.value = ids
+        }
+    }
+
+    fun onScreenshotSaved(id: Long) {
+        _cachedScreenshotIds.value = _cachedScreenshotIds.value + id
     }
 
     private fun loadCategories() {
@@ -128,6 +147,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         try {
             java.io.File(getApplication<Application>().filesDir, "screenshot_${id}.jpg").delete()
         } catch (_: Exception) {}
+        _cachedScreenshotIds.value = _cachedScreenshotIds.value - id
     }
 
     fun updateWebsite(website: Website) {

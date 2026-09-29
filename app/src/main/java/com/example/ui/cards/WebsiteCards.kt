@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.Website
@@ -63,6 +64,7 @@ import com.example.ui.theme.LocalAppleColors
 import com.example.ui.util.getCategoryAccentColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -77,13 +79,15 @@ fun WebsiteSnapshotImage(
     isGrid: Boolean = false,
     isCompact: Boolean = false,
     showRefreshButton: Boolean = true,
+    hasCachedImage: Boolean = false,
+    onImageSaved: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val appleColors = LocalAppleColors.current
     val coroutineScope = rememberCoroutineScope()
     val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
-    var hasLocalImage by remember(website.id, refreshToken) { mutableStateOf(localFile.exists()) }
+    var hasLocalImage by remember(website.id, refreshToken, hasCachedImage) { mutableStateOf(hasCachedImage) }
 
     val cornerShape = if (isCompact) RoundedCornerShape(topCornerRadius) else RoundedCornerShape(topStart = topCornerRadius, topEnd = topCornerRadius)
 
@@ -94,10 +98,10 @@ fun WebsiteSnapshotImage(
             .background(appleColors.secondaryBackground)
     ) {
         if (hasLocalImage) {
-            SubcomposeAsyncImage(
+            AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(localFile)
-                    .crossfade(true)
+                    .crossfade(false)
                     .build(),
                 contentDescription = "Preview snapshot of ${website.title}",
                 modifier = Modifier
@@ -129,7 +133,10 @@ fun WebsiteSnapshotImage(
                             FileOutputStream(localFile).use { out ->
                                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                             }
-                            hasLocalImage = true
+                            withContext(Dispatchers.Main) {
+                                hasLocalImage = true
+                                onImageSaved()
+                            }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -292,6 +299,8 @@ fun AppleWebsiteCard(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    hasCachedImage: Boolean = false,
+    onImageSaved: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -349,6 +358,8 @@ fun AppleWebsiteCard(
                 fetchWebPreviews = fetchWebPreviews,
                 height = 185.dp,
                 topCornerRadius = 22.dp,
+                hasCachedImage = hasCachedImage,
+                onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )
 
@@ -410,6 +421,8 @@ fun AppleGridWebsiteCard(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    hasCachedImage: Boolean = false,
+    onImageSaved: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -468,6 +481,8 @@ fun AppleGridWebsiteCard(
                 height = 105.dp,
                 topCornerRadius = 18.dp,
                 isGrid = true,
+                hasCachedImage = hasCachedImage,
+                onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )
 
@@ -517,6 +532,8 @@ fun AppleCompactWebsiteRow(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    hasCachedImage: Boolean = false,
+    onImageSaved: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -570,6 +587,8 @@ fun AppleCompactWebsiteRow(
                 topCornerRadius = 10.dp,
                 isCompact = true,
                 showRefreshButton = false,
+                hasCachedImage = hasCachedImage,
+                onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )
 

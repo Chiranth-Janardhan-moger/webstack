@@ -158,6 +158,7 @@ fun WebStackScreen(
     val categoriesState by viewModel.categories.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
+    val cachedScreenshotIds by viewModel.cachedScreenshotIds.collectAsState()
 
     var showAddSheet by remember { mutableStateOf(false) }
     var initialAddUrl by remember { mutableStateOf("") }
@@ -395,30 +396,42 @@ fun WebStackScreen(
                             key = { it.id }
                         ) { website ->
                             val refreshToken = refreshTokens[website.id] ?: 0L
+                            val hasCachedImage = cachedScreenshotIds.contains(website.id)
                             Box(modifier = Modifier.animateItem()) {
-                                val onCardClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    openWebsiteInBrowser(context, website.url)
-                                }
-                                val onCardLongClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    websiteForOptions = website
-                                }
-                                val onCardRefresh = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (!fetchWebPreviews) {
-                                        Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
-                                    } else {
-                                        viewModel.refreshScreenshot(website.id)
-                                        refreshTokens[website.id] = System.currentTimeMillis()
-                                        Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                val onCardClick = remember(website.url) {
+                                    {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        openWebsiteInBrowser(context, website.url)
                                     }
+                                }
+                                val onCardLongClick = remember(website) {
+                                    {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        websiteForOptions = website
+                                    }
+                                }
+                                val onCardRefresh = remember(website.id, website.title, fetchWebPreviews) {
+                                    {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        if (!fetchWebPreviews) {
+                                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            viewModel.refreshScreenshot(website.id)
+                                            refreshTokens[website.id] = System.currentTimeMillis()
+                                            Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                                val onImageSaved = remember(website.id) {
+                                    { viewModel.onScreenshotSaved(website.id) }
                                 }
                                 when (layoutMode) {
                                     WebStackLayoutMode.COMPACT_LIST -> AppleCompactWebsiteRow(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        hasCachedImage = hasCachedImage,
+                                        onImageSaved = onImageSaved,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
@@ -427,6 +440,8 @@ fun WebStackScreen(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        hasCachedImage = hasCachedImage,
+                                        onImageSaved = onImageSaved,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
@@ -435,6 +450,8 @@ fun WebStackScreen(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        hasCachedImage = hasCachedImage,
+                                        onImageSaved = onImageSaved,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
