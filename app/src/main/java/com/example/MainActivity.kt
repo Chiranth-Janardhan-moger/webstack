@@ -44,7 +44,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,26 +69,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.Website
-import com.example.ui.cards.AppleCompactWebsiteRow
-import com.example.ui.cards.AppleGridWebsiteCard
-import com.example.ui.cards.AppleWebsiteCard
-import com.example.ui.components.AppleCategoryCapsuleBar
-import com.example.ui.components.AppleEmptyState
-import com.example.ui.components.AppleNavigationHeader
-import com.example.ui.components.AppleSheetDragHandle
-import com.example.ui.dialogs.AppleAddTagDialog
-import com.example.ui.dialogs.AppleDeleteTagConfirmDialog
-import com.example.ui.dialogs.AppleEditTagDialog
+import com.example.ui.cards.CompactWebsiteRow
+import com.example.ui.cards.GridWebsiteCard
+import com.example.ui.cards.WebsiteCard
+import com.example.ui.components.AppBottomSheet
+import com.example.ui.components.AppCategoryCapsuleBar
+import com.example.ui.components.AppEmptyState
+import com.example.ui.components.AppNavigationHeader
+import com.example.ui.dialogs.AddTagDialog
+import com.example.ui.dialogs.DeleteTagConfirmDialog
+import com.example.ui.dialogs.EditTagDialog
 import com.example.ui.model.WebStackLayoutMode
-import com.example.ui.sheets.AppleAddWebsiteSheetContent
-import com.example.ui.sheets.AppleAppInfoBottomSheetContent
-import com.example.ui.sheets.AppleEditWebsiteSheetContent
-import com.example.ui.sheets.AppleItemOptionsBottomSheetContent
-import com.example.ui.sheets.AppleSettingsBottomSheetContent
-import com.example.ui.sheets.AppleTagOptionsBottomSheetContent
-import com.example.ui.sheets.AppleVersionUpdateScreen
-import com.example.ui.sheets.AppleWhatsNewBottomSheetContent
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.sheets.AddWebsiteSheetContent
+import com.example.ui.sheets.AppInfoBottomSheetContent
+import com.example.ui.sheets.EditWebsiteSheetContent
+import com.example.ui.sheets.ItemOptionsBottomSheetContent
+import com.example.ui.sheets.SettingsBottomSheetContent
+import com.example.ui.sheets.TagOptionsBottomSheetContent
+import com.example.ui.sheets.VersionUpdateScreen
+import com.example.ui.sheets.WhatsNewBottomSheetContent
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.util.extractUrlFromText
 import com.example.ui.util.openWebsiteInBrowser
@@ -120,10 +119,10 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(darkTheme = isDark) {
-                val appleColors = LocalAppleColors.current
+                val appColors = LocalAppColors.current
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = appleColors.groupedBackground
+                    color = appColors.groupedBackground
                 ) {
                     val sharedUrl by sharedUrlState.collectAsState()
                     val sharedBackupUri by sharedBackupUriState.collectAsState()
@@ -174,7 +173,7 @@ fun WebStackScreen(
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val viewModel: WebsiteViewModel = viewModel()
     val websitesState by viewModel.websitesList.collectAsState()
     val categoriesState by viewModel.categories.collectAsState()
@@ -192,7 +191,7 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 3) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 4) }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -233,6 +232,29 @@ fun WebStackScreen(
     // Handle incoming .webstack backup file opened from external apps / file manager
     LaunchedEffect(incomingBackupUri) {
         incomingBackupUri?.let { uri ->
+            val displayName = try {
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+                } ?: ""
+            } catch (_: Exception) {
+                ""
+            }
+
+            val isWebstack = displayName.endsWith(".webstack", ignoreCase = true) ||
+                    (uri.path?.endsWith(".webstack", ignoreCase = true) == true)
+
+            if (!isWebstack && displayName.isNotEmpty()) {
+                onClearIncomingBackupUri()
+                return@LaunchedEffect
+            }
+
             try {
                 context.contentResolver.openInputStream(uri)?.use { stream ->
                     val result = viewModel.restoreBackup(stream)
@@ -257,10 +279,11 @@ fun WebStackScreen(
 
     // Filter websites according to selected category and search query
     val filteredWebsites = remember(websitesState, selectedCategory, searchQuery) {
+        val current = websitesState ?: return@remember emptyList()
         val categoryFiltered = if (selectedCategory == "All") {
-            websitesState
+            current
         } else {
-            websitesState.filter {
+            current.filter {
                 it.category.equals(selectedCategory, ignoreCase = true)
             }
         }
@@ -279,10 +302,10 @@ fun WebStackScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = appleColors.groupedBackground,
+        containerColor = appColors.groupedBackground,
         floatingActionButton = {
             if (!showVersion110Screen) {
-                // Apple Liquid Glass Floating Action Button
+                // Liquid Glass Floating Action Button
                 val interactionSource = remember { MutableInteractionSource() }
                 val isPressed by interactionSource.collectIsPressedAsState()
                 val fabScale by animateFloatAsState(
@@ -297,8 +320,8 @@ fun WebStackScreen(
                         initialAddUrl = ""
                         showAddSheet = true
                     },
-                    containerColor = appleColors.label,
-                    contentColor = appleColors.systemBackground,
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground,
                     shape = CircleShape,
                     interactionSource = interactionSource,
                     modifier = Modifier
@@ -311,8 +334,8 @@ fun WebStackScreen(
                         .shadow(
                             elevation = 10.dp,
                             shape = CircleShape,
-                            ambientColor = appleColors.label.copy(alpha = 0.12f),
-                            spotColor = appleColors.label.copy(alpha = 0.22f)
+                            ambientColor = appColors.label.copy(alpha = 0.12f),
+                            spotColor = appColors.label.copy(alpha = 0.22f)
                         )
                         .testTag("add_website_fab")
                 ) {
@@ -330,13 +353,13 @@ fun WebStackScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(appleColors.groupedBackground)
+                .background(appColors.groupedBackground)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Apple Navigation Header (Settings on Left, WebStack in Center, Expanding Search on Right)
-                AppleNavigationHeader(
+                // Navigation Header (Settings on Left, WebStack in Center, Expanding Search on Right)
+                AppNavigationHeader(
                     selectedCategory = selectedCategory,
                     searchQuery = searchQuery,
                     isSearchExpanded = isSearchExpanded,
@@ -355,9 +378,9 @@ fun WebStackScreen(
                     }
                 )
 
-                // Apple Category / Tag Capsule Selector Bar (Single tap filter, long press options)
-                AppleCategoryCapsuleBar(
-                    allWebsites = websitesState,
+                // Category / Tag Capsule Selector Bar (Single tap filter, long press options)
+                AppCategoryCapsuleBar(
+                    allWebsites = websitesState ?: emptyList(),
                     categories = categoriesState,
                     selectedCategory = selectedCategory,
                     onSelectCategory = { cat ->
@@ -375,8 +398,10 @@ fun WebStackScreen(
                 )
 
                 // Main Content Area (Cards or Inset Grouped Rows)
-                if (filteredWebsites.isEmpty()) {
-                    AppleEmptyState(
+                if (websitesState == null) {
+                    Box(modifier = Modifier.weight(1f))
+                } else if (filteredWebsites.isEmpty()) {
+                    AppEmptyState(
                         searchQuery = searchQuery,
                         selectedCategory = selectedCategory,
                         onClearSearch = {
@@ -448,7 +473,7 @@ fun WebStackScreen(
                                     { viewModel.onScreenshotSaved(website.id) }
                                 }
                                 when (layoutMode) {
-                                    WebStackLayoutMode.COMPACT_LIST -> AppleCompactWebsiteRow(
+                                    WebStackLayoutMode.COMPACT_LIST -> CompactWebsiteRow(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
@@ -458,7 +483,7 @@ fun WebStackScreen(
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
                                     )
-                                    WebStackLayoutMode.GRID_CARDS -> AppleGridWebsiteCard(
+                                    WebStackLayoutMode.GRID_CARDS -> GridWebsiteCard(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
@@ -468,7 +493,7 @@ fun WebStackScreen(
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
                                     )
-                                    WebStackLayoutMode.LARGE_CARDS -> AppleWebsiteCard(
+                                    WebStackLayoutMode.LARGE_CARDS -> WebsiteCard(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
@@ -486,17 +511,11 @@ fun WebStackScreen(
             }
         }
 
-        // Apple Tag Options Sheet
+        // Tag Options Sheet
         if (categoryForOptions != null) {
             val targetTag = categoryForOptions!!
-            ModalBottomSheet(
-                onDismissRequest = { categoryForOptions = null },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleTagOptionsBottomSheetContent(
+            AppBottomSheet(onDismissRequest = { categoryForOptions = null }) {
+                TagOptionsBottomSheetContent(
                     tagName = targetTag,
                     onEdit = {
                         categoryToEdit = targetTag
@@ -516,9 +535,9 @@ fun WebStackScreen(
             }
         }
 
-        // Apple Add Tag Dialog
+        // Add Tag Dialog
         if (showAddTagDialog) {
-            AppleAddTagDialog(
+            AddTagDialog(
                 onAdd = { newTag ->
                     val success = viewModel.addCategory(newTag)
                     if (success) {
@@ -533,10 +552,10 @@ fun WebStackScreen(
             )
         }
 
-        // Apple Edit Tag Dialog
+        // Edit Tag Dialog
         if (categoryToEdit != null) {
             val oldName = categoryToEdit!!
-            AppleEditTagDialog(
+            EditTagDialog(
                 currentName = oldName,
                 onSave = { newName ->
                     val success = viewModel.renameCategory(oldName, newName)
@@ -555,10 +574,10 @@ fun WebStackScreen(
             )
         }
 
-        // Apple Delete Tag Confirmation Alert
+        // Delete Tag Confirmation Alert
         if (categoryToDelete != null) {
             val tagToDelete = categoryToDelete!!
-            AppleDeleteTagConfirmDialog(
+            DeleteTagConfirmDialog(
                 tagName = tagToDelete,
                 onConfirm = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -573,16 +592,10 @@ fun WebStackScreen(
             )
         }
 
-        // Apple Settings Bottom Sheet
+        // Settings Bottom Sheet
         if (showSettingsSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showSettingsSheet = false },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleSettingsBottomSheetContent(
+            AppBottomSheet(onDismissRequest = { showSettingsSheet = false }) {
+                SettingsBottomSheetContent(
                     themeMode = themeMode,
                     onSetThemeMode = onSetThemeMode,
                     layoutMode = layoutMode,
@@ -616,49 +629,41 @@ fun WebStackScreen(
             }
         }
 
-        // Apple "What's New" Sheet
+        // "What's New" Sheet
         if (showWhatsNewSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showWhatsNewSheet = false },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleWhatsNewBottomSheetContent(
+            AppBottomSheet(onDismissRequest = { showWhatsNewSheet = false }) {
+                WhatsNewBottomSheetContent(
                     onDismiss = { showWhatsNewSheet = false }
                 )
             }
         }
 
-        // Apple "App Info" Sheet
+        // "App Info" Sheet
         if (showAppInfoSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showAppInfoSheet = false },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleAppInfoBottomSheetContent(
-                    onDismiss = { showAppInfoSheet = false }
+            AppBottomSheet(onDismissRequest = { showAppInfoSheet = false }) {
+                AppInfoBottomSheetContent(
+                    onDismiss = { showAppInfoSheet = false },
+                    onBack = {
+                        showAppInfoSheet = false
+                        showSettingsSheet = true
+                    },
+                    onOpenWhatsNew = {
+                        showAppInfoSheet = false
+                        showVersion110Screen = true
+                    }
                 )
             }
         }
 
-        // Apple Add Website Bottom Sheet
+        // Add Website Bottom Sheet
         if (showAddSheet) {
-            ModalBottomSheet(
+            AppBottomSheet(
                 onDismissRequest = {
                     showAddSheet = false
                     viewModel.clearError()
-                },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
+                }
             ) {
-                AppleAddWebsiteSheetContent(
+                AddWebsiteSheetContent(
                     initialUrl = initialAddUrl,
                     categories = categoriesState,
                     isSaving = isSaving,
@@ -667,6 +672,7 @@ fun WebStackScreen(
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         showAddTagDialog = true
                     },
+                    onClearError = { viewModel.clearError() },
                     onSave = { rawUrl, category ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.saveWebsite(rawUrl, category) {
@@ -682,17 +688,11 @@ fun WebStackScreen(
             }
         }
 
-        // Apple Item Options Sheet (Long Press)
+        // Item Options Sheet (Long Press)
         if (websiteForOptions != null) {
             val targetWebsite = websiteForOptions!!
-            ModalBottomSheet(
-                onDismissRequest = { websiteForOptions = null },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleItemOptionsBottomSheetContent(
+            AppBottomSheet(onDismissRequest = { websiteForOptions = null }) {
+                ItemOptionsBottomSheetContent(
                     website = targetWebsite,
                     onOpen = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -730,17 +730,11 @@ fun WebStackScreen(
             }
         }
 
-        // Apple Edit Website Sheet
+        // Edit Website Sheet
         if (websiteToEdit != null) {
             val targetWebsite = websiteToEdit!!
-            ModalBottomSheet(
-                onDismissRequest = { websiteToEdit = null },
-                containerColor = appleColors.secondaryGroupedBackground,
-                scrimColor = Color.Black.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                dragHandle = { AppleSheetDragHandle() }
-            ) {
-                AppleEditWebsiteSheetContent(
+            AppBottomSheet(onDismissRequest = { websiteToEdit = null }) {
+                EditWebsiteSheetContent(
                     website = targetWebsite,
                     categories = categoriesState,
                     onAddNewTag = {
@@ -749,34 +743,39 @@ fun WebStackScreen(
                     },
                     onSave = { updatedWebsite ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.updateWebsite(updatedWebsite)
-                        Toast.makeText(context, "Saved changes to ${updatedWebsite.title}", Toast.LENGTH_SHORT).show()
-                        websiteToEdit = null
+                        viewModel.updateWebsite(updatedWebsite) { success, errorMsg ->
+                            if (success) {
+                                Toast.makeText(context, "Saved changes to ${updatedWebsite.title}", Toast.LENGTH_SHORT).show()
+                                websiteToEdit = null
+                            } else {
+                                Toast.makeText(context, errorMsg ?: "Could not update", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     onDismiss = { websiteToEdit = null }
                 )
             }
         }
 
-        // Apple Remove Link Confirmation Alert
+        // Remove Link Confirmation Alert
         if (websiteToDelete != null) {
             AlertDialog(
                 onDismissRequest = { websiteToDelete = null },
-                containerColor = appleColors.secondaryGroupedBackground,
+                containerColor = appColors.secondaryGroupedBackground,
                 tonalElevation = 0.dp,
                 title = {
                     Text(
                         text = "Remove Link",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = appleColors.label
+                        color = appColors.label
                     )
                 },
                 text = {
                     Text(
                         text = "Are you sure you want to remove \"${websiteToDelete?.title}\" from your stack?",
                         fontSize = 14.sp,
-                        color = appleColors.secondaryLabel,
+                        color = appColors.secondaryLabel,
                         lineHeight = 20.sp
                     )
                 },
@@ -792,7 +791,7 @@ fun WebStackScreen(
                             websiteToDelete = null
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = appleColors.destructive,
+                            containerColor = appColors.destructive,
                             contentColor = Color.White
                         ),
                         shape = RoundedCornerShape(12.dp)
@@ -803,7 +802,7 @@ fun WebStackScreen(
                 dismissButton = {
                     TextButton(
                         onClick = { websiteToDelete = null },
-                        colors = ButtonDefaults.textButtonColors(contentColor = appleColors.secondaryLabel)
+                        colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
                     ) {
                         Text("Cancel", fontWeight = FontWeight.Medium)
                     }
@@ -817,9 +816,9 @@ fun WebStackScreen(
             enter = fadeIn() + scaleIn(initialScale = 0.95f),
             exit = fadeOut() + scaleOut(targetScale = 0.95f)
         ) {
-            AppleVersionUpdateScreen(
+            VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 3).apply()
+                    prefs.edit().putInt("last_seen_version_code", 4).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {

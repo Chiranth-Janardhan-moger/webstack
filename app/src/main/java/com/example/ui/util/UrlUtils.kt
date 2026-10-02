@@ -101,3 +101,63 @@ fun extractDomain(url: String): String = try {
 } catch (_: Exception) {
     url
 }
+
+/**
+ * Normalizes a URL for comparison to accurately detect duplicate bookmarks.
+ * Ensures differentiation based on the full link (path, query, fragment) while standardizing:
+ * - Scheme (http vs https equivalence)
+ * - Host (lowercase, www. prefix removal)
+ * - Path (case preserved, trailing slashes normalized)
+ * - Query parameters (sorted key-value pairs)
+ * - Fragment (anchors)
+ */
+fun normalizeUrlForComparison(raw: String): String {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return ""
+
+    val withScheme = if (!trimmed.startsWith("http://", ignoreCase = true) &&
+        !trimmed.startsWith("https://", ignoreCase = true)
+    ) {
+        "https://$trimmed"
+    } else {
+        trimmed
+    }
+
+    return try {
+        val uri = Uri.parse(withScheme)
+        val host = (uri.host ?: "").lowercase().removePrefix("www.")
+        val port = if (uri.port != -1 && uri.port != 80 && uri.port != 443) ":${uri.port}" else ""
+        var path = uri.path ?: ""
+        if (path.length > 1 && path.endsWith("/")) {
+            path = path.dropLast(1)
+        } else if (path == "/") {
+            path = ""
+        }
+        val query = if (!uri.query.isNullOrEmpty()) {
+            try {
+                val names = uri.queryParameterNames.sorted()
+                if (names.isNotEmpty()) {
+                    "?" + names.joinToString("&") { key ->
+                        val values = uri.getQueryParameters(key)
+                        if (values.isEmpty()) key
+                        else values.joinToString("&") { v -> "$key=$v" }
+                    }
+                } else {
+                    "?${uri.query}"
+                }
+            } catch (_: Exception) {
+                "?${uri.query}"
+            }
+        } else {
+            ""
+        }
+        val fragment = if (!uri.fragment.isNullOrEmpty()) "#${uri.fragment}" else ""
+        if (host.isNotEmpty()) {
+            "$host$port$path$query$fragment"
+        } else {
+            withScheme.removePrefix("https://").removePrefix("http://").removePrefix("www.").trimEnd('/')
+        }
+    } catch (_: Exception) {
+        withScheme.removePrefix("https://").removePrefix("http://").removePrefix("www.").trimEnd('/')
+    }
+}

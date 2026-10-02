@@ -60,7 +60,7 @@ import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.Website
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.getCategoryAccentColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -84,7 +84,7 @@ fun WebsiteSnapshotImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val coroutineScope = rememberCoroutineScope()
     val localFile = remember(website.id, refreshToken) { File(context.filesDir, "screenshot_${website.id}.jpg") }
     var hasLocalImage by remember(website.id, refreshToken, hasCachedImage) { mutableStateOf(hasCachedImage) }
@@ -95,7 +95,7 @@ fun WebsiteSnapshotImage(
         modifier = modifier
             .then(if (isCompact) Modifier.size(width = 76.dp, height = height) else Modifier.fillMaxWidth().height(height))
             .clip(cornerShape)
-            .background(appleColors.secondaryBackground)
+            .background(appColors.secondaryBackground)
     ) {
         if (hasLocalImage) {
             AsyncImage(
@@ -154,7 +154,7 @@ fun WebsiteSnapshotImage(
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(if (isCompact) 16.dp else if (isGrid) 20.dp else 24.dp),
-                            color = appleColors.accent,
+                            color = appColors.accent,
                             strokeWidth = if (isCompact || isGrid) 2.dp else 2.5.dp
                         )
                     }
@@ -163,14 +163,14 @@ fun WebsiteSnapshotImage(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(appleColors.fill),
+                            .background(appColors.fill),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isGrid || isCompact) {
                             Icon(
                                 imageVector = Icons.Default.OpenInBrowser,
                                 contentDescription = null,
-                                tint = appleColors.secondaryLabel,
+                                tint = appColors.secondaryLabel,
                                 modifier = Modifier.size(if (isCompact) 18.dp else 20.dp)
                             )
                         } else {
@@ -181,13 +181,13 @@ fun WebsiteSnapshotImage(
                                 Icon(
                                     imageVector = Icons.Default.OpenInBrowser,
                                     contentDescription = null,
-                                    tint = appleColors.secondaryLabel,
+                                    tint = appColors.secondaryLabel,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
                                     text = website.domain,
                                     fontSize = 14.sp,
-                                    color = appleColors.secondaryLabel,
+                                    color = appColors.secondaryLabel,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = (-0.2).sp
                                 )
@@ -197,8 +197,8 @@ fun WebsiteSnapshotImage(
                 }
             )
         } else {
-            // Local Apple Card representation when Fetch Web Previews is OFF
-            val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+            // Card representation when Fetch Web Previews is OFF
+            val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
             val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
             Box(
                 modifier = Modifier
@@ -207,8 +207,8 @@ fun WebsiteSnapshotImage(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                catAccent.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f),
-                                appleColors.secondaryBackground
+                                catAccent.copy(alpha = if (appColors.isDark) 0.16f else 0.08f),
+                                appColors.secondaryBackground
                             )
                         )
                     ),
@@ -217,7 +217,7 @@ fun WebsiteSnapshotImage(
                 if (isGrid || isCompact) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                        color = catAccent.copy(alpha = if (appColors.isDark) 0.25f else 0.15f),
                         border = BorderStroke(0.75.dp, catAccent.copy(alpha = 0.40f)),
                         modifier = Modifier.size(if (isCompact) 32.dp else 38.dp)
                     ) {
@@ -237,7 +237,7 @@ fun WebsiteSnapshotImage(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(18.dp),
-                            color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                            color = catAccent.copy(alpha = if (appColors.isDark) 0.25f else 0.15f),
                             border = BorderStroke(1.dp, catAccent.copy(alpha = 0.40f)),
                             modifier = Modifier.size(54.dp)
                         ) {
@@ -254,7 +254,7 @@ fun WebsiteSnapshotImage(
                             text = website.domain,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = appleColors.secondaryLabel,
+                            color = appColors.secondaryLabel,
                             letterSpacing = (-0.2).sp
                         )
                     }
@@ -273,9 +273,9 @@ fun WebsiteSnapshotImage(
             ) {
                 Surface(
                     onClick = onRefreshScreenshot,
-                    color = (if (appleColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
+                    color = (if (appColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF)),
                     shape = CircleShape,
-                    border = BorderStroke(0.5.dp, if (!isGrid) appleColors.separator else appleColors.glassHighlight),
+                    border = BorderStroke(0.5.dp, if (!isGrid) appColors.separator else appColors.glassHighlight),
                     shadowElevation = if (!isGrid) 3.dp else 2.dp,
                     modifier = Modifier.size(if (!isGrid) 32.dp else 28.dp)
                 ) {
@@ -283,7 +283,7 @@ fun WebsiteSnapshotImage(
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
                             contentDescription = "Refresh Screenshot",
-                            tint = appleColors.label,
+                            tint = appColors.label,
                             modifier = Modifier.size(if (!isGrid) 15.dp else 13.dp)
                         )
                     }
@@ -295,33 +295,31 @@ fun WebsiteSnapshotImage(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppleWebsiteCard(
-    website: Website,
-    refreshToken: Long,
-    fetchWebPreviews: Boolean = false,
-    hasCachedImage: Boolean = false,
-    onImageSaved: () -> Unit = {},
+private fun CardContainer(
+    cardShape: RoundedCornerShape,
+    pressedScale: Float = 0.985f,
+    testTag: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onRefreshScreenshot: () -> Unit
+    border: BorderStroke? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
-
+    val appColors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.985f else 1f,
+        targetValue = if (isPressed) pressedScale else 1f,
         animationSpec = spring(
             dampingRatio = 0.82f,
             stiffness = Spring.StiffnessMediumLow
         ),
-        label = "apple_card_scale"
+        label = "card_scale"
     )
 
-    val cardShape = RoundedCornerShape(22.dp)
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
@@ -334,22 +332,48 @@ fun AppleWebsiteCard(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .testTag("website_card_${website.id}"),
-        colors = CardDefaults.cardColors(containerColor = appleColors.surface),
+            .testTag(testTag),
+        colors = CardDefaults.cardColors(containerColor = appColors.surface),
         shape = cardShape,
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = border
+    ) {
+        content()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun WebsiteCard(
+    website: Website,
+    refreshToken: Long,
+    fetchWebPreviews: Boolean = false,
+    hasCachedImage: Boolean = false,
+    onImageSaved: () -> Unit = {},
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onRefreshScreenshot: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val cardShape = RoundedCornerShape(22.dp)
+    CardContainer(
+        cardShape = cardShape,
+        pressedScale = 0.985f,
+        testTag = "website_card_${website.id}",
+        onClick = onClick,
+        onLongClick = onLongClick
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (appleColors.isDark) 3.dp else 6.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    ambientColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.2f else 0.03f),
-                    spotColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.35f else 0.05f)
+                    elevation = if (appColors.isDark) 3.dp else 6.dp,
+                    shape = cardShape,
+                    ambientColor = Color.Black.copy(alpha = if (appColors.isDark) 0.2f else 0.03f),
+                    spotColor = Color.Black.copy(alpha = if (appColors.isDark) 0.35f else 0.05f)
                 )
-                .background(appleColors.surface, RoundedCornerShape(22.dp))
-                .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(22.dp))
+                .background(appColors.surface, cardShape)
+                .border(BorderStroke(0.5.dp, appColors.separator), cardShape)
         ) {
             // Top Preview Slot displaying Website Screenshot
             WebsiteSnapshotImage(
@@ -378,7 +402,7 @@ fun AppleWebsiteCard(
                         text = website.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = appleColors.label,
+                        color = appColors.label,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         letterSpacing = (-0.2).sp
@@ -387,7 +411,7 @@ fun AppleWebsiteCard(
                     Text(
                         text = website.url,
                         fontSize = 12.sp,
-                        color = appleColors.secondaryLabel,
+                        color = appColors.secondaryLabel,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -397,9 +421,9 @@ fun AppleWebsiteCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Semantic Category Badge
-                val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
                 Surface(
-                    color = catAccent.copy(alpha = if (appleColors.isDark) 0.2f else 0.12f),
+                    color = catAccent.copy(alpha = if (appColors.isDark) 0.2f else 0.12f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
@@ -417,7 +441,7 @@ fun AppleWebsiteCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppleGridWebsiteCard(
+fun GridWebsiteCard(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
@@ -427,51 +451,26 @@ fun AppleGridWebsiteCard(
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.82f,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "apple_grid_card_scale"
-    )
-
+    val appColors = LocalAppColors.current
     val cardShape = RoundedCornerShape(18.dp)
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(cardShape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .testTag("website_grid_card_${website.id}"),
-        colors = CardDefaults.cardColors(containerColor = appleColors.surface),
-        shape = cardShape,
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    CardContainer(
+        cardShape = cardShape,
+        pressedScale = 0.96f,
+        testTag = "website_grid_card_${website.id}",
+        onClick = onClick,
+        onLongClick = onLongClick
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (appleColors.isDark) 3.dp else 6.dp,
-                    shape = RoundedCornerShape(18.dp),
-                    ambientColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.2f else 0.03f),
-                    spotColor = Color.Black.copy(alpha = if (appleColors.isDark) 0.3f else 0.05f)
+                    elevation = if (appColors.isDark) 3.dp else 6.dp,
+                    shape = cardShape,
+                    ambientColor = Color.Black.copy(alpha = if (appColors.isDark) 0.2f else 0.03f),
+                    spotColor = Color.Black.copy(alpha = if (appColors.isDark) 0.3f else 0.05f)
                 )
-                .background(appleColors.surface, RoundedCornerShape(18.dp))
-                .border(BorderStroke(0.5.dp, appleColors.separator), RoundedCornerShape(18.dp))
+                .background(appColors.surface, cardShape)
+                .border(BorderStroke(0.5.dp, appColors.separator), cardShape)
         ) {
             // Snapshot Preview Header (105dp)
             WebsiteSnapshotImage(
@@ -496,7 +495,7 @@ fun AppleGridWebsiteCard(
                     text = website.title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
-                    color = appleColors.label,
+                    color = appColors.label,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 16.sp
@@ -506,7 +505,7 @@ fun AppleGridWebsiteCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
                     Box(
                         modifier = Modifier
                             .size(6.dp)
@@ -515,7 +514,7 @@ fun AppleGridWebsiteCard(
                     Text(
                         text = website.domain,
                         fontSize = 11.sp,
-                        color = appleColors.secondaryLabel,
+                        color = appColors.secondaryLabel,
                         fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -528,7 +527,7 @@ fun AppleGridWebsiteCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppleCompactWebsiteRow(
+fun CompactWebsiteRow(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
@@ -538,39 +537,14 @@ fun AppleCompactWebsiteRow(
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.985f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.82f,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "apple_compact_scale"
-    )
-
-    val cardShape = RoundedCornerShape(16.dp)
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(cardShape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .testTag("compact_website_row_${website.id}"),
-        colors = CardDefaults.cardColors(containerColor = appleColors.surface),
-        shape = cardShape,
-        border = BorderStroke(0.5.dp, appleColors.separator),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    val appColors = LocalAppColors.current
+    CardContainer(
+        cardShape = RoundedCornerShape(16.dp),
+        pressedScale = 0.985f,
+        border = BorderStroke(0.5.dp, appColors.separator),
+        testTag = "compact_website_row_${website.id}",
+        onClick = onClick,
+        onLongClick = onLongClick
     ) {
         Row(
             modifier = Modifier
@@ -602,7 +576,7 @@ fun AppleCompactWebsiteRow(
                     text = website.title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = appleColors.label,
+                    color = appColors.label,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -615,16 +589,16 @@ fun AppleCompactWebsiteRow(
                         text = website.domain,
                         modifier = Modifier.weight(1f, fill = false),
                         fontSize = 12.sp,
-                        color = appleColors.secondaryLabel,
+                        color = appColors.secondaryLabel,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "•",
                         fontSize = 10.sp,
-                        color = appleColors.tertiaryLabel
+                        color = appColors.tertiaryLabel
                     )
-                    val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                    val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
                     Text(
                         text = website.category,
                         fontSize = 11.sp,
@@ -642,7 +616,7 @@ fun AppleCompactWebsiteRow(
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
                     contentDescription = "Refresh Screenshot",
-                    tint = appleColors.secondaryLabel,
+                    tint = appColors.secondaryLabel,
                     modifier = Modifier.size(18.dp)
                 )
             }

@@ -1,6 +1,7 @@
 package com.example.data
 
 import com.example.ui.util.extractDomain
+import com.example.ui.util.normalizeUrlForComparison
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -18,6 +19,14 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
     suspend fun getAllWebsitesList(): List<Website> = websiteDao.getAllWebsitesList()
 
     suspend fun insertWebsites(websites: List<Website>): List<Long> = websiteDao.insertWebsites(websites)
+
+    suspend fun findDuplicate(inputUrl: String, excludeId: Long? = null): Website? {
+        val target = normalizeUrlForComparison(inputUrl)
+        if (target.isBlank()) return null
+        return getAllWebsitesList().firstOrNull {
+            it.id != excludeId && normalizeUrlForComparison(it.url) == target
+        }
+    }
 
     suspend fun update(website: Website) {
         websiteDao.insertWebsite(website)
@@ -46,13 +55,19 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
             url = "https://$url"
         }
 
+        val duplicate = findDuplicate(url)
+        if (duplicate != null) {
+            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
+            return@withContext Result.failure(Exception("Link already in your stack: \"$titleDisplay\""))
+        }
+
         val domain = extractDomain(url)
         var title = ""
 
         try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0")
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -67,7 +82,7 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
 
         // Fallback title generation if fetch failed or returned empty
         if (title.isBlank()) {
-            title = domain.split(".")[0].replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            title = domain.substringBefore(".").replaceFirstChar { it.uppercaseChar() }
         }
 
         val category = if (!customCategory.isNullOrBlank() && customCategory != "All") {

@@ -3,6 +3,7 @@ package com.example.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,37 +14,37 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Apple Light Color Scheme for Material 3
-private val AppleLightColorScheme = lightColorScheme(
-    primary = AppleLabelLight,
-    onPrimary = AppleSystemBackgroundLight,
-    secondary = AppleSecondaryLabelLight,
-    onSecondary = AppleSystemBackgroundLight,
-    background = AppleGroupedBackgroundLight,
-    onBackground = AppleLabelLight,
-    surface = AppleSecondaryGroupedBackgroundLight,
-    onSurface = AppleLabelLight,
-    surfaceVariant = AppleSecondaryBackgroundLight,
-    onSurfaceVariant = AppleSecondaryLabelLight,
-    outline = AppleSeparatorLight,
-    error = AppleRed,
+// Light Color Scheme for Material 3
+private val AppLightColorScheme = lightColorScheme(
+    primary = AppLabelLight,
+    onPrimary = AppSystemBackgroundLight,
+    secondary = AppSecondaryLabelLight,
+    onSecondary = AppSystemBackgroundLight,
+    background = AppGroupedBackgroundLight,
+    onBackground = AppLabelLight,
+    surface = AppSecondaryGroupedBackgroundLight,
+    onSurface = AppLabelLight,
+    surfaceVariant = AppSecondaryBackgroundLight,
+    onSurfaceVariant = AppSecondaryLabelLight,
+    outline = AppSeparatorLight,
+    error = AppRed,
     onError = Color.White
 )
 
-// Apple Dark Color Scheme for Material 3
-private val AppleDarkColorScheme = darkColorScheme(
-    primary = AppleLabelDark,
-    onPrimary = AppleSystemBackgroundDark,
-    secondary = AppleSecondaryLabelDark,
-    onSecondary = AppleSystemBackgroundDark,
-    background = AppleGroupedBackgroundDark,
-    onBackground = AppleLabelDark,
-    surface = AppleSecondaryGroupedBackgroundDark,
-    onSurface = AppleLabelDark,
-    surfaceVariant = AppleSecondaryBackgroundDark,
-    onSurfaceVariant = AppleSecondaryLabelDark,
-    outline = AppleSeparatorDark,
-    error = AppleRedDark,
+// Dark Color Scheme for Material 3
+private val AppDarkColorScheme = darkColorScheme(
+    primary = AppLabelDark,
+    onPrimary = AppSystemBackgroundDark,
+    secondary = AppSecondaryLabelDark,
+    onSecondary = AppSystemBackgroundDark,
+    background = AppGroupedBackgroundDark,
+    onBackground = AppLabelDark,
+    surface = AppSecondaryGroupedBackgroundDark,
+    onSurface = AppLabelDark,
+    surfaceVariant = AppSecondaryBackgroundDark,
+    onSurfaceVariant = AppSecondaryLabelDark,
+    outline = AppSeparatorDark,
+    error = AppRedDark,
     onError = Color.White
 )
 
@@ -52,46 +53,46 @@ fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) AppleDarkColorScheme else AppleLightColorScheme
-    val appleColors = if (darkTheme) {
-        AppleColors(
-            systemBackground = AppleSystemBackgroundDark,
-            secondaryBackground = AppleSecondaryBackgroundDark,
-            tertiaryBackground = AppleTertiaryBackgroundDark,
-            groupedBackground = AppleGroupedBackgroundDark,
-            secondaryGroupedBackground = AppleSecondaryGroupedBackgroundDark,
-            label = AppleLabelDark,
-            secondaryLabel = AppleSecondaryLabelDark,
-            tertiaryLabel = AppleTertiaryLabelDark,
-            quaternaryLabel = AppleQuaternaryLabelDark,
-            separator = AppleSeparatorDark,
-            fill = AppleFillDark,
-            secondaryFill = AppleSecondaryFillDark,
-            tertiaryFill = AppleTertiaryFillDark,
-            accent = AppleBlueDark,
-            destructive = AppleRedDark,
-            success = AppleGreenDark,
+    val colorScheme = if (darkTheme) AppDarkColorScheme else AppLightColorScheme
+    val appColors = if (darkTheme) {
+        AppColors(
+            systemBackground = AppSystemBackgroundDark,
+            secondaryBackground = AppSecondaryBackgroundDark,
+            tertiaryBackground = AppTertiaryBackgroundDark,
+            groupedBackground = AppGroupedBackgroundDark,
+            secondaryGroupedBackground = AppSecondaryGroupedBackgroundDark,
+            label = AppLabelDark,
+            secondaryLabel = AppSecondaryLabelDark,
+            tertiaryLabel = AppTertiaryLabelDark,
+            quaternaryLabel = AppQuaternaryLabelDark,
+            separator = AppSeparatorDark,
+            fill = AppFillDark,
+            secondaryFill = AppSecondaryFillDark,
+            tertiaryFill = AppTertiaryFillDark,
+            accent = AppBlueDark,
+            destructive = AppRedDark,
+            success = AppGreenDark,
             glassHighlight = GlassHighlightDark,
             isDark = true
         )
     } else {
-        AppleColors(
-            systemBackground = AppleSystemBackgroundLight,
-            secondaryBackground = AppleSecondaryBackgroundLight,
-            tertiaryBackground = AppleTertiaryBackgroundLight,
-            groupedBackground = AppleGroupedBackgroundLight,
-            secondaryGroupedBackground = AppleSecondaryGroupedBackgroundLight,
-            label = AppleLabelLight,
-            secondaryLabel = AppleSecondaryLabelLight,
-            tertiaryLabel = AppleTertiaryLabelLight,
-            quaternaryLabel = AppleQuaternaryLabelLight,
-            separator = AppleSeparatorLight,
-            fill = AppleFillLight,
-            secondaryFill = AppleSecondaryFillLight,
-            tertiaryFill = AppleTertiaryFillLight,
-            accent = AppleBlue,
-            destructive = AppleRed,
-            success = AppleGreen,
+        AppColors(
+            systemBackground = AppSystemBackgroundLight,
+            secondaryBackground = AppSecondaryBackgroundLight,
+            tertiaryBackground = AppTertiaryBackgroundLight,
+            groupedBackground = AppGroupedBackgroundLight,
+            secondaryGroupedBackground = AppSecondaryGroupedBackgroundLight,
+            label = AppLabelLight,
+            secondaryLabel = AppSecondaryLabelLight,
+            tertiaryLabel = AppTertiaryLabelLight,
+            quaternaryLabel = AppQuaternaryLabelLight,
+            separator = AppSeparatorLight,
+            fill = AppFillLight,
+            secondaryFill = AppSecondaryFillLight,
+            tertiaryFill = AppTertiaryFillLight,
+            accent = AppBlue,
+            destructive = AppRed,
+            success = AppGreen,
             glassHighlight = GlassHighlightLight,
             isDark = false
         )
@@ -107,8 +108,8 @@ fun MyApplicationTheme(
             val activity = currentContext as? Activity
             if (activity != null) {
                 val window = activity.window
-                val statusBarColor = (if (darkTheme) AppleSystemBackgroundDark else AppleSecondaryBackgroundLight).toArgb()
-                val navBarColor = (if (darkTheme) AppleSystemBackgroundDark else AppleSecondaryBackgroundLight).toArgb()
+                val statusBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
+                val navBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
                 window.statusBarColor = statusBarColor
                 window.navigationBarColor = navBarColor
                 val windowInsetsController = WindowCompat.getInsetsController(window, view)
@@ -118,13 +119,11 @@ fun MyApplicationTheme(
         }
     }
 
-    CompositionLocalProvider(LocalAppleColors provides appleColors) {
+    CompositionLocalProvider(LocalAppColors provides appColors) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = Typography(),
             content = content
         )
     }
 }
-
-

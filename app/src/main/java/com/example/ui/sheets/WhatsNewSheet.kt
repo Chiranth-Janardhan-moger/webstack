@@ -2,7 +2,6 @@ package com.example.ui.sheets
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,13 +38,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.components.AppFeatureTile
+import com.example.ui.theme.LocalAppColors
 
 @Composable
-fun AppleWhatsNewBottomSheetContent(
+fun WhatsNewBottomSheetContent(
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
 
     Column(
         modifier = Modifier
@@ -68,13 +67,13 @@ fun AppleWhatsNewBottomSheetContent(
                     painter = painterResource(id = R.drawable.ic_logo),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    colorFilter = ColorFilter.tint(appleColors.label)
+                    colorFilter = ColorFilter.tint(appColors.label)
                 )
                 Text(
                     text = "WebStack Features",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = appleColors.label,
+                    color = appColors.label,
                     letterSpacing = (-0.4).sp
                 )
             }
@@ -83,7 +82,7 @@ fun AppleWhatsNewBottomSheetContent(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = appleColors.secondaryLabel
+                    tint = appColors.secondaryLabel
                 )
             }
         }
@@ -92,59 +91,59 @@ fun AppleWhatsNewBottomSheetContent(
         Text(
             text = "WebStack is a modern visual bookmark stack designed for fast scanning, offline reliability, and aesthetic clarity.",
             fontSize = 13.sp,
-            color = appleColors.secondaryLabel,
+            color = appColors.secondaryLabel,
             lineHeight = 18.sp
         )
 
         Spacer(modifier = Modifier.height(18.dp))
 
         // Feature items
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Default.GridView,
             title = "3 Distinct Layout Modes",
-            description = "Effortlessly toggle between Large Visual Cards, 2-Card Grid, and high-density Compact List in Settings."
+            description = "Large Cards, 2-Card Grid, and Compact List."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.Speed,
             title = "Offline Snapshot Caching",
-            description = "Screenshots are saved locally on your device. After the first load, previews appear instantly with zero data consumption."
+            description = "Previews saved locally for instant zero-data loading."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.Share,
-            title = "System Share Sheet Integration",
-            description = "Share links directly from Safari, Chrome, Twitter/X, or any app straight into WebStack in 1 tap."
+            title = "System Share Integration",
+            description = "Save links in 1 tap from Chrome, Firefox, or any app."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Default.ContentPaste,
             title = "Instant Clipboard Detection",
-            description = "Opening the add sheet automatically detects copied website links and presents a 1-tap 'Paste' banner."
+            description = "Automatic detection and 1-tap paste for copied URLs."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Default.FilterList,
             title = "Smart Categories & Filter",
-            description = "Organize bookmarks by All, Personal, Design, Tools, Work, and Reading with color-coded count badges."
+            description = "Color-coded tags and badges to organize your bookmarks."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.Search,
             title = "Fast Instant Search",
-            description = "Search through your entire bookmark library in real time by title, website URL, or domain."
+            description = "Real-time search by title, website URL, or domain."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.Layers,
             title = "Offline Data & Backup",
-            description = "100% on-device private SQLite database. Safely export your stack to JSON and restore anytime."
+            description = "Private local SQLite storage with .webstack and .json exports."
         )
 
-        AppleWhatsNewFeatureItem(
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.Refresh,
             title = "Manual Snapshot Refresh",
-            description = "Re-capture any website snapshot whenever page visuals change with the instant refresh action."
+            description = "Re-capture page visuals anytime with 1 tap."
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -153,8 +152,8 @@ fun AppleWhatsNewBottomSheetContent(
             onClick = onDismiss,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = appleColors.label,
-                contentColor = appleColors.systemBackground
+                containerColor = appColors.label,
+                contentColor = appColors.systemBackground
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -168,49 +167,23 @@ fun AppleWhatsNewBottomSheetContent(
 }
 
 @Composable
-fun AppleWhatsNewFeatureItem(
+fun WhatsNewFeatureItem(
     icon: ImageVector,
     title: String,
     description: String
 ) {
-    val appleColors = LocalAppleColors.current
-
-    Row(
+    AppFeatureTile(
+        title = title,
+        description = description,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.Top
+            .padding(vertical = 10.dp)
     ) {
-        Surface(
-            color = appleColors.fill,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(38.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = appleColors.label,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = appleColors.label
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = description,
-                fontSize = 12.sp,
-                color = appleColors.secondaryLabel,
-                lineHeight = 17.sp
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = LocalAppColors.current.label,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }

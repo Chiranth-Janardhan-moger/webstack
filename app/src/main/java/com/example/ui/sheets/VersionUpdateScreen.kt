@@ -29,8 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,15 +54,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.components.AppFeatureTile
+import com.example.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 
 @Composable
-fun AppleVersionUpdateScreen(
+fun VersionUpdateScreen(
     onDismiss: () -> Unit,
     onViewAllFeatures: () -> Unit = {}
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     var targetDigit by remember { mutableStateOf("0") }
 
@@ -86,7 +86,7 @@ fun AppleVersionUpdateScreen(
                 onClick = {}
             )
             .testTag("version_101_screen"),
-        color = if (appleColors.isDark) Color(0xFF000000) else Color(0xFFFFFFFF)
+        color = if (appColors.isDark) Color(0xFF000000) else Color(0xFFFFFFFF)
     ) {
         Box(
             modifier = Modifier
@@ -102,17 +102,17 @@ fun AppleVersionUpdateScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Version Odometer (1.0.0 -> 1.1.0)
+                // Version Odometer (1.1.0 -> 1.1.1)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.padding(bottom = 24.dp)
                 ) {
                     Text(
-                        text = "1.",
+                        text = "1.1.",
                         fontSize = 58.sp,
                         fontWeight = FontWeight.Black,
-                        color = appleColors.label,
+                        color = appColors.label,
                         letterSpacing = (-1.5).sp
                     )
                     AnimatedContent(
@@ -137,25 +137,18 @@ fun AppleVersionUpdateScreen(
                             text = digit,
                             fontSize = 58.sp,
                             fontWeight = FontWeight.Black,
-                            color = appleColors.label,
+                            color = appColors.label,
                             letterSpacing = (-1.5).sp
                         )
                     }
-                    Text(
-                        text = ".0",
-                        fontSize = 58.sp,
-                        fontWeight = FontWeight.Black,
-                        color = appleColors.label,
-                        letterSpacing = (-1.5).sp
-                    )
                 }
 
                 // Compact Frosted What's New Card
                 Surface(
                     shape = RoundedCornerShape(22.dp),
-                    color = appleColors.surface,
-                    border = BorderStroke(0.5.dp, appleColors.separator),
-                    shadowElevation = if (appleColors.isDark) 0.dp else 2.dp,
+                    color = appColors.surface,
+                    border = BorderStroke(0.5.dp, appColors.separator),
+                    shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
@@ -164,149 +157,48 @@ fun AppleVersionUpdateScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Feature 1: 2-Card Grid
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        // Feature 1: UI Enhancements
+                        VersionFeatureTile(
+                            title = "UI Enhancements",
+                            description = "Fluid animations and refined interface"
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = appleColors.fill,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.GridView,
-                                        contentDescription = null,
-                                        tint = appleColors.label,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "2-Card Grid",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appleColors.label,
-                                    letterSpacing = (-0.2).sp
-                                )
-                                Text(
-                                    text = "New 2-column layout mode",
-                                    fontSize = 13.sp,
-                                    color = appleColors.secondaryLabel
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_appearance),
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
 
                         // Feature 2: Backup & Restore
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        VersionFeatureTile(
+                            title = "Backup & Restore",
+                            description = "Support for .webstack and .json formats"
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = appleColors.fill,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_export),
-                                        contentDescription = null,
-                                        tint = appleColors.label,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "Backup & Restore",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appleColors.label,
-                                    letterSpacing = (-0.2).sp
-                                )
-                                Text(
-                                    text = "Direct .webstack and .json formats",
-                                    fontSize = 13.sp,
-                                    color = appleColors.secondaryLabel
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Outlined.Restore,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
 
-                        // Feature 3: Refined UI
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        // Feature 3: Bug Fixes & Stability
+                        VersionFeatureTile(
+                            title = "Bug Fixes",
+                            description = "Performance boosts and file intent fixes"
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = appleColors.fill,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Speed,
-                                        contentDescription = null,
-                                        tint = appleColors.label,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "Refined UI",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appleColors.label,
-                                    letterSpacing = (-0.2).sp
-                                )
-                                Text(
-                                    text = "Made better, cleaner, and smoother",
-                                    fontSize = 13.sp,
-                                    color = appleColors.secondaryLabel
-                                )
-                            }
-                        }
-
-                        // Feature 4: Bug Fixes
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = appleColors.fill,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = appleColors.label,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "Bug Fixes",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appleColors.label,
-                                    letterSpacing = (-0.2).sp
-                                )
-                                Text(
-                                    text = "Performance & stability improvements",
-                                    fontSize = 13.sp,
-                                    color = appleColors.secondaryLabel
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
 
                         HorizontalDivider(
                             thickness = 0.5.dp,
-                            color = appleColors.separator.copy(alpha = 0.5f)
+                            color = appColors.separator.copy(alpha = 0.5f)
                         )
 
                         Row(
@@ -321,44 +213,22 @@ fun AppleVersionUpdateScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            VersionFeatureTile(
+                                title = "WebStack Features",
+                                description = "See all capabilities & tools"
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = appleColors.fill,
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Star,
-                                            contentDescription = null,
-                                            tint = appleColors.label,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                                Column {
-                                    Text(
-                                        text = "WebStack Features",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        color = appleColors.label,
-                                        letterSpacing = (-0.2).sp
-                                    )
-                                    Text(
-                                        text = "See all capabilities & tools",
-                                        fontSize = 13.sp,
-                                        color = appleColors.secondaryLabel
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
 
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
-                                tint = appleColors.tertiaryLabel,
+                                tint = appColors.tertiaryLabel,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -382,9 +252,9 @@ fun AppleVersionUpdateScreen(
                 },
                 interactionSource = pillInteractionSource,
                 shape = CircleShape,
-                color = if (appleColors.isDark) Color.White else Color(0xFF0F0F12),
-                contentColor = if (appleColors.isDark) Color.Black else Color.White,
-                shadowElevation = if (appleColors.isDark) 0.dp else 4.dp,
+                color = if (appColors.isDark) Color.White else Color(0xFF0F0F12),
+                contentColor = if (appColors.isDark) Color.Black else Color.White,
+                shadowElevation = if (appColors.isDark) 0.dp else 4.dp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 28.dp, end = 24.dp)
@@ -403,3 +273,13 @@ fun AppleVersionUpdateScreen(
         }
     }
 }
+
+@Composable
+private fun VersionFeatureTile(
+    title: String,
+    description: String,
+    icon: @Composable () -> Unit
+) {
+    AppFeatureTile(title = title, description = description, icon = icon)
+}
+

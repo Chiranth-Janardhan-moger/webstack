@@ -42,12 +42,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Website
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.formatMiddleTruncatedDomain
 import com.example.ui.util.getCategoryAccentColor
 
 @Composable
-private fun AppleActionTile(
+private fun ActionTile(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
@@ -55,7 +55,7 @@ private fun AppleActionTile(
     isDestructive: Boolean = false,
     testTag: String = ""
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -72,16 +72,16 @@ private fun AppleActionTile(
         interactionSource = interactionSource,
         shape = RoundedCornerShape(16.dp),
         color = if (isDestructive) {
-            appleColors.destructive.copy(alpha = if (appleColors.isDark) 0.16f else 0.08f)
+            appColors.destructive.copy(alpha = if (appColors.isDark) 0.16f else 0.08f)
         } else {
-            if (appleColors.isDark) Color(0x1CFFFFFF) else appleColors.surface
+            if (appColors.isDark) Color(0x1CFFFFFF) else appColors.surface
         },
         border = BorderStroke(
             0.5.dp,
             if (isDestructive) {
-                appleColors.destructive.copy(alpha = if (appleColors.isDark) 0.35f else 0.22f)
+                appColors.destructive.copy(alpha = if (appColors.isDark) 0.35f else 0.22f)
             } else {
-                if (appleColors.isDark) Color(0x22FFFFFF) else appleColors.separator.copy(alpha = 0.6f)
+                if (appColors.isDark) Color(0x22FFFFFF) else appColors.separator.copy(alpha = 0.6f)
             }
         ),
         modifier = modifier
@@ -99,7 +99,7 @@ private fun AppleActionTile(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isDestructive) appleColors.destructive else appleColors.label,
+                tint = if (isDestructive) appColors.destructive else appColors.label,
                 modifier = Modifier.size(19.dp)
             )
             Text(
@@ -107,7 +107,7 @@ private fun AppleActionTile(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = (-0.2).sp,
-                color = if (isDestructive) appleColors.destructive else appleColors.label,
+                color = if (isDestructive) appColors.destructive else appColors.label,
                 maxLines = 1,
                 softWrap = false
             )
@@ -116,7 +116,7 @@ private fun AppleActionTile(
 }
 
 @Composable
-fun AppleItemOptionsBottomSheetContent(
+fun ItemOptionsBottomSheetContent(
     website: Website,
     onOpen: () -> Unit,
     onEdit: () -> Unit,
@@ -125,7 +125,7 @@ fun AppleItemOptionsBottomSheetContent(
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
 
     Column(
         modifier = Modifier
@@ -144,10 +144,10 @@ fun AppleItemOptionsBottomSheetContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
                 val domainInitial = website.domain.trimStart().removePrefix("www.").firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "W"
                 Surface(
-                    color = catAccent.copy(alpha = if (appleColors.isDark) 0.22f else 0.12f),
+                    color = catAccent.copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(0.5.dp, catAccent.copy(alpha = 0.35f)),
                     modifier = Modifier.size(38.dp)
@@ -167,7 +167,7 @@ fun AppleItemOptionsBottomSheetContent(
                         text = website.title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = appleColors.label,
+                        color = appColors.label,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -178,15 +178,15 @@ fun AppleItemOptionsBottomSheetContent(
                         Text(
                             text = formatMiddleTruncatedDomain(website.domain),
                             fontSize = 12.sp,
-                            color = appleColors.secondaryLabel,
+                            color = appColors.secondaryLabel,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
-                        val catAccent = getCategoryAccentColor(website.category, appleColors.isDark)
+                        val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
                         Surface(
-                            color = catAccent.copy(alpha = if (appleColors.isDark) 0.2f else 0.12f),
+                            color = catAccent.copy(alpha = if (appColors.isDark) 0.2f else 0.12f),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
@@ -207,14 +207,14 @@ fun AppleItemOptionsBottomSheetContent(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = appleColors.secondaryLabel
+                    tint = appColors.secondaryLabel
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2x2 Apple Action Grid (Open, Edit, Share, Delete)
+        // 2x2 Action Grid (Open, Edit, Share, Delete)
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -224,14 +224,14 @@ fun AppleItemOptionsBottomSheetContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AppleActionTile(
+                ActionTile(
                     label = "Open",
                     icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     onClick = onOpen,
                     modifier = Modifier.weight(1f),
                     testTag = "action_open_website"
                 )
-                AppleActionTile(
+                ActionTile(
                     label = "Edit",
                     icon = Icons.Outlined.Edit,
                     onClick = onEdit,
@@ -245,14 +245,14 @@ fun AppleItemOptionsBottomSheetContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AppleActionTile(
+                ActionTile(
                     label = "Share",
                     icon = Icons.Outlined.Share,
                     onClick = onShare,
                     modifier = Modifier.weight(1f),
                     testTag = "action_share_website"
                 )
-                AppleActionTile(
+                ActionTile(
                     label = "Delete",
                     icon = Icons.Outlined.Delete,
                     onClick = onDelete,

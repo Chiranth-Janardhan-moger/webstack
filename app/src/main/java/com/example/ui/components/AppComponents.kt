@@ -1,9 +1,12 @@
 package com.example.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -13,6 +16,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -20,11 +24,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +46,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
@@ -55,20 +66,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -77,27 +84,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import com.example.R
 import com.example.data.Website
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.getCategoryAccentColor
 
 @Composable
-fun AppleSheetDragHandle() {
-    val appleColors = LocalAppleColors.current
+fun AppSheetDragHandle() {
+    val appColors = LocalAppColors.current
     Box(
         modifier = Modifier
             .padding(top = 10.dp, bottom = 6.dp)
             .width(36.dp)
             .height(5.dp)
-            .background(appleColors.secondaryLabel.copy(alpha = 0.25f), RoundedCornerShape(3.dp))
+            .background(appColors.secondaryLabel.copy(alpha = 0.25f), RoundedCornerShape(3.dp))
     )
 }
 
 @Composable
-fun AppleFloatingIconButton(
+fun AppFloatingIconButton(
     onClick: () -> Unit,
     painter: Painter,
     contentDescription: String,
@@ -106,7 +117,7 @@ fun AppleFloatingIconButton(
     size: Dp = 42.dp,
     iconSize: Dp = 20.dp
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -122,8 +133,8 @@ fun AppleFloatingIconButton(
         onClick = onClick,
         interactionSource = interactionSource,
         shape = CircleShape,
-        color = if (appleColors.isDark) Color(0x24FFFFFF) else Color(0x0D000000),
-        border = BorderStroke(0.5.dp, if (appleColors.isDark) Color(0x26FFFFFF) else Color(0x12000000)),
+        color = if (appColors.isDark) Color(0x24FFFFFF) else Color(0x0D000000),
+        border = BorderStroke(0.5.dp, if (appColors.isDark) Color(0x26FFFFFF) else Color(0x12000000)),
         shadowElevation = 0.dp,
         modifier = modifier
             .size(size)
@@ -134,7 +145,7 @@ fun AppleFloatingIconButton(
             Icon(
                 painter = painter,
                 contentDescription = contentDescription,
-                tint = appleColors.label,
+                tint = appColors.label,
                 modifier = Modifier.size(iconSize)
             )
         }
@@ -142,7 +153,7 @@ fun AppleFloatingIconButton(
 }
 
 @Composable
-fun AppleFloatingIconButton(
+fun AppFloatingIconButton(
     onClick: () -> Unit,
     icon: ImageVector,
     contentDescription: String,
@@ -151,7 +162,7 @@ fun AppleFloatingIconButton(
     size: Dp = 42.dp,
     iconSize: Dp = 20.dp
 ) {
-    AppleFloatingIconButton(
+    AppFloatingIconButton(
         onClick = onClick,
         painter = rememberVectorPainter(image = icon),
         contentDescription = contentDescription,
@@ -163,7 +174,7 @@ fun AppleFloatingIconButton(
 }
 
 @Composable
-fun AppleNavigationHeader(
+fun AppNavigationHeader(
     selectedCategory: String,
     searchQuery: String,
     isSearchExpanded: Boolean,
@@ -172,7 +183,7 @@ fun AppleNavigationHeader(
     onClearQuery: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -235,8 +246,8 @@ fun AppleNavigationHeader(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = appleColors.fill,
-                        border = BorderStroke(0.5.dp, appleColors.separator.copy(alpha = 0.35f)),
+                        color = appColors.fill,
+                        border = BorderStroke(0.5.dp, appColors.separator.copy(alpha = 0.35f)),
                         modifier = Modifier
                             .weight(1f)
                             .height(42.dp)
@@ -251,7 +262,7 @@ fun AppleNavigationHeader(
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_search),
                                 contentDescription = "Search",
-                                tint = appleColors.secondaryLabel,
+                                tint = appColors.secondaryLabel,
                                 modifier = Modifier.size(18.dp)
                             )
 
@@ -262,7 +273,7 @@ fun AppleNavigationHeader(
                                 if (searchQuery.isEmpty()) {
                                     Text(
                                         text = "Search stack, URLs, tags...",
-                                        color = appleColors.tertiaryLabel,
+                                        color = appColors.tertiaryLabel,
                                         fontSize = 14.sp,
                                         maxLines = 1
                                     )
@@ -272,11 +283,11 @@ fun AppleNavigationHeader(
                                     onValueChange = onQueryChange,
                                     singleLine = true,
                                     textStyle = androidx.compose.ui.text.TextStyle(
-                                        color = appleColors.label,
+                                        color = appColors.label,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium
                                     ),
-                                    cursorBrush = SolidColor(appleColors.accent),
+                                    cursorBrush = SolidColor(appColors.accent),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .focusRequester(focusRequester)
@@ -293,14 +304,14 @@ fun AppleNavigationHeader(
                                 ) {
                                     Surface(
                                         shape = CircleShape,
-                                        color = appleColors.label.copy(alpha = 0.15f),
+                                        color = appColors.label.copy(alpha = 0.15f),
                                         modifier = Modifier.size(18.dp)
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "Clear search",
-                                                tint = appleColors.label,
+                                                tint = appColors.label,
                                                 modifier = Modifier.size(11.dp)
                                             )
                                         }
@@ -310,7 +321,7 @@ fun AppleNavigationHeader(
                         }
                     }
 
-                    AppleFloatingIconButton(
+                    AppFloatingIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onClearQuery()
@@ -328,7 +339,7 @@ fun AppleNavigationHeader(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AppleFloatingIconButton(
+                    AppFloatingIconButton(
                         onClick = onOpenSettings,
                         painter = painterResource(id = R.drawable.ic_nav_more),
                         contentDescription = "Settings and Preferences",
@@ -343,7 +354,7 @@ fun AppleNavigationHeader(
                             text = "WebStack",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = appleColors.label,
+                            color = appColors.label,
                             letterSpacing = (-0.4).sp,
                             maxLines = 1
                         )
@@ -351,13 +362,13 @@ fun AppleNavigationHeader(
                             text = if (selectedCategory == "All") "VISUAL BOOKMARKS" else selectedCategory.uppercase(),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (selectedCategory == "All") appleColors.tertiaryLabel else appleColors.accent,
+                            color = if (selectedCategory == "All") appColors.tertiaryLabel else appColors.accent,
                             letterSpacing = 1.6.sp,
                             maxLines = 1
                         )
                     }
 
-                    AppleFloatingIconButton(
+                    AppFloatingIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSearchExpandedChange(true)
@@ -373,7 +384,95 @@ fun AppleNavigationHeader(
 }
 
 @Composable
-fun AppleCategoryCapsuleBar(
+fun AppSubSheetHeader(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (onBack != null) {
+            val backInteractionSource = remember { MutableInteractionSource() }
+            val isBackPressed by backInteractionSource.collectIsPressedAsState()
+            val backScale by animateFloatAsState(
+                targetValue = if (isBackPressed) 0.92f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "subsheet_back_bouncy"
+            )
+
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onBack()
+                },
+                interactionSource = backInteractionSource,
+                modifier = Modifier
+                    .size(44.dp)
+                    .graphicsLayer {
+                        scaleX = backScale
+                        scaleY = backScale
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                    contentDescription = "Back",
+                    tint = appColors.label,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.size(44.dp))
+        }
+
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+            color = appColors.label
+        )
+
+        val closeInteractionSource = remember { MutableInteractionSource() }
+        val isClosePressed by closeInteractionSource.collectIsPressedAsState()
+        val closeScale by animateFloatAsState(
+            targetValue = if (isClosePressed) 0.90f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "subsheet_close_bouncy"
+        )
+
+        IconButton(
+            onClick = onDismiss,
+            interactionSource = closeInteractionSource,
+            modifier = Modifier
+                .size(44.dp)
+                .graphicsLayer {
+                    scaleX = closeScale
+                    scaleY = closeScale
+                }
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = appColors.secondaryLabel
+            )
+        }
+    }
+}
+
+@Composable
+fun AppCategoryCapsuleBar(
     allWebsites: List<Website>,
     categories: List<String>,
     selectedCategory: String,
@@ -381,7 +480,7 @@ fun AppleCategoryCapsuleBar(
     onTagLongPress: (String) -> Unit,
     onAddNewTag: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val categoryCounts = remember(allWebsites) {
         allWebsites.groupingBy { it.category.lowercase() }.eachCount()
     }
@@ -397,7 +496,7 @@ fun AppleCategoryCapsuleBar(
         // "All" Capsule
         val isAllSelected = selectedCategory.equals("All", ignoreCase = true)
         item {
-            AppleCapsule(
+            AppCapsule(
                 text = "All",
                 count = allWebsites.size,
                 isSelected = isAllSelected,
@@ -410,9 +509,9 @@ fun AppleCategoryCapsuleBar(
         items(categories) { cat ->
             val isSelected = selectedCategory.equals(cat, ignoreCase = true)
             val count = categoryCounts[cat.lowercase()] ?: 0
-            val accentColor = getCategoryAccentColor(cat, appleColors.isDark)
+            val accentColor = getCategoryAccentColor(cat, appColors.isDark)
 
-            AppleCapsule(
+            AppCapsule(
                 text = cat,
                 count = count,
                 isSelected = isSelected,
@@ -422,13 +521,13 @@ fun AppleCategoryCapsuleBar(
             )
         }
 
-        // "+ Tag" Capsule with Apple Pill Design
+        // "+ Tag" Capsule
         item {
             Surface(
                 onClick = onAddNewTag,
-                color = appleColors.fill,
+                color = appColors.fill,
                 shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(0.75.dp, appleColors.separator),
+                border = BorderStroke(0.75.dp, appColors.separator),
                 modifier = Modifier.height(34.dp)
             ) {
                 Row(
@@ -439,12 +538,12 @@ fun AppleCategoryCapsuleBar(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Custom Tag",
-                        tint = appleColors.label,
+                        tint = appColors.label,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "Tag",
-                        color = appleColors.label,
+                        color = appColors.label,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -456,7 +555,7 @@ fun AppleCategoryCapsuleBar(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppleCapsule(
+fun AppCapsule(
     text: String,
     count: Int,
     isSelected: Boolean,
@@ -464,7 +563,7 @@ fun AppleCapsule(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -474,13 +573,13 @@ fun AppleCapsule(
     )
 
     Surface(
-        color = if (isSelected) appleColors.label else appleColors.surface,
+        color = if (isSelected) appColors.label else appColors.surface,
         border = BorderStroke(
             0.5.dp,
-            if (isSelected) Color.Transparent else appleColors.separator
+            if (isSelected) Color.Transparent else appColors.separator
         ),
         shape = RoundedCornerShape(18.dp),
-        shadowElevation = if (isSelected && !appleColors.isDark) 2.dp else 0.dp,
+        shadowElevation = if (isSelected && !appColors.isDark) 2.dp else 0.dp,
         modifier = Modifier
             .height(34.dp)
             .graphicsLayer {
@@ -510,12 +609,12 @@ fun AppleCapsule(
             }
             Text(
                 text = text,
-                color = if (isSelected) appleColors.systemBackground else appleColors.label,
+                color = if (isSelected) appColors.systemBackground else appColors.label,
                 fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
             if (count > 0) {
-                AppleCapsuleCountBadge(
+                CapsuleCountBadge(
                     count = count,
                     isSelected = isSelected
                 )
@@ -525,16 +624,16 @@ fun AppleCapsule(
 }
 
 @Composable
-private fun AppleCapsuleCountBadge(
+private fun CapsuleCountBadge(
     count: Int,
     isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val density = LocalDensity.current
     val text = "$count"
-    val textColor = if (isSelected) appleColors.systemBackground else appleColors.secondaryLabel
-    val bgColor = if (isSelected) appleColors.systemBackground.copy(alpha = 0.25f) else appleColors.fill
+    val textColor = if (isSelected) appColors.systemBackground else appColors.secondaryLabel
+    val bgColor = if (isSelected) appColors.systemBackground.copy(alpha = 0.25f) else appColors.fill
 
     val textPaint = remember(textColor, density) {
         android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -577,14 +676,14 @@ private fun AppleCapsuleCountBadge(
 }
 
 @Composable
-fun AppleEmptyState(
+fun AppEmptyState(
     searchQuery: String,
     selectedCategory: String,
     onClearSearch: () -> Unit,
     onShowAll: () -> Unit,
     onAddLink: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
 
     Box(
         modifier = Modifier
@@ -598,7 +697,7 @@ fun AppleEmptyState(
         ) {
             Surface(
                 shape = CircleShape,
-                color = appleColors.fill,
+                color = appColors.fill,
                 modifier = Modifier.size(72.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -609,7 +708,7 @@ fun AppleEmptyState(
                             else -> Icons.Default.FilterList
                         },
                         contentDescription = null,
-                        tint = appleColors.secondaryLabel,
+                        tint = appColors.secondaryLabel,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -625,7 +724,7 @@ fun AppleEmptyState(
                 },
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = appleColors.label,
+                color = appColors.label,
                 letterSpacing = (-0.3).sp
             )
 
@@ -640,7 +739,7 @@ fun AppleEmptyState(
                 Text(
                     text = descriptionText,
                     fontSize = 13.sp,
-                    color = appleColors.secondaryLabel,
+                    color = appColors.secondaryLabel,
                     textAlign = TextAlign.Center,
                     lineHeight = 18.sp
                 )
@@ -654,8 +753,8 @@ fun AppleEmptyState(
                         onClick = onClearSearch,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = appleColors.label,
-                            contentColor = appleColors.systemBackground
+                            containerColor = appColors.label,
+                            contentColor = appColors.systemBackground
                         )
                     ) {
                         Text("Clear Search", fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -666,8 +765,8 @@ fun AppleEmptyState(
                         onClick = onShowAll,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = appleColors.label,
-                            contentColor = appleColors.systemBackground
+                            containerColor = appColors.label,
+                            contentColor = appColors.systemBackground
                         )
                     ) {
                         Text("Show All Links", fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -678,14 +777,135 @@ fun AppleEmptyState(
                         onClick = onAddLink,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = appleColors.label,
-                            contentColor = appleColors.systemBackground
+                            containerColor = appColors.label,
+                            contentColor = appColors.systemBackground
                         )
                     ) {
                         Text("Add Your First Link", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Ultra-smooth toggle switch with clean spring physics
+ * and hardware-accelerated translation.
+ */
+@Composable
+fun AppSwitch(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) appColors.label else (if (appColors.isDark) Color(0xFF39393D) else Color(0xFFE5E5EA)),
+        animationSpec = tween(durationMillis = 200),
+        label = "switch_track_color"
+    )
+
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 22.dp else 2.dp,
+        animationSpec = spring(
+            dampingRatio = 0.88f,
+            stiffness = 500f
+        ),
+        label = "switch_thumb_offset"
+    )
+
+    Box(
+        modifier = modifier
+            .size(width = 51.dp, height = 31.dp)
+            .clip(CircleShape)
+            .background(trackColor)
+            .then(
+                if (onCheckedChange != null && enabled) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onCheckedChange(!checked)
+                    }
+                } else Modifier
+            ),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(x = thumbOffset.roundToPx(), y = 0) }
+                .size(27.dp)
+                .shadow(elevation = 2.dp, shape = CircleShape)
+                .background(appColors.systemBackground, CircleShape)
+        )
+    }
+}
+
+/**
+ * Shared bottom sheet wrapper with consistent container color, scrim, shape, and drag handle.
+ * Eliminates the 4-property boilerplate repeated across every ModalBottomSheet in MainActivity.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppBottomSheet(
+    onDismissRequest: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val appColors = LocalAppColors.current
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = appColors.secondaryGroupedBackground,
+        scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        dragHandle = { AppSheetDragHandle() },
+        content = content
+    )
+}
+
+/**
+ * Shared icon-box + title + subtitle tile used in both WhatsNew and VersionUpdate screens.
+ * Icon is a slot so callers can pass any composable (Icon, Image, painter).
+ */
+@Composable
+fun AppFeatureTile(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = appColors.fill,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                icon()
+            }
+        }
+        Column {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = appColors.label,
+                letterSpacing = (-0.2).sp
+            )
+            Text(
+                text = description,
+                fontSize = 13.sp,
+                color = appColors.secondaryLabel
+            )
         }
     }
 }

@@ -30,20 +30,20 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.getCategoryAccentColor
 
 @Composable
-fun AppleTagOptionsBottomSheetContent(
+fun TagOptionsBottomSheetContent(
     tagName: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onFilterByTag: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    val catAccent = getCategoryAccentColor(tagName, appleColors.isDark)
+    val catAccent = getCategoryAccentColor(tagName, appColors.isDark)
 
     Column(
         modifier = Modifier
@@ -61,7 +61,7 @@ fun AppleTagOptionsBottomSheetContent(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    color = catAccent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                    color = catAccent.copy(alpha = if (appColors.isDark) 0.25f else 0.15f),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.size(38.dp)
                 ) {
@@ -79,12 +79,12 @@ fun AppleTagOptionsBottomSheetContent(
                         text = tagName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = appleColors.label
+                        color = appColors.label
                     )
                     Text(
                         text = "Tag Options",
                         fontSize = 12.sp,
-                        color = appleColors.secondaryLabel
+                        color = appColors.secondaryLabel
                     )
                 }
             }
@@ -93,7 +93,7 @@ fun AppleTagOptionsBottomSheetContent(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = appleColors.secondaryLabel
+                    tint = appColors.secondaryLabel
                 )
             }
         }
@@ -106,9 +106,9 @@ fun AppleTagOptionsBottomSheetContent(
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onFilterByTag()
             },
-            color = appleColors.surface,
+            color = appColors.surface,
             shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(0.75.dp, appleColors.separator),
+            border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
@@ -123,14 +123,14 @@ fun AppleTagOptionsBottomSheetContent(
                 Icon(
                     imageVector = Icons.Default.FilterList,
                     contentDescription = null,
-                    tint = appleColors.accent,
+                    tint = appColors.accent,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "Filter links by \"$tagName\"",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = appleColors.label
+                    color = appColors.label
                 )
             }
         }
@@ -141,9 +141,9 @@ fun AppleTagOptionsBottomSheetContent(
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onEdit()
             },
-            color = appleColors.surface,
+            color = appColors.surface,
             shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(0.75.dp, appleColors.separator),
+            border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
@@ -158,14 +158,14 @@ fun AppleTagOptionsBottomSheetContent(
                 Icon(
                     imageVector = Icons.Outlined.Edit,
                     contentDescription = null,
-                    tint = appleColors.label,
+                    tint = appColors.label,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "Edit Tag",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = appleColors.label
+                    color = appColors.label
                 )
             }
         }
@@ -176,9 +176,9 @@ fun AppleTagOptionsBottomSheetContent(
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onDelete()
             },
-            color = appleColors.destructive.copy(alpha = if (appleColors.isDark) 0.15f else 0.08f),
+            color = appColors.destructive.copy(alpha = if (appColors.isDark) 0.15f else 0.08f),
             shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(0.75.dp, appleColors.destructive.copy(alpha = 0.3f)),
+            border = BorderStroke(0.75.dp, appColors.destructive.copy(alpha = 0.3f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
@@ -193,14 +193,14 @@ fun AppleTagOptionsBottomSheetContent(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = null,
-                    tint = appleColors.destructive,
+                    tint = appColors.destructive,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "Delete Tag",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = appleColors.destructive
+                    color = appColors.destructive
                 )
             }
         }

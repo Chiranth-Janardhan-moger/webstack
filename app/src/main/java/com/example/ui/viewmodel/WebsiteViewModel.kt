@@ -9,14 +9,18 @@ import com.example.data.WebsiteRepository
 import com.example.ui.util.DEFAULT_CATEGORIES
 import android.content.Context
 import com.example.data.BackupManager
+import com.example.ui.util.normalizeUrlForComparison
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -67,6 +71,49 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit().putString("saved_categories_csv", list.joinToString(",")).apply()
     }
 
+    private fun loadCachedWebsites(): List<Website>? {
+        val json = prefs.getString("cached_websites_json", null) ?: return null
+        return try {
+            val array = JSONArray(json)
+            val list = ArrayList<Website>(array.length())
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                list.add(
+                    Website(
+                        id = obj.optLong("id", 0L),
+                        url = obj.optString("url", ""),
+                        title = obj.optString("title", ""),
+                        domain = obj.optString("domain", ""),
+                        faviconUrl = obj.optString("faviconUrl", ""),
+                        category = obj.optString("category", "General"),
+                        createdAt = obj.optLong("createdAt", 0L)
+                    )
+                )
+            }
+            list
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun saveWebsitesToPrefs(websites: List<Website>) {
+        try {
+            val array = JSONArray()
+            for (site in websites) {
+                val obj = JSONObject()
+                obj.put("id", site.id)
+                obj.put("url", site.url)
+                obj.put("title", site.title)
+                obj.put("domain", site.domain)
+                obj.put("faviconUrl", site.faviconUrl)
+                obj.put("category", site.category)
+                obj.put("createdAt", site.createdAt)
+                array.put(obj)
+            }
+            prefs.edit().putString("cached_websites_json", array.toString()).apply()
+        } catch (_: Exception) {}
+    }
+
     fun addCategory(name: String): Boolean {
         val trimmed = name.trim()
         if (trimmed.isBlank() || trimmed.equals("All", ignoreCase = true)) return false
@@ -111,11 +158,12 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         return false
     }
 
-    val websitesList: StateFlow<List<Website>> = repository.allWebsites
+    val websitesList: StateFlow<List<Website>?> = repository.allWebsites
+        .onEach { saveWebsitesToPrefs(it) }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            started = SharingStarted.Eagerly,
+            initialValue = loadCachedWebsites()
         )
 
     private val _isSaving = MutableStateFlow(false)
@@ -124,16 +172,32 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _saveError = MutableStateFlow<String?>(null)
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
+    fun findDuplicateUrl(url: String, excludeId: Long? = null): Website? {
+        val target = normalizeUrlForComparison(url)
+        if (target.isBlank()) return null
+        return websitesList.value?.firstOrNull {
+            it.id != excludeId && normalizeUrlForComparison(it.url) == target
+        }
+    }
+
     fun saveWebsite(url: String, category: String? = null, onSuccess: () -> Unit) {
-        if (url.trim().isBlank()) {
+        val trimmed = url.trim()
+        if (trimmed.isBlank()) {
             _saveError.value = "URL cannot be empty"
+            return
+        }
+
+        val duplicate = findDuplicateUrl(trimmed)
+        if (duplicate != null) {
+            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
+            _saveError.value = "Link already in your stack: \"$titleDisplay\""
             return
         }
 
         viewModelScope.launch {
             _isSaving.value = true
             _saveError.value = null
-            val result = repository.fetchAndSave(url, category)
+            val result = repository.fetchAndSave(trimmed, category)
             _isSaving.value = false
             if (result.isSuccess) {
                 onSuccess()
@@ -150,9 +214,16 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         _cachedScreenshotIds.value = _cachedScreenshotIds.value - id
     }
 
-    fun updateWebsite(website: Website) {
+    fun updateWebsite(website: Website, onResult: ((Boolean, String?) -> Unit)? = null) {
+        val duplicate = findDuplicateUrl(website.url, excludeId = website.id)
+        if (duplicate != null) {
+            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
+            onResult?.invoke(false, "Link already in your stack: \"$titleDisplay\"")
+            return
+        }
         viewModelScope.launch {
             repository.update(website)
+            onResult?.invoke(true, null)
         }
     }
 
@@ -208,10 +279,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
             // 2. Merge websites (non-destructive)
             val existingWebsites = repository.getAllWebsitesList()
-            val existingUrls = existingWebsites.map { it.url.trim().lowercase() }.toSet()
+            val existingUrls = existingWebsites.map { normalizeUrlForComparison(it.url) }.toSet()
 
             val toInsert = backupData.websites.filter {
-                !existingUrls.contains(it.url.trim().lowercase())
+                !existingUrls.contains(normalizeUrlForComparison(it.url))
             }
 
             if (toInsert.isNotEmpty()) {

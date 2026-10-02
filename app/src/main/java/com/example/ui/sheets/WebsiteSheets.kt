@@ -48,24 +48,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Website
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.DEFAULT_CATEGORIES
 import com.example.ui.util.extractDomain
 import com.example.ui.util.getClipboardUrl
 import kotlinx.coroutines.delay
 
 @Composable
-fun AppleAddWebsiteSheetContent(
+fun AddWebsiteSheetContent(
     initialUrl: String = "",
     categories: List<String> = DEFAULT_CATEGORIES,
     isSaving: Boolean,
     saveError: String?,
     onAddNewTag: () -> Unit = {},
+    onClearError: () -> Unit = {},
     onSave: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
     var inputUrl by remember(initialUrl) { mutableStateOf(initialUrl) }
     var selectedCategory by remember { mutableStateOf(categories.firstOrNull() ?: "Personal") }
@@ -100,7 +101,7 @@ fun AppleAddWebsiteSheetContent(
                 text = "Save Website Link",
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
-                color = appleColors.label,
+                color = appColors.label,
                 letterSpacing = (-0.3).sp
             )
 
@@ -111,7 +112,7 @@ fun AppleAddWebsiteSheetContent(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Cancel and Close",
-                    tint = appleColors.secondaryLabel,
+                    tint = appColors.secondaryLabel,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -125,10 +126,13 @@ fun AppleAddWebsiteSheetContent(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     inputUrl = activeClip
+                    if (saveError != null) {
+                        onClearError()
+                    }
                 },
-                color = appleColors.fill,
+                color = appColors.fill,
                 shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(0.75.dp, appleColors.separator),
+                border = BorderStroke(0.75.dp, appColors.separator),
                 modifier = Modifier.height(34.dp)
             ) {
                 Row(
@@ -139,7 +143,7 @@ fun AppleAddWebsiteSheetContent(
                     Icon(
                         imageVector = Icons.Default.ContentPaste,
                         contentDescription = "Paste from Clipboard",
-                        tint = appleColors.accent,
+                        tint = appColors.accent,
                         modifier = Modifier.size(14.dp)
                     )
                     val displayUrl = if (activeClip.length > 28) activeClip.take(26) + "..." else activeClip
@@ -147,7 +151,7 @@ fun AppleAddWebsiteSheetContent(
                         text = "Paste: $displayUrl",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = appleColors.label
+                        color = appColors.label
                     )
                 }
             }
@@ -158,11 +162,16 @@ fun AppleAddWebsiteSheetContent(
         // TextInput
         OutlinedTextField(
             value = inputUrl,
-            onValueChange = { inputUrl = it },
+            onValueChange = {
+                inputUrl = it
+                if (saveError != null) {
+                    onClearError()
+                }
+            },
             placeholder = {
                 Text(
                     text = "e.g., linear.app or https://github.com",
-                    color = appleColors.tertiaryLabel,
+                    color = appColors.tertiaryLabel,
                     fontSize = 14.sp
                 )
             },
@@ -171,13 +180,13 @@ fun AppleAddWebsiteSheetContent(
                 .fillMaxWidth()
                 .testTag("url_text_field"),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = appleColors.surface,
-                unfocusedContainerColor = appleColors.surface,
-                focusedBorderColor = appleColors.accent,
-                unfocusedBorderColor = appleColors.separator,
-                cursorColor = appleColors.accent,
-                focusedTextColor = appleColors.label,
-                unfocusedTextColor = appleColors.label
+                focusedContainerColor = appColors.surface,
+                unfocusedContainerColor = appColors.surface,
+                focusedBorderColor = appColors.accent,
+                unfocusedBorderColor = appColors.separator,
+                cursorColor = appColors.accent,
+                focusedTextColor = appColors.label,
+                unfocusedTextColor = appColors.label
             ),
             shape = RoundedCornerShape(14.dp),
             keyboardOptions = KeyboardOptions(
@@ -200,60 +209,16 @@ fun AppleAddWebsiteSheetContent(
             text = "Category Tag",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = appleColors.secondaryLabel,
+            color = appColors.secondaryLabel,
             letterSpacing = 0.4.sp
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items(categories) { cat ->
-                val isSelected = selectedCategory == cat
-                Surface(
-                    onClick = { selectedCategory = cat },
-                    color = if (isSelected) appleColors.label else appleColors.surface,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(0.75.dp, if (isSelected) Color.Transparent else appleColors.separator)
-                ) {
-                    Text(
-                        text = cat,
-                        color = if (isSelected) appleColors.systemBackground else appleColors.label,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            item {
-                Surface(
-                    onClick = onAddNewTag,
-                    color = appleColors.fill,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(0.5.dp, appleColors.separator)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Tag",
-                            tint = appleColors.label,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "New Tag",
-                            color = appleColors.label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
+        CategorySelectionRow(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onSelectCategory = { selectedCategory = it },
+            onAddNewTag = onAddNewTag
+        )
 
         // Show fetching / error state
         if (isSaving) {
@@ -265,11 +230,11 @@ fun AppleAddWebsiteSheetContent(
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp,
-                    color = appleColors.accent
+                    color = appColors.accent
                 )
                 Text(
                     text = "Resolving URL & capturing visuals...",
-                    color = appleColors.secondaryLabel,
+                    color = appColors.secondaryLabel,
                     fontSize = 12.sp
                 )
             }
@@ -279,7 +244,7 @@ fun AppleAddWebsiteSheetContent(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = saveError,
-                color = appleColors.destructive,
+                color = appColors.destructive,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -293,10 +258,10 @@ fun AppleAddWebsiteSheetContent(
             enabled = inputUrl.isNotBlank() && !isSaving,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = appleColors.label,
-                contentColor = appleColors.systemBackground,
-                disabledContainerColor = appleColors.fill,
-                disabledContentColor = appleColors.tertiaryLabel
+                containerColor = appColors.label,
+                contentColor = appColors.systemBackground,
+                disabledContainerColor = appColors.fill,
+                disabledContentColor = appColors.tertiaryLabel
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -314,14 +279,14 @@ fun AppleAddWebsiteSheetContent(
 }
 
 @Composable
-fun AppleEditWebsiteSheetContent(
+fun EditWebsiteSheetContent(
     website: Website,
     categories: List<String>,
     onAddNewTag: () -> Unit,
     onSave: (Website) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     var title by remember { mutableStateOf(website.title) }
     var url by remember { mutableStateOf(website.url) }
     var selectedCategory by remember { mutableStateOf(website.category) }
@@ -344,14 +309,14 @@ fun AppleEditWebsiteSheetContent(
                 Icon(
                     imageVector = Icons.Outlined.Edit,
                     contentDescription = null,
-                    tint = appleColors.label,
+                    tint = appColors.label,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "Edit Website Link",
                     fontWeight = FontWeight.Bold,
                     fontSize = 19.sp,
-                    color = appleColors.label,
+                    color = appColors.label,
                     letterSpacing = (-0.3).sp
                 )
             }
@@ -360,7 +325,7 @@ fun AppleEditWebsiteSheetContent(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = appleColors.secondaryLabel,
+                    tint = appColors.secondaryLabel,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -373,24 +338,24 @@ fun AppleEditWebsiteSheetContent(
             text = "Title",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = appleColors.secondaryLabel,
+            color = appColors.secondaryLabel,
             letterSpacing = 0.4.sp
         )
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
-            placeholder = { Text("Website Title", color = appleColors.tertiaryLabel, fontSize = 14.sp) },
+            placeholder = { Text("Website Title", color = appColors.tertiaryLabel, fontSize = 14.sp) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = appleColors.surface,
-                unfocusedContainerColor = appleColors.surface,
-                focusedBorderColor = appleColors.accent,
-                unfocusedBorderColor = appleColors.separator,
-                cursorColor = appleColors.accent,
-                focusedTextColor = appleColors.label,
-                unfocusedTextColor = appleColors.label
+                focusedContainerColor = appColors.surface,
+                unfocusedContainerColor = appColors.surface,
+                focusedBorderColor = appColors.accent,
+                unfocusedBorderColor = appColors.separator,
+                cursorColor = appColors.accent,
+                focusedTextColor = appColors.label,
+                unfocusedTextColor = appColors.label
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -402,24 +367,24 @@ fun AppleEditWebsiteSheetContent(
             text = "URL",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = appleColors.secondaryLabel,
+            color = appColors.secondaryLabel,
             letterSpacing = 0.4.sp
         )
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
-            placeholder = { Text("https://example.com", color = appleColors.tertiaryLabel, fontSize = 14.sp) },
+            placeholder = { Text("https://example.com", color = appColors.tertiaryLabel, fontSize = 14.sp) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = appleColors.surface,
-                unfocusedContainerColor = appleColors.surface,
-                focusedBorderColor = appleColors.accent,
-                unfocusedBorderColor = appleColors.separator,
-                cursorColor = appleColors.accent,
-                focusedTextColor = appleColors.label,
-                unfocusedTextColor = appleColors.label
+                focusedContainerColor = appColors.surface,
+                unfocusedContainerColor = appColors.surface,
+                focusedBorderColor = appColors.accent,
+                unfocusedBorderColor = appColors.separator,
+                cursorColor = appColors.accent,
+                focusedTextColor = appColors.label,
+                unfocusedTextColor = appColors.label
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -431,60 +396,16 @@ fun AppleEditWebsiteSheetContent(
             text = "Category Tag",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = appleColors.secondaryLabel,
+            color = appColors.secondaryLabel,
             letterSpacing = 0.4.sp
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items(categories) { cat ->
-                val isSelected = selectedCategory.equals(cat, ignoreCase = true)
-                Surface(
-                    onClick = { selectedCategory = cat },
-                    color = if (isSelected) appleColors.label else appleColors.surface,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(0.75.dp, if (isSelected) Color.Transparent else appleColors.separator)
-                ) {
-                    Text(
-                        text = cat,
-                        color = if (isSelected) appleColors.systemBackground else appleColors.label,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            item {
-                Surface(
-                    onClick = onAddNewTag,
-                    color = appleColors.fill,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(0.5.dp, appleColors.separator)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Tag",
-                            tint = appleColors.label,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "New Tag",
-                            color = appleColors.label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
+        CategorySelectionRow(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onSelectCategory = { selectedCategory = it },
+            onAddNewTag = onAddNewTag
+        )
 
         Spacer(modifier = Modifier.height(22.dp))
 
@@ -508,10 +429,10 @@ fun AppleEditWebsiteSheetContent(
             enabled = title.isNotBlank() && url.isNotBlank(),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = appleColors.label,
-                contentColor = appleColors.systemBackground,
-                disabledContainerColor = appleColors.fill,
-                disabledContentColor = appleColors.tertiaryLabel
+                containerColor = appColors.label,
+                contentColor = appColors.systemBackground,
+                disabledContainerColor = appColors.fill,
+                disabledContentColor = appColors.tertiaryLabel
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -526,3 +447,64 @@ fun AppleEditWebsiteSheetContent(
         }
     }
 }
+
+@Composable
+private fun CategorySelectionRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onSelectCategory: (String) -> Unit,
+    onAddNewTag: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(categories) { cat ->
+            val isSelected = selectedCategory.equals(cat, ignoreCase = true)
+            Surface(
+                onClick = { onSelectCategory(cat) },
+                color = if (isSelected) appColors.label else appColors.surface,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(0.75.dp, if (isSelected) Color.Transparent else appColors.separator)
+            ) {
+                Text(
+                    text = cat,
+                    color = if (isSelected) appColors.systemBackground else appColors.label,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+
+        item {
+            Surface(
+                onClick = onAddNewTag,
+                color = appColors.fill,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(0.5.dp, appColors.separator)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Tag",
+                        tint = appColors.label,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = "New Tag",
+                        color = appColors.label,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+

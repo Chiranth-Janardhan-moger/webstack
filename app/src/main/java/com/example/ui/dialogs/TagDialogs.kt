@@ -41,63 +41,72 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.LocalAppleColors
+import com.example.ui.theme.LocalAppColors
 
 @Composable
-fun AppleAddTagDialog(
-    onAdd: (String) -> Unit,
+private fun TagBaseDialog(
+    title: String,
+    icon: ImageVector,
+    iconTint: Color,
+    iconBg: Color,
+    initialValue: String = "",
+    placeholder: String,
+    confirmText: String,
+    suggestedTags: List<String> = emptyList(),
+    canConfirm: (String) -> Boolean = { it.isNotBlank() },
+    onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    var tagName by remember { mutableStateOf("") }
-    val suggestedTags = listOf("Inspiration", "Finance", "Social", "AI Tools", "Dev", "Articles", "Design", "Research")
+    var tagName by remember { mutableStateOf(initialValue) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = appleColors.secondaryGroupedBackground,
+        containerColor = appColors.secondaryGroupedBackground,
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.border(BorderStroke(0.75.dp, appleColors.separator), RoundedCornerShape(24.dp)),
+        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(24.dp)),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    color = appleColors.accent.copy(alpha = if (appleColors.isDark) 0.25f else 0.15f),
+                    color = iconBg,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Label,
+                            imageVector = icon,
                             contentDescription = null,
-                            tint = appleColors.accent,
+                            tint = iconTint,
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
                 Text(
-                    text = "New Tag",
+                    text = title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = appleColors.label
+                    color = appColors.label
                 )
             }
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Surface(
-                    color = appleColors.fill,
+                    color = appColors.fill,
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(0.75.dp, appleColors.separator.copy(alpha = 0.6f)),
+                    border = BorderStroke(0.75.dp, appColors.separator.copy(alpha = 0.6f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(46.dp)
@@ -115,8 +124,8 @@ fun AppleAddTagDialog(
                         ) {
                             if (tagName.isEmpty()) {
                                 Text(
-                                    text = "e.g., AI, Finance, Inspo",
-                                    color = appleColors.tertiaryLabel,
+                                    text = placeholder,
+                                    color = appColors.tertiaryLabel,
                                     fontSize = 14.sp,
                                     maxLines = 1
                                 )
@@ -126,18 +135,18 @@ fun AppleAddTagDialog(
                                 onValueChange = { tagName = it },
                                 singleLine = true,
                                 textStyle = androidx.compose.ui.text.TextStyle(
-                                    color = appleColors.label,
+                                    color = appColors.label,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium
                                 ),
-                                cursorBrush = SolidColor(appleColors.accent),
+                                cursorBrush = SolidColor(appColors.accent),
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(
                                     onDone = {
-                                        if (tagName.isNotBlank()) {
+                                        if (canConfirm(tagName.trim())) {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onAdd(tagName.trim())
+                                            onConfirm(tagName.trim())
                                         }
                                     }
                                 )
@@ -151,14 +160,14 @@ fun AppleAddTagDialog(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = appleColors.label.copy(alpha = 0.15f),
+                                    color = appColors.label.copy(alpha = 0.15f),
                                     modifier = Modifier.size(18.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = Icons.Default.Close,
                                             contentDescription = "Clear tag input",
-                                            tint = appleColors.label,
+                                            tint = appColors.label,
                                             modifier = Modifier.size(10.dp)
                                         )
                                     }
@@ -168,38 +177,39 @@ fun AppleAddTagDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "SUGGESTED TAGS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appleColors.secondaryLabel,
-                    letterSpacing = 1.2.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(suggestedTags) { suggestion ->
-                        val isCurrent = tagName.equals(suggestion, ignoreCase = true)
-                        Surface(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                tagName = suggestion
-                            },
-                            color = if (isCurrent) appleColors.label else appleColors.surface,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(0.75.dp, if (isCurrent) Color.Transparent else appleColors.separator)
-                        ) {
-                            Text(
-                                text = suggestion,
-                                fontSize = 12.sp,
-                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isCurrent) appleColors.systemBackground else appleColors.label,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
+                if (suggestedTags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "SUGGESTED TAGS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.secondaryLabel,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(suggestedTags) { suggestion ->
+                            val isCurrent = tagName.equals(suggestion, ignoreCase = true)
+                            Surface(
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    tagName = suggestion
+                                },
+                                color = if (isCurrent) appColors.label else appColors.surface,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(0.75.dp, if (isCurrent) Color.Transparent else appColors.separator)
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isCurrent) appColors.systemBackground else appColors.label,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -208,27 +218,27 @@ fun AppleAddTagDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (tagName.isNotBlank()) {
+                    if (canConfirm(tagName.trim())) {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onAdd(tagName.trim())
+                        onConfirm(tagName.trim())
                     }
                 },
-                enabled = tagName.isNotBlank(),
+                enabled = canConfirm(tagName.trim()),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = appleColors.label,
-                    contentColor = appleColors.systemBackground,
-                    disabledContainerColor = appleColors.fill,
-                    disabledContentColor = appleColors.tertiaryLabel
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground,
+                    disabledContainerColor = appColors.fill,
+                    disabledContentColor = appColors.tertiaryLabel
                 )
             ) {
-                Text("Create Tag", fontWeight = FontWeight.Bold)
+                Text(confirmText, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = appleColors.secondaryLabel)
+                colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
             ) {
                 Text("Cancel", fontWeight = FontWeight.Medium)
             }
@@ -237,148 +247,59 @@ fun AppleAddTagDialog(
 }
 
 @Composable
-fun AppleEditTagDialog(
+fun AddTagDialog(
+    onAdd: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    TagBaseDialog(
+        title = "New Tag",
+        icon = Icons.AutoMirrored.Outlined.Label,
+        iconTint = appColors.accent,
+        iconBg = appColors.accent.copy(alpha = if (appColors.isDark) 0.25f else 0.15f),
+        placeholder = "e.g., AI, Finance, Inspo",
+        confirmText = "Create Tag",
+        suggestedTags = listOf("Inspiration", "Finance", "Social", "AI Tools", "Dev", "Articles", "Design", "Research"),
+        onConfirm = onAdd,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun EditTagDialog(
     currentName: String,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
-    val haptics = LocalHapticFeedback.current
-    var newName by remember { mutableStateOf(currentName) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = appleColors.secondaryGroupedBackground,
-        tonalElevation = 0.dp,
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.border(BorderStroke(0.75.dp, appleColors.separator), RoundedCornerShape(24.dp)),
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Surface(
-                    color = appleColors.fill,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = null,
-                            tint = appleColors.label,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                Text(
-                    text = "Edit Tag",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = appleColors.label
-                )
-            }
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Surface(
-                    color = appleColors.fill,
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(0.75.dp, appleColors.separator.copy(alpha = 0.6f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (newName.isEmpty()) {
-                                Text(
-                                    text = "Enter tag name",
-                                    color = appleColors.tertiaryLabel,
-                                    fontSize = 14.sp,
-                                    maxLines = 1
-                                )
-                            }
-                            BasicTextField(
-                                value = newName,
-                                onValueChange = { newName = it },
-                                singleLine = true,
-                                textStyle = androidx.compose.ui.text.TextStyle(
-                                    color = appleColors.label,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                cursorBrush = SolidColor(appleColors.accent),
-                                modifier = Modifier.fillMaxWidth(),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        if (newName.isNotBlank() && !newName.equals(currentName, ignoreCase = false)) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onSave(newName.trim())
-                                        }
-                                    }
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (newName.isNotBlank()) {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onSave(newName.trim())
-                    }
-                },
-                enabled = newName.isNotBlank() && !newName.equals(currentName, ignoreCase = false),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = appleColors.label,
-                    contentColor = appleColors.systemBackground,
-                    disabledContainerColor = appleColors.fill,
-                    disabledContentColor = appleColors.tertiaryLabel
-                )
-            ) {
-                Text("Save", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = appleColors.secondaryLabel)
-            ) {
-                Text("Cancel", fontWeight = FontWeight.Medium)
-            }
-        }
+    val appColors = LocalAppColors.current
+    TagBaseDialog(
+        title = "Edit Tag",
+        icon = Icons.Outlined.Edit,
+        iconTint = appColors.label,
+        iconBg = appColors.fill,
+        initialValue = currentName,
+        placeholder = "Enter tag name",
+        confirmText = "Save",
+        canConfirm = { it.isNotBlank() && !it.equals(currentName, ignoreCase = false) },
+        onConfirm = onSave,
+        onDismiss = onDismiss
     )
 }
 
 @Composable
-fun AppleDeleteTagConfirmDialog(
+fun DeleteTagConfirmDialog(
     tagName: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val appleColors = LocalAppleColors.current
+    val appColors = LocalAppColors.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = appleColors.secondaryGroupedBackground,
+        containerColor = appColors.secondaryGroupedBackground,
         tonalElevation = 0.dp,
         shape = RoundedCornerShape(22.dp),
-        modifier = Modifier.border(BorderStroke(0.75.dp, appleColors.separator), RoundedCornerShape(22.dp)),
+        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(22.dp)),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -387,14 +308,14 @@ fun AppleDeleteTagConfirmDialog(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = null,
-                    tint = appleColors.destructive,
+                    tint = appColors.destructive,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "Delete Tag",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = appleColors.label
+                    color = appColors.label
                 )
             }
         },
@@ -402,7 +323,7 @@ fun AppleDeleteTagConfirmDialog(
             Text(
                 text = "Are you sure you want to delete \"$tagName\"? Saved links will remain safe in \"Personal\".",
                 fontSize = 14.sp,
-                color = appleColors.secondaryLabel,
+                color = appColors.secondaryLabel,
                 lineHeight = 20.sp
             )
         },
@@ -411,7 +332,7 @@ fun AppleDeleteTagConfirmDialog(
                 onClick = onConfirm,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = appleColors.destructive,
+                    containerColor = appColors.destructive,
                     contentColor = Color.White
                 )
             ) {
@@ -421,7 +342,7 @@ fun AppleDeleteTagConfirmDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = appleColors.secondaryLabel)
+                colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
             ) {
                 Text("Cancel", fontWeight = FontWeight.Medium)
             }

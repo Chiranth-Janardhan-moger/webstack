@@ -1,0 +1,6 @@
+- Instant startup rendering: zero empty-state flicker or blank screen on cold launch
+- Full library backup and restore supporting both .webstack and .json formats
+- Unified Backup & Restore styling with theme-adaptive format controls
+- Duplicate URL detection with immediate feedback when saving links
+- Modular bottom sheet architecture and shared design components
+- Guaranteed SQLite backward compatibility and zero database migration disruption
