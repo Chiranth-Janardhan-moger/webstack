@@ -3,4 +3,3 @@
 - Unified Backup & Restore styling with theme-adaptive format controls
 - Duplicate URL detection with immediate feedback when saving links
 - Modular bottom sheet architecture and shared design components
-- Guaranteed SQLite backward compatibility and zero database migration disruption
