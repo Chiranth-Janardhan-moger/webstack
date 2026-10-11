@@ -1,0 +1,392 @@
+<USER_REQUEST>
+# WebStack: Bookmark Import / Export, Implementation + Verification Spec
+
+Target: Android, Kotlin, Room (+ room-ktx), Jetpack Compose. Everything runs on-device, no network.
+
+---
+
+## 0. Rules for ALL agents
+
+1. Never state a number (coverage %, milliseconds, "covers 70% of links", "100% browser support") unless a command you ran produced it. Attach the raw output. Unmeasured numbers are defects.
+2. A failing test is a finding. Fix the production code, not the test. A test may be changed only if it is demonstrably wrong, and the Auditor agent must approve with a written reason.
+3. Forbidden: `@Ignore`, `assumeTrue` used to dodge, deleting tests, weakening assertions, lowering thresholds, regenerating golden files to match new output, catching exceptions to make a test pass.
+4. "Done" claims require evidence: command, exit code, log excerpt. No evidence = not done.
+5. Do not invent APIs. If unsure a library call exists, open its docs or compile a tiny probe.
+
+---
+
+## 1. Fixed decisions (change only with human approval)
+
+| Topic | Decision |
+|---|---|
+| Category model | One primary `category` per website. Tags beyond that are not exported to HTML. |
+| Folder path handling on import | Use the deepest NON-noise folder in the path as the category. Keep full original path in `sourcePath` for display. |
+| Classification precedence | 1) clean user folder, 2) domain taxonomy, 3) domain-frequency cluster, 4) "Uncategorized". User intent beats guesses. |
+| Export structure | One flat level: one folder per category. "Uncategorized" links go in the root list after the folders. |
+| Dedupe | Unique index on a normalized URL key. Same file imported twice must add 0 rows. |
+| Supported URL schemes | http and https only. Everything else is skipped and counted. |
+| Timestamps | Stored as epoch milliseconds. Export writes seconds (ms / 1000). Import accepts seconds, ms, or microseconds. |
+| Encoding | UTF-8 explicit everywhere, never platform default. |
+
+---
+
+## 2. Import pipeline
+
+### 2.1 Parser (streaming, tolerant, hand-written tokenizer)
+
+Netscape bookmark HTML is NOT well-formed (unclosed `<DT>`, `<p>`, `<DL><p>` quirks). Do not use an XML parser. Do not read the whole file into one String (browser exports can embed base64 favicons and reach tens of MB).
+
+Algorithm:
+
+- Read via `BufferedReader(InputStreamReader(input, UTF_8), 64 * 1024)`. Strip a leading BOM (`\uFEFF`).
+- Tokenize into tags and text. A tag runs from `<` to the next `>` outside quotes. Cap a single tag at 1 MB; if exceeded, count `MALFORMED`, resync at the next `<`. Skip comments (`<!-- ... -->`) entirely.
+- Tag names and attribute names are case-insensitive. Act only on: `DL`, `/DL`, `H3`, `/H3`, `A`, `/A`. Ignore `DT`, `DD`, `P`, `HR`, `META`, `TITLE`, `H1`, and unknown tags. Never crash on them.
+- Attributes: support double-quoted, single-quoted, and unquoted values. Ignore `ICON` and `ICON_URI` (do not retain them).
+- Text inside `<H3>` and `<A>` is accumulated, then entity-decoded (named entities, `&#NN;`, `&#xHH;`). Use `org.jsoup.parser.Parser.unescapeEntities(text, false)` or an equivalent tested decoder.
+- Folder stack:
+  - On `</H3>`: remember `pendingFolder = text`.
+  - On `<DL>`: push `pendingFolder` (or a null placeholder if none, e.g. the root DL), clear pending.
+  - On `</DL>`: pop if non-empty (tolerate extras).
+- On `</A>`: emit `ParsedBookmark(url, title, addDateMs, folderPath = stack.filterNotNull())`. If `</A>` is missing before the next `<A>`, `</DL>` or EOF, emit what you have.
+- Truncated or corrupt input: return everything parsed so far plus a warning. Never throw on malformed content. Only `IOException` propagates.
+- Folders flagged `PERSONAL_TOOLBAR_FOLDER="true"` or `UNFILED_BOOKMARKS_FOLDER="true"` are browser roots: treat as noise regardless of language.
+
+### 2.2 Normalize and filter
+
+```kotlin
+// Timestamps: accept seconds, millis, micros
+fun normalizeToMillis(raw: Long): Long = when {
+    raw <= 0L -> 0L
+    raw < 100_000_000_000L -> raw * 1000          // seconds
+    raw < 100_000_000_000_000L -> raw             // millis
+    else -> raw / 1000                            // micros
+}
+```
+
+```kotlin
+// URL: toHttpUrlOrNull rejects javascript:, chrome:, about:, place:, file:, data: for us.
+private val TRACKING = Regex("^(utm_.*|fbclid|gclid|mc_eid|igshid)$", RegexOption.IGNORE_CASE)
+
+fun dedupeKey(raw: String): String? {
+    val url = raw.trim().toHttpUrlOrNull() ?: return null   // null => skip, count UNSUPPORTED_SCHEME
+    val b = url.newBuilder().fragment(null)
+    url.queryParameterNames.filter { TRACKING.matches(it) }.forEach { b.removeAllQueryParameters(it) }
+    val u = b.build()
+    val host = u.host.removePrefix("www.")
+    val path = if (u.encodedPath.length > 1) u.encodedPath.trimEnd('/').ifEmpty { "/" } else u.encodedPath
+    val port = if (u.port != HttpUrl.defaultPort(u.scheme)) ":${u.port}" else ""
+    val query = u.encodedQuery?.let { "?$it" } ?: ""
+    return "${u.scheme}://$host$port$path$query"            // http and https stay distinct
+}
+```
+
+Store the ORIGINAL url for opening; store `dedupeKey` for the unique index. Dedupe inside the file in memory first (so the summary counts are accurate), then rely on the DB index for rows that already exist.
+
+### 2.3 Folder-name cleaning
+
+```kotlin
+private val NOISE = Regex(
+    """^(bookmarks?( ?(bar|toolbar|menu))?|other bookmarks?|mobile bookmarks?|favou?rites( bar)?|unfiled bookmarks?|imported( from .+)?|new folder( ?\(?\d+\)?)?|untitled( folder)?( ?\d+)?|temp(orary)?|tmp|stuff|misc(ellaneous)?|links?|asdf+)$""",
+    RegexOption.IGNORE_CASE
+)
+// "01_Tech", "1. Tech", "01 - Tech", "1) Tech" -> strip. "3D Printing", "5-minute meals", "2024 Taxes", "1.5 GHz CPUs" -> keep.
+private val ORDER_PREFIX = Regex("""^\d{1,3}(?:\s*[_.)]\s*|\s+-\s+)(?=\p{L})""")
+
+fun cleanFolderName(raw: String): String? {
+    val n = raw.replace(Regex("\\s+"), " ").trim().replace(ORDER_PREFIX, "").trim()
+    return if (n.isEmpty() || NOISE.matches(n)) null else n
+}
+```
+
+- The noise list is English-only. The browser-root attribute check in 2.1 covers other languages.
+- Group folder names case-insensitively (`lowercase(Locale.ROOT)` as the key). Display name = most frequent original casing in the file, ties go to first seen.
+- Required negative tests: "Templates", "Temperature Control", "Tempo", "3D Printing", "5-minute meals", "2024 Taxes" must NOT be cleaned or rejected.
+
+### 2.4 Classification
+
+For each bookmark, in order:
+
+1. Walk `folderPath` from leaf upward; first folder where `cleanFolderName != null` wins (source = FOLDER).
+2. Else domain taxonomy: bundled asset `domain_taxonomy.json` (`{"github.com":"Development", ...}`). Match by host suffix, walking labels from most specific to least. Entries: github.com, gitlab.com, stackoverflow.com, developer.android.com, npmjs.com (NOT npm.com), medium.com, substack.com, dev.to, arxiv.org, wikipedia.org, youtube.com, vimeo.com, spotify.com, netflix.com, reddit.com, news.ycombinator.com, x.com, linkedin.com, and so on. For `amazon.*` / `ebay.*`, match on the second-level label of the registrable domain instead of enumerating TLDs. (source = DOMAIN_RULE)
+3. Else cluster unclassified links by REGISTRABLE domain using the Public Suffix List (not naive string splitting):
+
+```kotlin
+fun registrableDomain(host: String): String = try {
+    val d = InternetDomainName.from(host)                       // Guava
+    if (d.isUnderPublicSuffix) d.topPrivateDomain().toString() else host
+} catch (e: IllegalArgumentException) { host }                   // IPs, localhost, malformed
+```
+
+   Required cases: `www.bbc.co.uk` -> `bbc.co.uk`; `alice.github.io` -> `alice.github.io`; `a.b.example.com` -> `example.com`; `192.168.1.5` and `localhost` -> unchanged.
+   A group with >= 3 links becomes a cluster named from the first label, title-cased (`myblog.io` -> "Myblog"). Smaller groups -> "Uncategorized". Boundary tests: exactly 2, exactly 3, exactly 4.
+
+Known limitation (document it, do not hide it): a folder-less YouTube coding tutorial is labeled Media. The user fixes this at cluster level in 2.5. No per-link NLP in v1.
+
+The taxonomy's real hit-rate must be MEASURED on the real-export corpus (section 5.3) and reported in `STATUS.md`. Do not claim a figure beforehand.
+
+### 2.5 Cluster-approval sheet
+
+- A cluster = (displayName, linkCount, source, up to 3 sample domains, assignedTag).
+- Show the 7 largest clusters; fold the rest into one expandable "Other" row. Nothing is hidden: expanding lists every cluster.
+- Each row: include-checkbox and a dropdown (existing tags + "New tag..."). Changing the dropdown reassigns the whole cluster.
+- Summary lines: "N duplicates skipped", "M unsupported links skipped (javascript:, chrome://, ...)".
+- The Import button shows the exact included count. Cancel writes nothing.
+
+### 2.6 Persistence (atomic)
+
+```kotlin
+@Entity(tableName = "websites", indices = [Index(value = ["dedupeKey"], unique = true)])
+data class Website(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val url: String, val title: String, val category: String,
+    val dedupeKey: String, val sourcePath: String?, val createdAtMs: Long
+)
+
+@Dao interface WebsiteDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(items: List<Website>): List<Long>      // -1L for ignored rows
+}
+
+suspend fun importBookmarks(items: List<Website>, onProgress: (done: Int, total: Int) -> Unit): ImportResult =
+    db.withTransaction {                                         // room-ktx: ONE atomic transaction
+        var inserted = 0
+        items.chunked(500).forEachIndexed { i, chunk ->
+            inserted += dao.insertAll(chunk).count { it != -1L }
+            onProgress(minOf((i + 1) * 500, items.size), items.size)
+        }
+        ImportResult(inserted = inserted, duplicates = items.size - inserted)
+    }
+```
+
+Why: Room's list `@Insert` is a prepared-statement loop, NOT one multi-row INSERT. The speedup comes from the single transaction. Chunking here is for progress reporting and memory only, not for SQLite variable limits. If any exception occurs mid-import, ZERO rows must be committed.
+
+---
+
+## 3. Export pipeline (Netscape HTML)
+
+```kotlin
+private const val HEADER = """<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+"""
+
+fun String.escapeHtml(): String = buildString(length + 16) {
+    for (c in this@escapeHtml) when {
+        c == '&'  -> append("&amp;")
+        c == '<'  -> append("&lt;")
+        c == '>'  -> append("&gt;")
+        c == '"'  -> append("&quot;")
+        c == '\'' -> append("&#39;")
+        c == '\n' || c == '\r' || c == '\t' -> append(' ')
+        c < ' '   -> {}                                           // drop other control chars
+        else      -> append(c)
+    }
+}
+
+suspend fun exportBookmarks(out: OutputStream, dao: ExportDao, nowMs: Long) = withContext(Dispatchers.IO) {
+    BufferedWriter(OutputStreamWriter(out, Charsets.UTF_8), 64 * 1024).use { w ->
+        w.write(HEADER)
+        val nowS = nowMs / 1000
+        for (cat in dao.categoriesSorted().filter { it != "Uncategorized" }) {     // one query per category => streaming
+            w.write("    <DT><H3 ADD_DATE=\"$nowS\" LAST_MODIFIED=\"$nowS\">${cat.escapeHtml()}</H3>\n    <DL><p>\n")
+            for (s in dao.byCategory(cat)) w.writeLink(s, nowS, indent = "        ")
+            w.write("    </DL><p>\n")
+        }
+        for (s in dao.byCategory("Uncategorized")) w.writeLink(s, nowS, indent = "    ")
+        w.write("</DL><p>\n")
+    }
+}
+
+private fun Writer.writeLink(s: Website, nowS: Long, indent: String) {
+    val addS = if (s.createdAtMs > 0) s.createdAtMs / 1000 else nowS
+    val title = s.title.ifBlank { s.url }.escapeHtml()
+    write("$indent<DT><A HREF=\"${s.url.escapeHtml()}\" ADD_DATE=\"$addS\">$title</A>\n")
+}
+```
+
+Rules:
+- Escape the five characters above in BOTH titles and URLs, including category names.
+- ADD_DATE and LAST_MODIFIED are seconds (10 digits), never milliseconds.
+- Empty database must still produce a valid file (header + empty root).
+- Filename: `webstack_bookmarks_YYYY-MM-DD.html`, formatted with a fixed locale (`Locale.US` / `Locale.ROOT`).
+- Streaming is for tidiness; memory was never the real risk at normal sizes. Do not justify it as OOM protection in docs.
+
+---
+
+## 4. Delivery on Android
+
+Option A (SAF, preferred): `ActivityResultContracts.CreateDocument("text/html")`, then `contentResolver.openOutputStream(uri, "wt")`. The `"wt"` mode TRUNCATES; without it, overwriting a longer existing file leaves trailing garbage. Run on `Dispatchers.IO`.
+
+Option B (Share sheet): write to `File(cacheDir, "exports/webstack_bookmarks_<date>.html")`, then `FileProvider.getUriForFile(...)`. All of the following are REQUIRED or the share fails silently:
+- Manifest `<provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true">` with a `<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/>`.
+- `res/xml/file_paths.xml` containing `<cache-path name="exports" path="exports/"/>`.
+- `Intent.ACTION_SEND`, `type = "text/html"`, `EXTRA_STREAM`, `addFlags(FLAG_GRANT_READ_URI_PERMISSION)`, `clipData = ClipData.newRawUri("", uri)`, wrapped in `Intent.createChooser`.
+- Delete old files in `cacheDir/exports` before writing a new one.
+
+Browser import claims: the format is the long-standing interchange format for Chrome, Firefox, Edge and Safari on macOS. Safari on iOS has no HTML bookmark import. Arc, Opera, Vivaldi, Raindrop.io, Linkwarden: UNVERIFIED until a human checks (section 8). Chrome ignores tags, so only folders survive. Pocket was shut down in 2025, so do not list it.
+
+---
+
+## 5. Test plan
+
+### 5.1 Unit and property tests (JVM)
+- Parser: real-export fixtures (5.3), plus hand-made edge cases: unclosed DT/P, uppercase and lowercase tags, single-quoted and unquoted attributes, BOM, CRLF, comments, `<HR>` separators, `<DD>` descriptions, empty folders, deeply nested folders, 100 KB base64 ICON, truncated file, random garbage, empty file.
+- Entities: `C++ &amp; Java &lt;Guide&gt;`, `&#39;`, `&#x1F600;`, emoji, CJK, RTL text. Round-trip must be byte-exact for titles and URLs.
+- Timestamps: seconds, millis, micros, zero, negative, missing.
+- Folder cleaning and noise: every positive and negative case in 2.3.
+- URL: scheme filtering, tracking params, fragments, default ports, www, trailing slash, uppercase host, IPv6, unicode paths.
+- Registrable domain: all cases in 2.4.
+- Classification: precedence (folder beats taxonomy beats cluster), threshold boundaries (2/3/4), deepest non-noise folder, case-insensitive folder merging.
+- Export: structure balance (every `<DL>` closed), escaping, seconds timestamps, empty DB, titles containing newlines.
+- Property test (Kotest or jqwik, >= 10,000 generated cases): `export -> parse` preserves the multiset of (url, title, category) for arbitrary Unicode titles including `& < > " '`, and `parse` never throws on arbitrary mutated/truncated input.
+
+### 5.2 Room / instrumented tests
+- Import 10,000 items: all inserted, exactly the expected count.
+- Same file twice: second import inserts 0 and reports duplicates.
+- Inject an exception at item N mid-import: row count is unchanged afterwards (full rollback).
+- UI collects the Flow while importing: assert emission count and record it (measure, do not assume "exactly one").
+- Compose tests: cluster sheet shows <= 7 rows + Other, dropdown reassigns a cluster, checkbox excludes, Cancel writes nothing.
+- SAF write over a longer existing file leaves no trailing bytes.
+
+### 5.3 Fixtures
+- The synthetic fixtures an agent writes share the blind spots of the parser the same agent wrote. REQUIRE real exports from Chrome, Firefox, Edge and Safari (macOS) supplied by the human into `testdata/real/`. If they are missing, the agent files a BLOCKER asking the human, and does not fake them.
+- Golden outputs are checked in and human-reviewed. They may not be regenerated by an agent without Auditor approval.
+
+### 5.4 Independent structural validator
+`tools/validate_netscape.py` (Python, BeautifulSoup/html5lib, written independently of the Kotlin code) checks an exported file: decodes as UTF-8, first line is the DOCTYPE, `<DL>` balanced, every `<H3>` is followed by a `<DL>`, every HREF is http(s), ADD_DATE is 10 digits, no raw `&`, `<` or `"` in text or attributes. Run it on every exported file in tests.
+
+### 5.5 Performance
+- Measure a baseline on a real mid-range device (Macrobenchmark) and on the JVM, at 1k, 10k, 50k bookmarks and a 30 MB file with base64 icons. Record in `PERF.md` with device, build and date.
+- Budget = measured baseline x 1.5. CI fails on regression. No hand-picked "<40ms" claims.
+
+### 5.6 Regression rule
+Every bug fixed gets a test that FAILS on the pre-fix code (the Auditor verifies this by reverting the fix).
+
+---
+
+## 6. Agent roles and the verification loop
+
+Roles are separated on purpose: nobody grades their own work.
+
+| Agent | Writes production code | Writes tests | Edits expected values / thresholds | Read-only |
+|---|---|---|---|---|
+| Builder | yes | no | no | |
+| Tester | no | yes | only with Auditor approval | |
+| Auditor (test verifier) | no | no | approves or rejects | |
+| Supervisor (top agent) | no | no | no | reviews all |
+| Monitor (progress) | no | no | no | yes |
+
+### Each cycle
+
+1. **Builder** implements or fixes the open defects. Commits. Posts evidence (compile output).
+2. **Tester** runs everything from a clean checkout: `./gradlew clean test`, instrumented tests, JaCoCo, Python validator, property tests with a fresh random seed. Writes raw logs to `.agents/evidence/<cycle>/`. Files each failure to `.agents/DEFECTS.md` with severity (P0 data loss/corruption, P1 wrong output, P2 minor).
+3. **Auditor** independently checks that the tests are actually capable of catching bugs:
+   - **Seeded-bug check.** For each bug below, apply it on a scratch branch and confirm at least one test fails. Record killed / survived. Every survivor becomes a "test gap" defect for the Tester.
+     1. export timestamp without `/ 1000`
+     2. `&` not escaped; `"` not escaped
+     3. platform-default charset instead of UTF-8
+     4. noise regex `^[Tt]emp.*` instead of the exact-match version
+     5. order-prefix regex stripping "3D Printing" or "5-minute meals"
+     6. unique index or `OnConflictStrategy.IGNORE` removed
+     7. `withTransaction` removed (rollback test must fail)
+     8. `javascript:` URLs accepted
+     9. timestamps not normalized (ms/µs treated as seconds)
+     10. naive domain split instead of the Public Suffix List (`bbc.co.uk`, `github.io`)
+     11. tag names matched case-sensitively in the parser
+     12. cluster threshold `> 3` instead of `>= 3`
+     13. folder/taxonomy precedence swapped
+     14. last category dropped, or missing closing `</DL><p>`
+     15. title with newline written raw
+     16. SAF stream opened without `"wt"`
+   - **Mutation testing** (PIT with the Kotlin plugin, or equivalent) on parser, classifier, normalizer and exporter packages. Record the score.
+   - **Test-diff review.** Any deleted test, removed assertion, `@Ignore`, loosened threshold, or changed golden file without justification = reject the cycle.
+   - **Quality scan.** No assertion-free tests; no tests that mock the unit under test; real-export fixtures are really used.
+   - **Flakiness.** Rerun the suite 5 times in random order with different seeds. Any flaky test is a defect. Quarantining is not allowed, fix it.
+4. **Supervisor** independently re-runs the full suite from a clean checkout and compares with what the Tester/Auditor claimed. It checks that every agent produced new evidence this cycle (a heartbeat); an agent with no new evidence is flagged as stalled. It checks that every "fixed" defect has a failing-before/passing-after test. It detects cheating (rule 3 in section 0). It can reopen anything. Only the Supervisor can declare DONE, and only when section 7 is met.
+5. **Monitor** (read-only) writes `.agents/STATUS.md` after every cycle:
+   - cycle number, pass/fail counts and their trend vs previous cycles
+   - line/branch coverage, mutation score, seeded-bug kill ratio (x/16)
+   - open defects by severity, flaky tests, performance vs budget
+   - time and token budget used
+   - warnings: any metric worse than the previous cycle, the same defect open for 3 cycles, diminishing returns, Supervisor claims without evidence.
+   The Monitor also audits the Supervisor: if the Supervisor says "all green", the Monitor checks that the evidence files exist.
+
+Then go to step 1. The loop repeats until section 7 is satisfied or a hard stop triggers.
+
+---
+
+## 7. Exit criteria and hard stops
+
+These thresholds are defaults chosen by the spec author. The human may tune them.
+
+**DONE only when ALL hold, for 3 consecutive cycles with different random seeds:**
+- Full suite passes from a clean checkout, zero flaky tests across 5 reruns.
+- Branch coverage >= 80% and line coverage >= 90% on parser, classifier, normalizer and exporter packages.
+- Mutation score >= 80% on those packages.
+- 16/16 seeded bugs killed.
+- Round-trip property test passes with >= 10,000 cases, zero parse crashes on mutated input.
+- Python validator passes on every exported file.
+- Performance within budget from `PERF.md`.
+- Zero open P0/P1 defects; every P2 documented.
+- Real-export fixtures from at least Chrome and Firefox are in `testdata/real/` and pass.
+
+**Hard stops (escalate to the human, do not keep looping):**
+- 12 cycles, or the time/token budget is reached.
+- The same failure repeats 3 times, or a fix attempt repeats an earlier failed attempt.
+- Any agent wants to violate a rule in section 0.
+- Real browser exports are missing and block verification.
+
+---
+
+## 8. End-to-end scenario (mandatory every cycle)
+
+The Tester builds a realistic bookmarks HTML file, pushes it through the real import and export code, and checks every step against an independent answer key.
+
+### 8.1 Generate the input
+- Script `tools/make_test_bookmarks.py` writes `testdata/e2e/bookmarks.html` (about 200 links, Chrome-export style) AND `testdata/e2e/expected.json`, the answer key.
+- The answer key is written from the rules in this spec, by hand-specified data. It must NEVER be produced by running the app's own classifier, or the test only proves the code agrees with itself. The Auditor checks this.
+- Layout to mimic: "Bookmarks bar", "Other bookmarks", "Mobile bookmarks". A "Development" folder with about 40 links. About 120 links sitting in "Mobile bookmarks" (mostly known domains). The rest are unknown sites.
+- Must include these cases:
+  - exact duplicates, and the same URL with `utm_*` / `#fragment` / `www.` / trailing slash differences
+  - `http://` and `https://` of the same page (must stay distinct)
+  - `javascript:` bookmarklets, `chrome://`, `about:`, `place:`, `file:` links (all skipped)
+  - titles with `& < > " '`, emoji, Japanese, Arabic, and a title with a newline
+  - folders named "Templates", "Temperature Control", "3D Printing", "5-minute meals", "01_Tech", "New folder", "temp"
+  - nested folders (`Work/Projects/ML`) and an empty folder
+  - 3+ links from one unknown domain (must cluster), exactly 2 from another (must NOT cluster), links on `bbc.co.uk` and `alice.github.io`
+  - uppercase tags, unclosed `<DT>`/`<p>`, a comment, a BOM, CRLF line endings, one huge base64 `ICON`
+- If the human has supplied real exports in `testdata/real/`, run the same pipeline on them too and report the numbers.
+
+### 8.2 Run the full flow and assert each step
+1. **Import** `bookmarks.html` through the real parser, classifier and cluster model, then the real Room import (in-memory DB or emulator).
+   Check against `expected.json`: total found, skipped per reason, duplicates removed, rows inserted, and the category of EVERY link.
+2. **Approval sheet**: at most 7 rows plus "Other"; changing one cluster's category moves all its links; unticking a row excludes them.
+3. **Re-import the same file**: 0 rows inserted, N duplicates reported.
+4. **Export** to HTML through the real exporter (SAF path and share-sheet path).
+   Check: file passes `tools/validate_netscape.py`, folders match categories, timestamps are 10 digits, special characters are escaped, and the file overwrote a longer existing file without leftover bytes.
+5. **Round trip**: import the exported file into a fresh empty DB. The set of (url, title, category) must equal the first DB exactly.
+6. **Failure injection**: crash at item N during import (zero rows must remain); truncated file; empty file; garbage file; mutated copies of the bookmarks file (the parser must never crash).
+7. **Scale**: generate 10,000 and 50,000 link files and a 30 MB file with embedded icons; import, export, round trip. Record time and memory in `PERF.md`.
+
+### 8.3 Report
+- Write a table to `.agents/STATUS.md`: step, expected, actual, pass/fail, evidence file.
+- Any mismatch becomes a defect and goes back into the section 6 loop. The Supervisor re-runs this scenario itself and does not accept the Tester's report alone.
+- DONE is impossible while this scenario has any failing step.
+
+---
+
+## 9. Human-only checks (agents cannot do these)
+
+Import the exported file into: Chrome, Firefox, Edge, Safari on macOS. Also try Arc/Brave/Vivaldi, Raindrop.io and Linkwarden if you rely on them. For each: folders present, counts match, special-character titles intact, dates sane (not the year 55,000). Record results in `.agents/MANUAL_QA.md`. Until this is signed off, the browser support claim stays "unverified". /ponytail /badboy
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-11T22:28:04+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

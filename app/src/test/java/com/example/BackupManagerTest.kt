@@ -22,17 +22,17 @@ class BackupManagerTest {
                 id = 1,
                 url = "https://github.com",
                 title = "GitHub",
-                domain = "github.com",
                 category = "Tech",
-                createdAt = 1727610000000L
+                dedupeKey = "https://github.com",
+                createdAtMs = 1727610000000L
             ),
             Website(
                 id = 2,
                 url = "https://linear.app",
                 title = "Linear",
-                domain = "linear.app",
                 category = "Tools",
-                createdAt = 1727615000000L
+                dedupeKey = "https://linear.app",
+                createdAtMs = 1727615000000L
             )
         )
         val categories = listOf("Personal", "Tech", "Tools")

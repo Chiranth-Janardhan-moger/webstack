@@ -81,9 +81,9 @@ object BackupManager {
                             id = 0,
                             url = url,
                             title = title,
-                            domain = domain,
                             category = category,
-                            createdAt = createdAt
+                            dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url,
+                            createdAtMs = createdAt
                         )
                     )
                 }

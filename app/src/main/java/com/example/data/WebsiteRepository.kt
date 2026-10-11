@@ -8,7 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-class WebsiteRepository(private val websiteDao: WebsiteDao) {
+class WebsiteRepository(val websiteDao: WebsiteDao) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
@@ -94,8 +94,8 @@ class WebsiteRepository(private val websiteDao: WebsiteDao) {
         val website = Website(
             url = url,
             title = title,
-            domain = domain,
-            category = category
+            category = category,
+            dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url
         )
 
         val id = websiteDao.insertWebsite(website)

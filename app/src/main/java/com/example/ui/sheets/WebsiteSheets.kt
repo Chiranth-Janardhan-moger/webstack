@@ -421,8 +421,8 @@ fun EditWebsiteSheetContent(
                 val updated = website.copy(
                     title = title.trim().ifBlank { website.title },
                     url = finalUrl,
-                    domain = domain,
-                    category = selectedCategory
+                    category = selectedCategory,
+                    dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(finalUrl) ?: finalUrl
                 )
                 onSave(updated)
             },

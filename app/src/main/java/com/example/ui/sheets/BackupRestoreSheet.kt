@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -60,7 +61,8 @@ import com.example.ui.theme.LocalAppColors
 
 enum class ExportFormat {
     WEBSTACK,
-    JSON
+    JSON,
+    HTML
 }
 
 @Composable
@@ -68,6 +70,8 @@ fun BackupRestoreSubSheetContent(
     totalBookmarks: Int,
     onExportWebstack: () -> Unit,
     onExportJson: () -> Unit,
+    onExportHtml: () -> Unit = {},
+    onShareHtml: () -> Unit = {},
     onRestore: () -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit
@@ -170,8 +174,12 @@ fun BackupRestoreSubSheetContent(
                         .padding(3.dp)
                 ) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val segmentWidth = maxWidth / 2
-                        val targetOffset = if (selectedFormat == ExportFormat.WEBSTACK) 0.dp else segmentWidth
+                        val segmentWidth = maxWidth / 3
+                        val targetOffset = when (selectedFormat) {
+                            ExportFormat.WEBSTACK -> 0.dp
+                            ExportFormat.JSON -> segmentWidth
+                            ExportFormat.HTML -> segmentWidth * 2
+                        }
                         val animatedOffset by animateDpAsState(
                             targetValue = targetOffset,
                             animationSpec = spring(
@@ -214,7 +222,7 @@ fun BackupRestoreSubSheetContent(
                                 Text(
                                     text = ".webstack",
                                     fontWeight = if (selectedFormat == ExportFormat.WEBSTACK) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     color = if (selectedFormat == ExportFormat.WEBSTACK) appColors.systemBackground else appColors.secondaryLabel
                                 )
                             }
@@ -238,8 +246,32 @@ fun BackupRestoreSubSheetContent(
                                 Text(
                                     text = ".json",
                                     fontWeight = if (selectedFormat == ExportFormat.JSON) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     color = if (selectedFormat == ExportFormat.JSON) appColors.systemBackground else appColors.secondaryLabel
+                                )
+                            }
+
+                            // Option: .html
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        if (selectedFormat != ExportFormat.HTML) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedFormat = ExportFormat.HTML
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = ".html",
+                                    fontWeight = if (selectedFormat == ExportFormat.HTML) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    color = if (selectedFormat == ExportFormat.HTML) appColors.systemBackground else appColors.secondaryLabel
                                 )
                             }
                         }
@@ -263,10 +295,10 @@ fun BackupRestoreSubSheetContent(
                 Surface(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (selectedFormat == ExportFormat.WEBSTACK) {
-                            onExportWebstack()
-                        } else {
-                            onExportJson()
+                        when (selectedFormat) {
+                            ExportFormat.WEBSTACK -> onExportWebstack()
+                            ExportFormat.JSON -> onExportJson()
+                            ExportFormat.HTML -> onExportHtml()
                         }
                     },
                     interactionSource = exportInteractionSource,
@@ -296,12 +328,27 @@ fun BackupRestoreSubSheetContent(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = if (selectedFormat == ExportFormat.WEBSTACK) "Export .webstack Backup" else "Export .json Backup",
+                                text = when (selectedFormat) {
+                                    ExportFormat.WEBSTACK -> "Export .webstack Backup"
+                                    ExportFormat.JSON -> "Export .json Backup"
+                                    ExportFormat.HTML -> "Export .html Bookmarks"
+                                },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = appColors.label
                             )
                         }
+                    }
+                }
+
+                if (selectedFormat == ExportFormat.HTML) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onShareHtml,
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Share HTML Bookmarks via...", fontSize = 13.sp)
                     }
                 }
             }
@@ -359,7 +406,7 @@ fun BackupRestoreSubSheetContent(
                             color = appColors.label
                         )
                         Text(
-                            text = "Restore from .webstack or .json file",
+                            text = "Restore from .webstack, .json, or .html file",
                             fontSize = 13.sp,
                             color = appColors.secondaryLabel
                         )

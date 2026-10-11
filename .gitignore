@@ -16,3 +16,4 @@ captures/
 *.apk
 *.aab
 *.idsig
+testdata/real/

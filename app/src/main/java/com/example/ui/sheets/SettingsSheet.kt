@@ -70,7 +70,8 @@ import java.util.Locale
 enum class SettingsSubScreen {
     MAIN,
     APPEARANCE,
-    BACKUP_RESTORE
+    BACKUP_RESTORE,
+    CLUSTER_APPROVAL
 }
 
 @Composable
@@ -110,6 +111,7 @@ fun SettingsBottomSheetContent(
     }
 
     var currentSubScreen by remember { mutableStateOf(SettingsSubScreen.MAIN) }
+    var pendingPreprocessResult by remember { mutableStateOf<com.example.bookmarks.ImportPreprocessResult?>(null) }
 
     val exportWebstackLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
@@ -153,6 +155,29 @@ fun SettingsBottomSheetContent(
         }
     }
 
+    val exportHtmlLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/html")
+    ) { uri ->
+        if (uri != null && viewModel != null) {
+            coroutineScope.launch {
+                try {
+                    com.example.bookmarks.BookmarkDelivery.exportToSaf(
+                        contentResolver = context.contentResolver,
+                        uri = uri,
+                        dao = viewModel.websiteDao
+                    )
+                    val now = System.currentTimeMillis()
+                    prefs.edit().putLong("last_backup_timestamp", now).apply()
+                    lastBackupTimestamp = now
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    Toast.makeText(context, "Exported bookmarks (.html)", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "HTML Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -172,14 +197,15 @@ fun SettingsBottomSheetContent(
                 ""
             }
 
-            val isSupported = displayName.endsWith(".webstack", ignoreCase = true) ||
+            val isHtml = displayName.endsWith(".html", ignoreCase = true) || displayName.endsWith(".htm", ignoreCase = true)
+            val isSupported = isHtml || displayName.endsWith(".webstack", ignoreCase = true) ||
                     displayName.endsWith(".json", ignoreCase = true)
 
             if (!isSupported && displayName.isNotEmpty()) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 Toast.makeText(
                     context,
-                    "Invalid format. Please select a .webstack or .json backup",
+                    "Invalid format. Please select a .webstack, .json, or .html backup",
                     Toast.LENGTH_LONG
                 ).show()
                 return@rememberLauncherForActivityResult
@@ -188,17 +214,27 @@ fun SettingsBottomSheetContent(
             coroutineScope.launch {
                 try {
                     context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                        val result = viewModel.restoreBackup(inputStream)
-                        result.onSuccess { (imported, newCats) ->
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val msg = if (imported > 0) {
-                                "Restored $imported bookmarks ($newCats new categories)"
-                            } else {
-                                "All bookmarks in backup are already in your stack"
+                        if (isHtml) {
+                            val result = viewModel.preprocessHtmlBookmarks(inputStream)
+                            result.onSuccess { prep ->
+                                pendingPreprocessResult = prep
+                                currentSubScreen = SettingsSubScreen.CLUSTER_APPROVAL
+                            }.onFailure { err ->
+                                Toast.makeText(context, "Failed to parse bookmarks: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
                             }
-                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                        }.onFailure { err ->
-                            Toast.makeText(context, "Restore failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                        } else {
+                            val result = viewModel.restoreBackup(inputStream)
+                            result.onSuccess { (imported, newCats) ->
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                val msg = if (imported > 0) {
+                                    "Restored $imported bookmarks ($newCats new categories)"
+                                } else {
+                                    "All bookmarks in backup are already in your stack"
+                                }
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }.onFailure { err ->
+                                Toast.makeText(context, "Restore failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -232,11 +268,31 @@ fun SettingsBottomSheetContent(
                     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                     exportJsonLauncher.launch("webstack_backup_$timeStamp.json")
                 },
+                onExportHtml = {
+                    val fileName = com.example.bookmarks.BookmarkDelivery.formatExportFileName()
+                    exportHtmlLauncher.launch(fileName)
+                },
+                onShareHtml = {
+                    if (viewModel != null) {
+                        coroutineScope.launch {
+                            try {
+                                val shareIntent = com.example.bookmarks.BookmarkDelivery.createShareIntent(
+                                    context = context,
+                                    dao = viewModel.websiteDao
+                                )
+                                context.startActivity(shareIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Share failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
                 onRestore = {
                     restoreLauncher.launch(
                         arrayOf(
                             "application/json",
                             "application/octet-stream",
+                            "text/html",
                             "text/plain",
                             "*/*"
                         )
@@ -245,6 +301,43 @@ fun SettingsBottomSheetContent(
                 onBack = { currentSubScreen = SettingsSubScreen.MAIN },
                 onDismiss = onDismiss
             )
+        }
+        SettingsSubScreen.CLUSTER_APPROVAL -> {
+            BackHandler { currentSubScreen = SettingsSubScreen.BACKUP_RESTORE }
+            val prep = pendingPreprocessResult
+            if (prep != null && viewModel != null) {
+                val cats = viewModel.categories.collectAsState().value
+                ClusterApprovalSheet(
+                    preprocessResult = prep,
+                    existingCategories = cats,
+                    onConfirmImport = { bookmarksToImport ->
+                        coroutineScope.launch {
+                            val impResult = viewModel.commitImportBookmarks(bookmarksToImport)
+                            impResult.onSuccess { res ->
+                                val now = System.currentTimeMillis()
+                                prefs.edit().putLong("last_backup_timestamp", now).apply()
+                                lastBackupTimestamp = now
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                Toast.makeText(
+                                    context,
+                                    "Imported ${res.inserted} bookmarks (${res.duplicates} duplicates skipped)",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                pendingPreprocessResult = null
+                                currentSubScreen = SettingsSubScreen.MAIN
+                            }.onFailure { err ->
+                                Toast.makeText(context, "Import failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    onCancel = {
+                        pendingPreprocessResult = null
+                        currentSubScreen = SettingsSubScreen.BACKUP_RESTORE
+                    }
+                )
+            } else {
+                currentSubScreen = SettingsSubScreen.BACKUP_RESTORE
+            }
         }
         SettingsSubScreen.MAIN -> {
             Column(

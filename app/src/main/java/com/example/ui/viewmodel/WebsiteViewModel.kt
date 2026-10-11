@@ -25,7 +25,9 @@ import java.io.InputStream
 import java.io.OutputStream
 
 class WebsiteViewModel(application: Application) : AndroidViewModel(application) {
+    private val database = WebsiteDatabase.getDatabase(application)
     private val repository: WebsiteRepository
+    val websiteDao: com.example.data.WebsiteDao get() = repository.websiteDao
     private val prefs = application.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE)
 
     private val _categories = MutableStateFlow<List<String>>(emptyList())
@@ -35,7 +37,6 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
 
     init {
-        val database = WebsiteDatabase.getDatabase(application)
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
         loadCachedScreenshotIds()
@@ -78,15 +79,16 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             val list = ArrayList<Website>(array.length())
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
+                val url = obj.optString("url", "")
                 list.add(
                     Website(
                         id = obj.optLong("id", 0L),
-                        url = obj.optString("url", ""),
+                        url = url,
                         title = obj.optString("title", ""),
-                        domain = obj.optString("domain", ""),
-                        faviconUrl = obj.optString("faviconUrl", ""),
                         category = obj.optString("category", "General"),
-                        createdAt = obj.optLong("createdAt", 0L)
+                        dedupeKey = obj.optString("dedupeKey", com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url),
+                        sourcePath = if (obj.has("sourcePath") && !obj.isNull("sourcePath")) obj.getString("sourcePath") else null,
+                        createdAtMs = obj.optLong("createdAtMs", obj.optLong("createdAt", 0L))
                     )
                 )
             }
@@ -294,4 +296,74 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             Result.failure(e)
         }
     }
+
+    suspend fun exportHtmlBookmarks(outputStream: OutputStream, nowMs: Long = System.currentTimeMillis()): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            com.example.bookmarks.BookmarkExporter.exportBookmarks(outputStream, repository.websiteDao, nowMs)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun preprocessHtmlBookmarks(inputStream: InputStream): Result<com.example.bookmarks.ImportPreprocessResult> = withContext(Dispatchers.IO) {
+        try {
+            val taxonomyMap = try {
+                getApplication<Application>().assets.open("domain_taxonomy.json").use { stream ->
+                    val text = stream.bufferedReader().use { it.readText() }
+                    com.example.bookmarks.DomainClassifier.loadTaxonomyFromJson(text)
+                }
+            } catch (_: Exception) {
+                emptyMap()
+            }
+            val classifier = com.example.bookmarks.DomainClassifier(taxonomyMap)
+            val result = com.example.bookmarks.BookmarkImporter.preprocess(inputStream, classifier)
+            Result.success(result)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun commitImportBookmarks(
+        bookmarks: List<com.example.bookmarks.ClassifiedBookmark>,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
+    ): Result<com.example.bookmarks.ImportResult> = withContext(Dispatchers.IO) {
+        try {
+            val websites = bookmarks.map { b ->
+                Website(
+                    url = b.url,
+                    title = b.title,
+                    category = b.category,
+                    dedupeKey = b.dedupeKey,
+                    sourcePath = b.sourcePath,
+                    createdAtMs = b.createdAtMs
+                )
+            }
+            val result = com.example.bookmarks.BookmarkImporter.importBookmarks(
+                db = database,
+                dao = repository.websiteDao,
+                items = websites,
+                onProgress = onProgress
+            )
+
+            val newCats = bookmarks.map { it.category }.distinct()
+            val current = _categories.value.toMutableList()
+            var addedAny = false
+            for (c in newCats) {
+                if (c.isNotBlank() && !current.any { it.equals(c, ignoreCase = true) }) {
+                    current.add(c)
+                    addedAny = true
+                }
+            }
+            if (addedAny) {
+                _categories.value = current
+                saveCategoriesToPrefs(current)
+            }
+
+            Result.success(result)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

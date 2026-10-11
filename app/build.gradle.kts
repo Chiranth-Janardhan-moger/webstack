@@ -2,6 +2,11 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
+  id("jacoco")
+}
+
+jacoco {
+  toolVersion = "0.8.12"
 }
 
 android {
@@ -52,6 +57,7 @@ android {
       }
     }
     debug {
+      enableUnitTestCoverage = true
       val customDebug = signingConfigs.findByName("debugConfig")
       if (customDebug != null) {
         signingConfig = customDebug
@@ -97,12 +103,32 @@ dependencies {
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.okhttp)
+  implementation(libs.guava)
+  implementation(libs.jsoup)
+
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
+  testImplementation("io.kotest:kotest-property:5.9.1")
+
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+  dependsOn("testDebugUnitTest")
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+    csv.required.set(false)
+  }
+  val classDirectoriesTree = fileTree("${project.layout.buildDirectory.get()}/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes") {
+    include("com/example/bookmarks/**")
+  }
+  sourceDirectories.setFrom(files("${project.projectDir}/src/main/java"))
+  classDirectories.setFrom(classDirectoriesTree)
+  executionData.setFrom(files("${project.layout.buildDirectory.get()}/outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec"))
 }
