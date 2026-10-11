@@ -39,9 +39,13 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 ## Screenshots
 
-| Visual Bookmark Stack | Save Link Sheet | Settings & Layout Modes |
+| Visual Bookmark Stack | Save Link Sheet | Settings |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_home.png" width="260" alt="WebStack Home Feed" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_save_link.png" width="260" alt="Save Link Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_settings.png" width="260" alt="Settings Sheet" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" width="260" alt="Visual Bookmarks" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" width="260" alt="Save Link Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" width="260" alt="Settings" /> |
+
+| Appearance & Layout | Backup & Restore | App Info |
+| :---: | :---: | :---: |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" width="260" alt="Appearance and Layout" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpeg" width="260" alt="Backup and Restore" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpeg" width="260" alt="App Info" /> |
 
 ---
 
