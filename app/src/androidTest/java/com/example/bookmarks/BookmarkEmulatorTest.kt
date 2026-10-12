@@ -686,7 +686,7 @@ class BookmarkEmulatorTest {
     }
 
     @Test
-    fun testRealV2DatabaseFileMigrationOnDevice() {
+    fun testRealV2DatabaseFileMigrationOnDevice() = runBlocking {
         val dbFile = context.getDatabasePath("test_real_v2_migration.db")
         if (dbFile.exists()) {
             context.deleteDatabase("test_real_v2_migration.db")
@@ -759,6 +759,85 @@ class BookmarkEmulatorTest {
         } finally {
             roomDb.close()
             context.deleteDatabase("test_real_v2_migration.db")
+        }
+    }
+
+    @Test
+    fun testLiveChromeBookmarkImportAndDeduplication() = runBlocking {
+        val testDbName = "test_live_chrome_import.db"
+        context.deleteDatabase(testDbName)
+
+        val roomDb = Room.databaseBuilder(context, WebsiteDatabase::class.java, testDbName)
+            .addMigrations(WebsiteDatabase.MIGRATION_2_3)
+            .build()
+
+        try {
+            val dao = roomDb.websiteDao()
+
+            // Pre-seed an existing bookmark (simulating migrated v1.1.1 bookmark: https://example.com/page)
+            dao.insertWebsite(
+                Website(
+                    id = 0,
+                    url = "https://example.com/page",
+                    title = "Existing Example Page",
+                    category = "Personal",
+                    dedupeKey = BookmarkNormalizer.dedupeKey("https://example.com/page")!!,
+                    sourcePath = null,
+                    createdAtMs = 1710000000000L
+                )
+            )
+            assertEquals(1, dao.getAllWebsitesList().size)
+
+            // Parse Chrome HTML containing 1 duplicate (https://www.example.com/page/) and 1 new (https://kotlinlang.org)
+            val chromeHtml = """
+                <!DOCTYPE NETSCAPE-Bookmark-file-1>
+                <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+                <TITLE>Bookmarks</TITLE>
+                <H1>Bookmarks</H1>
+                <DL><p>
+                    <DT><H3>Bookmarks bar</H3>
+                    <DL><p>
+                        <DT><A HREF="https://www.example.com/page/">Example Page Duplicate</A>
+                        <DT><A HREF="https://kotlinlang.org">Kotlin Language</A>
+                    </DL><p>
+                </DL><p>
+            """.trimIndent()
+
+            val parseResult = BookmarkParser.parse(ByteArrayInputStream(chromeHtml.toByteArray(StandardCharsets.UTF_8)))
+            assertEquals(2, parseResult.bookmarks.size)
+
+            val websiteItems = parseResult.bookmarks.map { parsed ->
+                Website(
+                    id = 0,
+                    url = parsed.url,
+                    title = parsed.title,
+                    category = "Imported",
+                    dedupeKey = BookmarkNormalizer.dedupeKey(parsed.url)!!,
+                    sourcePath = parsed.folderPath.joinToString("/"),
+                    createdAtMs = parsed.addDateMs
+                )
+            }
+
+            // Execute import
+            val importResult = BookmarkImporter.importBookmarks(roomDb, dao, websiteItems)
+            assertEquals("Exactly 1 new bookmark should be inserted", 1, importResult.inserted)
+            assertEquals("Exactly 1 duplicate bookmark should be detected and skipped", 1, importResult.duplicates)
+
+            val allSites = dao.getAllWebsitesList()
+            assertEquals("Database should now contain exactly 2 sites", 2, allSites.size)
+            assertTrue("Existing site must still be present", allSites.any { it.url == "https://example.com/page" })
+            assertTrue("New site must be present", allSites.any { it.url == "https://kotlinlang.org" })
+
+            // Test backup export to Chrome/Netscape HTML format
+            val out = java.io.ByteArrayOutputStream()
+            BookmarkExporter.exportBookmarks(out, dao, System.currentTimeMillis())
+            val exportedHtml = out.toString("UTF-8")
+            assertTrue(exportedHtml.contains("<!DOCTYPE NETSCAPE-Bookmark-file-1>"))
+            assertTrue(exportedHtml.contains("https://example.com/page"))
+            assertTrue(exportedHtml.contains("https://kotlinlang.org"))
+        } finally {
+            roomDb.close()
+            context.deleteDatabase(testDbName)
         }
     }
 }
