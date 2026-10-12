@@ -29,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
@@ -65,11 +67,11 @@ fun VersionUpdateScreen(
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    var targetDigit by remember { mutableStateOf("0") }
+    var targetDigit by remember { mutableStateOf("1") }
 
     LaunchedEffect(Unit) {
         delay(450)
-        targetDigit = "1"
+        targetDigit = "2"
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
@@ -102,7 +104,7 @@ fun VersionUpdateScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Version Odometer (1.1.0 -> 1.1.1)
+                // Version Odometer (1.1.1 -> 1.1.2)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -157,36 +159,36 @@ fun VersionUpdateScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Feature 1: UI Enhancements
+                        // Feature 1: HTML Import
                         VersionFeatureTile(
-                            title = "UI Enhancements",
-                            description = "Fluid animations and refined interface"
+                            title = "Browser HTML Import",
+                            description = "Import .html bookmarks from Chrome, Brave, Firefox & all browsers"
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_appearance),
+                                imageVector = Icons.Outlined.FileDownload,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
 
-                        // Feature 2: Backup & Restore
+                        // Feature 2: HTML Export
                         VersionFeatureTile(
-                            title = "Backup & Restore",
-                            description = "Support for .webstack and .json formats"
+                            title = "Netscape HTML Export",
+                            description = "Export .html bookmarks compatible with all desktop and mobile browsers"
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Restore,
+                                imageVector = Icons.Outlined.FileUpload,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
 
-                        // Feature 3: Bug Fixes & Stability
+                        // Feature 3: Deduplication & Database v3
                         VersionFeatureTile(
-                            title = "Bug Fixes",
-                            description = "Performance boosts and file intent fixes"
+                            title = "Deduplication & Schema v3",
+                            description = "Lossless SQLite migration with canonical URL deduplication"
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Check,

@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -30,6 +32,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -468,20 +471,66 @@ private fun ClusterRow(
 
                 DropdownMenu(
                     expanded = isDropdownOpen,
-                    onDismissRequest = { isDropdownOpen = false }
+                    onDismissRequest = { isDropdownOpen = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 8.dp,
+                    border = BorderStroke(
+                        width = 0.5.dp,
+                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                    ),
+                    modifier = Modifier.widthIn(min = 180.dp)
                 ) {
                     val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
                     distinctCats.forEach { cat ->
+                        val isSelected = cat.equals(assignedCategory, ignoreCase = true)
                         DropdownMenuItem(
-                            text = { Text(cat) },
+                            text = {
+                                Text(
+                                    text = cat,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (isSelected) appColors.accent else appColors.label
+                                )
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = appColors.accent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
                             onClick = {
                                 onSelectCategory(cat)
                                 isDropdownOpen = false
                             }
                         )
                     }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                    )
                     DropdownMenuItem(
-                        text = { Text("+ New tag...") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = appColors.accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "New tag...",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.accent
+                            )
+                        },
                         onClick = {
                             isDropdownOpen = false
                             onRequestNewTag()

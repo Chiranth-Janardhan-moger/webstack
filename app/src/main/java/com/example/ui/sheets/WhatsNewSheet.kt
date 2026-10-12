@@ -136,8 +136,8 @@ fun WhatsNewBottomSheetContent(
 
         WhatsNewFeatureItem(
             icon = Icons.Outlined.Layers,
-            title = "Offline Data & Backup",
-            description = "Private local SQLite storage with .webstack and .json exports."
+            title = "HTML Bookmark Import & Export",
+            description = "Full support for .html bookmarks from Chrome, Brave, Firefox & all browsers, plus .webstack and .json."
         )
 
         WhatsNewFeatureItem(
