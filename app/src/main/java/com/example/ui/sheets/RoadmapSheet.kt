@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -224,6 +225,15 @@ fun RoadmapSubSheetContent(
             title = "PC Companion Mode",
             description = "Turn your phone into a lightweight local server. WebStack gives you a local Wi-Fi URL (e.g., http://192.168.1.10:8080) that you open on your computer's browser to view, search, and manage your bookmarks on PC without requiring any third-party cloud accounts.",
             icon = Icons.Outlined.Devices
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        RoadmapFeatureCard(
+            number = 2,
+            title = "Bulk Selection & Triage",
+            description = "Long-press multi-select on the home screen to assign tags, delete, or export bookmarks in batches.",
+            icon = Icons.Outlined.Checklist
         )
 
         Spacer(modifier = Modifier.height(24.dp))
