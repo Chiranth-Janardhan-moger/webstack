@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -219,6 +222,14 @@ fun WebStackScreen(
 
     // Refresh token map for forcing screenshot reload
     val refreshTokens = remember { mutableStateMapOf<Long, Long>() }
+
+    // Lazy grid scroll state and clean top-scroll on category switch
+    val gridState = rememberLazyGridState()
+    LaunchedEffect(selectedCategory) {
+        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
+            gridState.scrollToItem(0)
+        }
+    }
 
     // Handle incoming shared URL from System Share Sheet
     LaunchedEffect(incomingSharedUrl) {
@@ -424,10 +435,12 @@ fun WebStackScreen(
                         else -> GridCells.Fixed(1)
                     }
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = gridColumns,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
+                            .clipToBounds()
                             .testTag("websites_list"),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -445,7 +458,16 @@ fun WebStackScreen(
                         ) { website ->
                             val refreshToken = refreshTokens[website.id] ?: 0L
                             val hasCachedImage = cachedScreenshotIds.contains(website.id)
-                            Box(modifier = Modifier.animateItem()) {
+                            Box(
+                                modifier = Modifier.animateItem(
+                                    placementSpec = spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    ),
+                                    fadeInSpec = tween(durationMillis = 180),
+                                    fadeOutSpec = tween(durationMillis = 120)
+                                )
+                            ) {
                                 val onCardClick = remember(website.url) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
