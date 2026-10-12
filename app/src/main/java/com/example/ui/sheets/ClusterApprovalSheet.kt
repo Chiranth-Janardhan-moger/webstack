@@ -130,6 +130,31 @@ fun ClusterApprovalSheet(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        if (!preprocessResult.hasNetscapeHeader) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFFFF3CD),
+                border = BorderStroke(1.dp, Color(0xFFFFEEBA)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .testTag("netscape_header_warning_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Warning: Missing standard Netscape bookmark header. File may not be an official browser export.",
+                        color = Color(0xFF856404),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         // Summaries
         Text(
             text = "${preprocessResult.internalDuplicatesCount} duplicates skipped",

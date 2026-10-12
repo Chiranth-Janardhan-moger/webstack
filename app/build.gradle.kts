@@ -115,12 +115,14 @@ dependencies {
   testImplementation("io.kotest:kotest-property:5.9.1")
 
   androidTestImplementation(platform(libs.androidx.compose.bom))
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.runner)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.junit)
   androidTestImplementation(libs.androidx.core)
 
   debugImplementation(libs.androidx.compose.ui.tooling)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
   "ksp"(libs.androidx.room.compiler)
 }
 

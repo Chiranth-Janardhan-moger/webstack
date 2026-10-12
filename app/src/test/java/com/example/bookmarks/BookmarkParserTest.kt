@@ -180,4 +180,49 @@ class BookmarkParserTest {
         assertTrue("Must flag true when Netscape header present", result.hasNetscapeHeader)
         assertTrue("Must not contain missing header warning", result.warnings.none { it.contains("Missing Netscape bookmark header") })
     }
+
+    @Test
+    fun testLegacyWindows1252WithMetaTag_decodesAccurately() {
+        // Construct raw bytes in windows-1252 containing non-ASCII characters:
+        // Café München “Zürich” — Über & Co
+        // é: 0xE9, ü: 0xFC, “: 0x93, ”: 0x94, —: 0x97, Ü: 0xDC
+        val rawHtml = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n" +
+                "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=windows-1252\">\r\n" +
+                "<DL><p>\r\n" +
+                "<DT><A HREF=\"https://example.de\">Café München “Zürich” — Über & Co</A>\r\n" +
+                "</DL><p>\r\n"
+        val bytes = rawHtml.toByteArray(java.nio.charset.Charset.forName("windows-1252"))
+        val result = BookmarkParser.parse(ByteArrayInputStream(bytes))
+        assertEquals(1, result.bookmarks.size)
+        assertEquals("Café München “Zürich” — Über & Co", result.bookmarks[0].title)
+        assertTrue("Must not produce replacement characters", !result.bookmarks[0].title.contains("\uFFFD"))
+    }
+
+    @Test
+    fun testLegacyWindows1252WithoutMetaTag_fallsBackToWindows1252() {
+        // Raw bytes with non-ASCII single byte without META tag or BOM
+        val rawHtml = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n" +
+                "<DL><p>\r\n" +
+                "<DT><A HREF=\"https://legacy.fr\">Café de Paris</A>\r\n" +
+                "</DL><p>\r\n"
+        val bytes = rawHtml.toByteArray(java.nio.charset.Charset.forName("windows-1252"))
+        val result = BookmarkParser.parse(ByteArrayInputStream(bytes))
+        assertEquals(1, result.bookmarks.size)
+        assertEquals("Café de Paris", result.bookmarks[0].title)
+        assertTrue("Must not produce replacement characters", !result.bookmarks[0].title.contains("\uFFFD"))
+    }
+
+    @Test
+    fun testMetaTagWithInvalidCharset_fallsBackToWindows1252() {
+        val rawHtml = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n" +
+                "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=unsupported_bogus_charset\">\r\n" +
+                "<DL><p>\r\n" +
+                "<DT><A HREF=\"https://example.com\">Fallback Test</A>\r\n" +
+                "</DL><p>\r\n"
+        val bytes = rawHtml.toByteArray(StandardCharsets.UTF_8)
+        val result = BookmarkParser.parse(ByteArrayInputStream(bytes))
+        assertEquals(1, result.bookmarks.size)
+        assertEquals("Fallback Test", result.bookmarks[0].title)
+    }
 }
+

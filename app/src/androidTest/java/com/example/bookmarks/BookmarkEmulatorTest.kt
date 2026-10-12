@@ -1,7 +1,12 @@
 package com.example.bookmarks
 
+import android.content.ContentValues
 import android.content.Context
 import android.os.Debug
+import android.provider.MediaStore
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -11,15 +16,18 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 
 @RunWith(AndroidJUnit4::class)
 class BookmarkEmulatorTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
 
     private lateinit var context: Context
 
@@ -29,22 +37,95 @@ class BookmarkEmulatorTest {
     }
 
     @Test
-    fun testSafTruncationOverLongerFileOnDevice() {
-        val testFile = File(context.cacheDir, "emulator_saf_truncate_test.html")
-        testFile.writeText("A".repeat(500_000))
-        assertEquals(500_000L, testFile.length())
+    fun testSafContentResolverTruncationWithDocumentsProvider() {
+        // Test real ContentResolver stream truncation with mode "wt"
+        val resolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "emulator_saf_provider_test.html")
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+        }
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            try {
+                // 1. Write initial 500,000 bytes
+                resolver.openOutputStream(uri, "wt")?.use { out ->
+                    out.write(ByteArray(500_000) { 'A'.code.toByte() })
+                }
+                val initialLength = resolver.openInputStream(uri)?.use { it.available() } ?: 0
+                assertTrue("Initial file must be large", initialLength >= 500_000)
 
-        // Overwrite using FileOutputStream with truncate (equivalent to SAF "wt")
-        val shortContent = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p><DT><A HREF=\"https://example.com\">Short</A></DL><p>\n"
-        FileOutputStream(testFile, false).use { out ->
-            out.write(shortContent.toByteArray(StandardCharsets.UTF_8))
+                // 2. Overwrite with short Netscape bookmark export using mode "wt"
+                val shortExport = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p><DT><A HREF=\"https://example.com\">SAF Short</A></DL><p>\n"
+                val shortBytes = shortExport.toByteArray(StandardCharsets.UTF_8)
+                resolver.openOutputStream(uri, "wt")?.use { out ->
+                    out.write(shortBytes)
+                }
+
+                // 3. Read back from ContentProvider: must be exactly truncated to shortBytes.size
+                val readBack = resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+                assertEquals("File stream must be truncated without trailing data from prior write", shortBytes.size, readBack.size)
+                assertEquals(shortExport, String(readBack, StandardCharsets.UTF_8))
+            } finally {
+                resolver.delete(uri, null, null)
+            }
+        } else {
+            // Fallback for environments where MediaStore.Downloads is unavailable
+            val testFile = File(context.cacheDir, "emulator_saf_truncate_test.html")
+            testFile.writeText("A".repeat(500_000))
+            val shortContent = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p><DT><A HREF=\"https://example.com\">Short</A></DL><p>\n"
+            FileOutputStream(testFile, false).use { out ->
+                out.write(shortContent.toByteArray(StandardCharsets.UTF_8))
+            }
+            assertEquals(shortContent.toByteArray(StandardCharsets.UTF_8).size.toLong(), testFile.length())
+            testFile.delete()
+        }
+    }
+
+    @Test
+    fun testClusterApprovalSheet_composeRenderingAndInteractionOnDevice() {
+        val preprocessed = ImportPreprocessResult(
+            classifiedBookmarks = listOf(
+                ClassifiedBookmark(
+                    url = "https://github.com",
+                    title = "GitHub",
+                    dedupeKey = "https://github.com",
+                    folderPath = emptyList(),
+                    createdAtMs = 0L,
+                    category = "Development",
+                    source = CategorySource.DOMAIN_RULE,
+                    sourcePath = "Development",
+                    host = "github.com",
+                    registrableDomain = "github.com"
+                )
+            ),
+            clusters = listOf(
+                BookmarkCluster(
+                    id = "c1",
+                    displayName = "Development",
+                    linkCount = 1,
+                    source = CategorySource.DOMAIN_RULE,
+                    sampleDomains = listOf("github.com"),
+                    assignedCategory = "Development",
+                    isIncluded = true
+                )
+            ),
+            internalDuplicatesCount = 0,
+            unsupportedSchemeCount = 0,
+            warnings = listOf("Missing Netscape bookmark header"),
+            hasNetscapeHeader = false
+        )
+
+        composeTestRule.setContent {
+            com.example.ui.sheets.ClusterApprovalSheet(
+                preprocessResult = preprocessed,
+                existingCategories = listOf("General", "Development"),
+                onConfirmImport = {},
+                onCancel = {}
+            )
         }
 
-        assertEquals("File must be truncated to exact short length without trailing garbage",
-            shortContent.toByteArray(StandardCharsets.UTF_8).size.toLong(),
-            testFile.length()
-        )
-        testFile.delete()
+        composeTestRule.onNodeWithTag("cluster_approval_sheet").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("netscape_header_warning_banner").assertIsDisplayed()
     }
 
     @Test

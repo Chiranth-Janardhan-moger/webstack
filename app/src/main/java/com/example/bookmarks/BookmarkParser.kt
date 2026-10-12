@@ -24,8 +24,75 @@ data class ParseResult(
 object BookmarkParser {
     private const val MAX_TAG_SIZE = 1024 * 1024 // 1 MB cap
 
+    fun detectCharset(previewBytes: ByteArray, length: Int): java.nio.charset.Charset {
+        if (length <= 0) return StandardCharsets.UTF_8
+
+        // 1. Check UTF BOMs
+        if (length >= 3 && previewBytes[0] == 0xEF.toByte() && previewBytes[1] == 0xBB.toByte() && previewBytes[2] == 0xBF.toByte()) {
+            return StandardCharsets.UTF_8
+        }
+        if (length >= 2) {
+            if (previewBytes[0] == 0xFE.toByte() && previewBytes[1] == 0xFF.toByte()) return StandardCharsets.UTF_16BE
+            if (previewBytes[0] == 0xFF.toByte() && previewBytes[1] == 0xFE.toByte()) return StandardCharsets.UTF_16LE
+        }
+
+        // 2. Scan for <META ... charset=...> in ASCII preview
+        val previewAscii = String(previewBytes, 0, length, StandardCharsets.ISO_8859_1)
+        val metaCharsetRegex = Regex("""(?i)<meta\s+[^>]*content=["'][^"']*charset=([a-zA-Z0-9_\-]+)""")
+        val html5CharsetRegex = Regex("""(?i)<meta\s+[^>]*charset=["']?([a-zA-Z0-9_\-]+)""")
+
+        val match = metaCharsetRegex.find(previewAscii) ?: html5CharsetRegex.find(previewAscii)
+        if (match != null) {
+            val charsetName = match.groupValues[1].trim()
+            try {
+                return java.nio.charset.Charset.forName(charsetName)
+            } catch (_: Exception) {
+                return java.nio.charset.Charset.forName("windows-1252")
+            }
+        }
+
+        // 3. If no META tag found, verify if valid UTF-8
+        if (isValidUtf8(previewBytes, length)) {
+            return StandardCharsets.UTF_8
+        }
+
+        // 4. Fallback to Windows-1252 for non-UTF-8 legacy files
+        return try {
+            java.nio.charset.Charset.forName("windows-1252")
+        } catch (_: Exception) {
+            StandardCharsets.ISO_8859_1
+        }
+    }
+
+    private fun isValidUtf8(bytes: ByteArray, length: Int): Boolean {
+        return try {
+            val decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+            val bb = java.nio.ByteBuffer.wrap(bytes, 0, length)
+            val cb = java.nio.CharBuffer.allocate(length)
+            val result = decoder.decode(bb, cb, false)
+            !result.isError
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun parse(input: InputStream): ParseResult {
-        val reader = BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8), 64 * 1024)
+        val bufferedInput = if (input.markSupported()) input else java.io.BufferedInputStream(input, 64 * 1024)
+        val previewSize = 8192
+        bufferedInput.mark(previewSize)
+        val preview = ByteArray(previewSize)
+        var bytesRead = 0
+        while (bytesRead < previewSize) {
+            val r = bufferedInput.read(preview, bytesRead, previewSize - bytesRead)
+            if (r == -1) break
+            bytesRead += r
+        }
+        bufferedInput.reset()
+
+        val charset = detectCharset(preview, bytesRead)
+        val reader = BufferedReader(InputStreamReader(bufferedInput, charset), 64 * 1024)
 
         // Strip leading BOM (\uFEFF) if present
         reader.mark(1)

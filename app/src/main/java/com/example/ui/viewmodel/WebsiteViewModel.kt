@@ -360,6 +360,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
                 _categories.value = current
                 saveCategoriesToPrefs(current)
             }
+            saveWebsitesToPrefs(websites)
 
             Result.success(result)
         } catch (e: Exception) {

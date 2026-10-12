@@ -217,8 +217,17 @@ fun SettingsBottomSheetContent(
                         if (isHtml) {
                             val result = viewModel.preprocessHtmlBookmarks(inputStream)
                             result.onSuccess { prep ->
-                                pendingPreprocessResult = prep
-                                currentSubScreen = SettingsSubScreen.CLUSTER_APPROVAL
+                                if (prep.classifiedBookmarks.isEmpty()) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    Toast.makeText(
+                                        context,
+                                        "No bookmarks found. Please select a valid browser bookmark export file.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                } else {
+                                    pendingPreprocessResult = prep
+                                    currentSubScreen = SettingsSubScreen.CLUSTER_APPROVAL
+                                }
                             }.onFailure { err ->
                                 Toast.makeText(context, "Failed to parse bookmarks: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
                             }

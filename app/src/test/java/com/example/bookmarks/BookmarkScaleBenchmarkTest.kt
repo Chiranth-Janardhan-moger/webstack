@@ -283,16 +283,64 @@ class BookmarkScaleBenchmarkTest {
             val heapAfter = runtime.totalMemory() - runtime.freeMemory()
             val heapDeltaMB = (heapAfter - heapBefore).toDouble() / (1024 * 1024)
 
-            // Verify SharedPreferences is capped to at most 50 items and didn't serialize all 50k
+            // Verify SharedPreferences is capped to exactly 50 items and didn't serialize all 50k
             val prefs = app.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE)
             val cachedJson = prefs.getString("cached_websites_json", null)
             val cachedCount = if (!cachedJson.isNullOrBlank()) org.json.JSONArray(cachedJson).length() else 0
-            assertTrue("SharedPreferences cache must be capped at <= 50 items", cachedCount <= 50)
+            assertEquals("SharedPreferences cache must be capped at exactly 50 items", 50, cachedCount)
 
             println("=== 50k REAL VIEWMODEL IMPORT BENCHMARK ===")
             println("50,000 ViewModel commitImportBookmarks time: ${duration} ms (~${(totalCount * 1000L) / duration} rows/sec)")
-            println("Cached items in SharedPreferences: $cachedCount (safely capped <= 50)")
+            println("Cached items in SharedPreferences: $cachedCount (safely capped to exactly 50)")
             println("Heap Delta: ${String.format("%.2f", heapDeltaMB)} MB")
+        }
+    }
+
+    @Test
+    fun testSharedPreferencesCap_import200Items_restartsAndPreservesAll200() {
+        runBlocking {
+            val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+            val prefs = app.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE)
+            prefs.edit().clear().commit()
+
+            val viewModel = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+            val totalCount = 200
+            val bookmarks = (1..totalCount).map { i ->
+                ClassifiedBookmark(
+                    url = "https://example200.com/page_$i",
+                    title = "Bookmark 200 #$i",
+                    dedupeKey = "https://example200.com/page_$i",
+                    folderPath = listOf("Work"),
+                    createdAtMs = 1710000000000L + i,
+                    category = "Work",
+                    source = CategorySource.FOLDER,
+                    sourcePath = "Work",
+                    host = "example200.com",
+                    registrableDomain = "example200.com"
+                )
+            }
+
+            val result = viewModel.commitImportBookmarks(bookmarks)
+            assertTrue(result.isSuccess)
+            assertEquals(200, result.getOrThrow().inserted)
+
+            // 1. Verify SharedPreferences cache is capped to exactly 50 items
+            val cachedJson = prefs.getString("cached_websites_json", null)
+            assertTrue("Cache JSON must exist", !cachedJson.isNullOrBlank())
+            val cachedArray = org.json.JSONArray(cachedJson)
+            assertEquals("Cache must be capped to exactly 50 items", 50, cachedArray.length())
+
+            // 2. Simulate App Restart: instantiate a new WebsiteViewModel
+            val restartedViewModel = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+            // Cold initial value from SharedPreferences has at most 50 items
+            val initialCached = restartedViewModel.websitesList.value
+            assertTrue("Cold cache initial value has <= 50 items", (initialCached?.size ?: 0) <= 50)
+
+            // 3. Verify Room database contains all 200 items loaded intact
+            val dbWebsites = restartedViewModel.websiteDao.getAllWebsitesList()
+            assertEquals("All 200 bookmarks must be preserved after restart", totalCount, dbWebsites.size)
         }
     }
 }
