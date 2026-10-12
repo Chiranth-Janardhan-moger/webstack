@@ -101,7 +101,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private fun saveWebsitesToPrefs(websites: List<Website>) {
         try {
             val array = JSONArray()
-            for (site in websites) {
+            // Cap cold-start cache to top 50 bookmarks to prevent OOM and disk bloat on large imports
+            for (site in websites.take(50)) {
                 val obj = JSONObject()
                 obj.put("id", site.id)
                 obj.put("url", site.url)

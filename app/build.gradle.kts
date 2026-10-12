@@ -114,6 +114,12 @@ dependencies {
   testImplementation(libs.robolectric)
   testImplementation("io.kotest:kotest-property:5.9.1")
 
+  androidTestImplementation(platform(libs.androidx.compose.bom))
+  androidTestImplementation(libs.androidx.runner)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.junit)
+  androidTestImplementation(libs.androidx.core)
+
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
 }

@@ -232,9 +232,67 @@ class BookmarkScaleBenchmarkTest {
             println("Measured Peak Heap Allocation: ${String.format("%.2f", peakHeapMB)} MB")
 
             exportFile.delete()
-        } finally {
-            db.close()
+            } finally {
+                db.close()
+            }
         }
     }
-}
+
+    @Test
+    fun testScale50kRealViewModelImportPath() {
+        runBlocking {
+            val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+            val viewModel = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+            val totalCount = 50_000
+            val categories = listOf("Development", "Media", "Shopping", "Reading", "Social", "Work", "Personal")
+            val bookmarks = ArrayList<ClassifiedBookmark>(totalCount)
+
+            for (i in 1..totalCount) {
+                val cat = categories[i % categories.size]
+                val url = "https://vmexample${i % 1000}.com/page_$i"
+                bookmarks.add(
+                    ClassifiedBookmark(
+                        url = url,
+                        title = "VM Bookmark $i",
+                        dedupeKey = url,
+                        folderPath = listOf(cat),
+                        createdAtMs = 1710000000000L + (i * 1000),
+                        category = cat,
+                        source = CategorySource.FOLDER,
+                        sourcePath = cat,
+                        host = "vmexample${i % 1000}.com",
+                        registrableDomain = "vmexample${i % 1000}.com"
+                    )
+                )
+            }
+
+            val runtime = Runtime.getRuntime()
+            System.gc()
+            val heapBefore = runtime.totalMemory() - runtime.freeMemory()
+
+            val start = System.currentTimeMillis()
+            val result = viewModel.commitImportBookmarks(bookmarks)
+            val duration = System.currentTimeMillis() - start
+
+            assertTrue("ViewModel import must succeed", result.isSuccess)
+            val importRes = result.getOrThrow()
+            assertEquals(totalCount, importRes.inserted)
+
+            System.gc()
+            val heapAfter = runtime.totalMemory() - runtime.freeMemory()
+            val heapDeltaMB = (heapAfter - heapBefore).toDouble() / (1024 * 1024)
+
+            // Verify SharedPreferences is capped to at most 50 items and didn't serialize all 50k
+            val prefs = app.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE)
+            val cachedJson = prefs.getString("cached_websites_json", null)
+            val cachedCount = if (!cachedJson.isNullOrBlank()) org.json.JSONArray(cachedJson).length() else 0
+            assertTrue("SharedPreferences cache must be capped at <= 50 items", cachedCount <= 50)
+
+            println("=== 50k REAL VIEWMODEL IMPORT BENCHMARK ===")
+            println("50,000 ViewModel commitImportBookmarks time: ${duration} ms (~${(totalCount * 1000L) / duration} rows/sec)")
+            println("Cached items in SharedPreferences: $cachedCount (safely capped <= 50)")
+            println("Heap Delta: ${String.format("%.2f", heapDeltaMB)} MB")
+        }
+    }
 }

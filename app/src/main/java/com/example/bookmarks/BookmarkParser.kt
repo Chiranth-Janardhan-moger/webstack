@@ -17,7 +17,8 @@ data class ParsedBookmark(
 data class ParseResult(
     val bookmarks: List<ParsedBookmark>,
     val warnings: List<String>,
-    val malformedTagCount: Int
+    val malformedTagCount: Int,
+    val hasNetscapeHeader: Boolean = false
 )
 
 object BookmarkParser {
@@ -33,6 +34,7 @@ object BookmarkParser {
             reader.reset()
         }
 
+        var hasNetscapeHeader = false
         val bookmarks = mutableListOf<ParsedBookmark>()
         val warnings = mutableListOf<String>()
         var malformedCount = 0
@@ -150,6 +152,10 @@ object BookmarkParser {
                 val tagContent = tagBuffer.toString().trim()
                 if (tagContent.isEmpty()) continue
 
+                if (tagContent.contains("NETSCAPE-BOOKMARK-FILE-1", ignoreCase = true)) {
+                    hasNetscapeHeader = true
+                }
+
                 val isClosing = tagContent.startsWith("/")
                 val contentWithoutSlash = if (isClosing) tagContent.substring(1).trim() else tagContent
 
@@ -219,10 +225,15 @@ object BookmarkParser {
         // EOF reached: if A tag was left open, emit what we have
         emitPendingA()
 
+        if (!hasNetscapeHeader) {
+            warnings.add("Missing Netscape bookmark header (<!DOCTYPE NETSCAPE-Bookmark-file-1>)")
+        }
+
         return ParseResult(
             bookmarks = bookmarks,
             warnings = warnings,
-            malformedTagCount = malformedCount
+            malformedTagCount = malformedCount,
+            hasNetscapeHeader = hasNetscapeHeader
         )
     }
 

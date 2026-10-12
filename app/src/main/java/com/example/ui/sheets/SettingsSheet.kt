@@ -118,7 +118,7 @@ fun SettingsBottomSheetContent(
     ) { uri ->
         if (uri != null && viewModel != null) {
             coroutineScope.launch {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
                     val result = viewModel.exportBackup(outputStream)
                     result.onSuccess { count ->
                         val now = System.currentTimeMillis()
@@ -139,7 +139,7 @@ fun SettingsBottomSheetContent(
     ) { uri ->
         if (uri != null && viewModel != null) {
             coroutineScope.launch {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
                     val result = viewModel.exportBackup(outputStream)
                     result.onSuccess { count ->
                         val now = System.currentTimeMillis()

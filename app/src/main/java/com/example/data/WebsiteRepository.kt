@@ -72,7 +72,12 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
 
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
-                    val html = response.body?.string() ?: ""
+                    val source = response.body?.source()
+                    val html = source?.let { s ->
+                        val buffer = okio.Buffer()
+                        s.read(buffer, 64 * 1024L)
+                        buffer.readUtf8()
+                    } ?: ""
                     title = extractTitleFromHtml(html) ?: ""
                 }
             }

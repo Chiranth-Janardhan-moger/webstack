@@ -245,11 +245,30 @@ class RealBookmarksTest {
                 val parseResult = BookmarkParser.parse(ByteArrayInputStream(rawBytes))
                 val preprocessed = BookmarkImporter.preprocess(ByteArrayInputStream(rawBytes), classifier)
 
+                val expectedCounts = mapOf(
+                    "redditsaver.html" to Triple(2, 0, 2),
+                    "ie_sans_charset.html" to Triple(3, 0, 3),
+                    "firefox_bookmark_keyword.html" to Triple(2, 1, 1),
+                    "firefox23.html" to Triple(3, 0, 3),
+                    "epiphany.html" to Triple(2, 0, 2),
+                    "empty_folder.html" to Triple(2, 0, 2),
+                    "firefox2.html" to Triple(2, 0, 2)
+                )
+
+                val (expectedParsed, expectedUnsupported, expectedClassified) = expectedCounts[fileName]
+                    ?: error("Unexpected file $fileName")
+
                 println("\n--- File: $fileName (${file.length()} bytes) ---")
-                println("Parsed <a> tags: ${parseResult.bookmarks.size}")
-                println("Unsupported schemes skipped: ${preprocessed.unsupportedSchemeCount}")
-                println("Internal duplicates: ${preprocessed.internalDuplicatesCount}")
-                println("Classified valid links: ${preprocessed.classifiedBookmarks.size}")
+                println("Parsed <a> tags: ${parseResult.bookmarks.size} (expected $expectedParsed)")
+                println("Unsupported schemes skipped: ${preprocessed.unsupportedSchemeCount} (expected $expectedUnsupported)")
+                println("Internal duplicates: ${preprocessed.internalDuplicatesCount} (expected 0)")
+                println("Classified valid links: ${preprocessed.classifiedBookmarks.size} (expected $expectedClassified)")
+
+                assertTrue("File $fileName must have valid Netscape header", parseResult.hasNetscapeHeader)
+                assertEquals("Parsed <a> count mismatch for $fileName", expectedParsed, parseResult.bookmarks.size)
+                assertEquals("Unsupported count mismatch for $fileName", expectedUnsupported, preprocessed.unsupportedSchemeCount)
+                assertEquals("Internal duplicates mismatch for $fileName", 0, preprocessed.internalDuplicatesCount)
+                assertEquals("Classified count mismatch for $fileName", expectedClassified, preprocessed.classifiedBookmarks.size)
 
                 val categories = preprocessed.classifiedBookmarks.map { it.category }.distinct()
                 println("Categories (${categories.size}): $categories")

@@ -16,7 +16,8 @@ data class ImportPreprocessResult(
     val internalDuplicatesCount: Int,
     val unsupportedSchemeCount: Int,
     val warnings: List<String>,
-    val clusters: List<BookmarkCluster>
+    val clusters: List<BookmarkCluster>,
+    val hasNetscapeHeader: Boolean = true
 )
 
 object BookmarkImporter {
@@ -58,7 +59,8 @@ object BookmarkImporter {
             internalDuplicatesCount = internalDupesCount,
             unsupportedSchemeCount = unsupportedCount,
             warnings = parseResult.warnings,
-            clusters = clusters
+            clusters = clusters,
+            hasNetscapeHeader = parseResult.hasNetscapeHeader
         )
     }
 

@@ -151,4 +151,33 @@ class BookmarkParserTest {
         val result = BookmarkParser.parse(ByteArrayInputStream(garbage.toByteArray(StandardCharsets.UTF_8)))
         assertEquals(0, result.bookmarks.size)
     }
+
+    @Test
+    fun testMissingNetscapeHeader_emitsWarningAndSetsFlag() {
+        val html = """
+            <html><body>
+            <DL><p>
+            <DT><A HREF="https://example.com">Non Netscape Bookmark</A>
+            </DL><p>
+            </body></html>
+        """.trimIndent()
+        val result = BookmarkParser.parse(ByteArrayInputStream(html.toByteArray(StandardCharsets.UTF_8)))
+        assertEquals(1, result.bookmarks.size)
+        org.junit.Assert.assertFalse("Must flag false when Netscape header missing", result.hasNetscapeHeader)
+        assertTrue("Must include missing header warning", result.warnings.any { it.contains("Missing Netscape bookmark header") })
+    }
+
+    @Test
+    fun testValidNetscapeHeader_hasNetscapeHeaderIsTrue() {
+        val html = """
+            <!DOCTYPE NETSCAPE-Bookmark-file-1>
+            <DL><p>
+            <DT><A HREF="https://example.com">Valid Bookmark</A>
+            </DL><p>
+        """.trimIndent()
+        val result = BookmarkParser.parse(ByteArrayInputStream(html.toByteArray(StandardCharsets.UTF_8)))
+        assertEquals(1, result.bookmarks.size)
+        assertTrue("Must flag true when Netscape header present", result.hasNetscapeHeader)
+        assertTrue("Must not contain missing header warning", result.warnings.none { it.contains("Missing Netscape bookmark header") })
+    }
 }
