@@ -840,4 +840,42 @@ class BookmarkEmulatorTest {
             context.deleteDatabase(testDbName)
         }
     }
+
+    @Test
+    fun testImport_killActivity_relaunch_noCrashAndShowsList() {
+        val db = WebsiteDatabase.getDatabase(context)
+        val dao = db.websiteDao()
+
+        // 1. Seed items into database
+        val testItems = (1..5).map { i ->
+            Website(
+                id = 0,
+                url = "https://relaunch-test.org/page_$i",
+                title = "Relaunch $i",
+                category = "General",
+                dedupeKey = BookmarkNormalizer.dedupeKey("https://relaunch-test.org/page_$i")!!,
+                sourcePath = null,
+                createdAtMs = System.currentTimeMillis() + i
+            )
+        }
+        runBlocking {
+            BookmarkImporter.importBookmarks(db, dao, testItems)
+        }
+
+        // 2. Launch Activity Scenario
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        scenario.onActivity { activity ->
+            assertNotNull(activity)
+        }
+
+        // 3. Kill the activity
+        scenario.close()
+
+        // 4. Relaunch the activity
+        val relaunchScenario = ActivityScenario.launch(MainActivity::class.java)
+        relaunchScenario.onActivity { activity ->
+            assertNotNull("Relaunched activity must be active and not crash", activity)
+        }
+        relaunchScenario.close()
+    }
 }

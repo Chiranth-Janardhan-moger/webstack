@@ -98,12 +98,19 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val array = JSONArray(json)
             val list = ArrayList<Website>(array.length())
+            val seenIds = HashSet<Long>()
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
+                val id = obj.optLong("id", 0L)
+                if (id <= 0L || !seenIds.add(id)) {
+                    // Invalid or duplicate ID: drop the entire cache for this launch and let Room populate
+                    prefs.edit().remove("cached_websites_json").apply()
+                    return null
+                }
                 val url = obj.optString("url", "")
                 list.add(
                     Website(
-                        id = obj.optLong("id", 0L),
+                        id = id,
                         url = url,
                         title = obj.optString("title", ""),
                         category = obj.optString("category", "General"),
@@ -115,6 +122,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             }
             list
         } catch (_: Exception) {
+            prefs.edit().remove("cached_websites_json").apply()
             null
         }
     }
@@ -123,7 +131,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         try {
             val array = JSONArray()
             // Cap cold-start cache to top 50 bookmarks to prevent OOM and disk bloat on large imports
-            for (site in websites.take(50)) {
+            val valid = websites.filter { it.id > 0L }.distinctBy { it.id }.take(50)
+            for (site in valid) {
                 val obj = JSONObject()
                 obj.put("id", site.id)
                 obj.put("url", site.url)
@@ -385,7 +394,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
                 _categories.value = current
                 saveCategoriesToPrefs(current)
             }
-            saveWebsitesToPrefs(websites)
+            val persisted = repository.getAllWebsitesList()
+            saveWebsitesToPrefs(persisted)
 
             Result.success(result)
         } catch (e: Exception) {
