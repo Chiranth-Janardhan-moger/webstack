@@ -684,4 +684,81 @@ class BookmarkEmulatorTest {
             db.close()
         }
     }
+
+    @Test
+    fun testRealV2DatabaseFileMigrationOnDevice() {
+        val dbFile = context.getDatabasePath("test_real_v2_migration.db")
+        if (dbFile.exists()) {
+            context.deleteDatabase("test_real_v2_migration.db")
+        }
+
+        // 1. Create a real v2 SQLite database file on disk
+        val rawDb = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+        try {
+            rawDb.version = 2
+            rawDb.execSQL("""
+                CREATE TABLE `saved_websites` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `url` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `domain` TEXT NOT NULL,
+                    `faviconUrl` TEXT NOT NULL,
+                    `category` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL
+                )
+            """.trimIndent())
+
+            // Insert real v2 test rows:
+            // - https://example.com/page (id=1)
+            // - https://www.example.com/page/ (id=2, collision with id=1, dropped)
+            // - https://github.com (id=3, unique, kept)
+            // - https://example.com/page?utm_source=twitter (id=4, collision with id=1, dropped)
+            rawDb.execSQL("INSERT INTO `saved_websites` VALUES (1, 'https://example.com/page', 'Page 1', 'example.com', 'https://example.com/fav.ico', 'General', 1000)")
+            rawDb.execSQL("INSERT INTO `saved_websites` VALUES (2, 'https://www.example.com/page/', 'Page 2', 'example.com', '', 'General', 2000)")
+            rawDb.execSQL("INSERT INTO `saved_websites` VALUES (3, 'https://github.com', 'GitHub', 'github.com', '', 'Dev', 3000)")
+            rawDb.execSQL("INSERT INTO `saved_websites` VALUES (4, 'https://example.com/page?utm_source=twitter', 'Page 4 Tracking', 'example.com', '', 'General', 4000)")
+        } finally {
+            rawDb.close()
+        }
+
+        // 2. Open via Room with MIGRATION_2_3 to trigger migration
+        val roomDb = Room.databaseBuilder(context, WebsiteDatabase::class.java, "test_real_v2_migration.db")
+            .addMigrations(WebsiteDatabase.MIGRATION_2_3)
+            .build()
+
+        try {
+            val dao = roomDb.websiteDao()
+            val migratedList = dao.getAllWebsitesList()
+
+            // Verify count: 4 original rows - 2 dropped duplicates = 2 rows
+            assertEquals(2, migratedList.size)
+
+            val site1 = migratedList.firstOrNull { it.id == 1L }
+            assertNotNull("Row id 1 must survive as lowest id on collision", site1)
+            assertEquals("https://example.com/page", site1?.url)
+            assertEquals("https://example.com/page", site1?.dedupeKey)
+
+            val site2 = migratedList.firstOrNull { it.id == 3L }
+            assertNotNull("Row id 3 must survive", site2)
+            assertEquals("https://github.com", site2?.url)
+            assertEquals("https://github.com/", site2?.dedupeKey)
+
+            // Verify raw table counts and invariant
+            val cursor = roomDb.openHelper.readableDatabase.query("SELECT COUNT(*) FROM websites")
+            var websitesCount = 0L
+            if (cursor.moveToNext()) websitesCount = cursor.getLong(0)
+            cursor.close()
+
+            val savedCursor = roomDb.openHelper.readableDatabase.query("SELECT COUNT(*) FROM saved_websites")
+            var savedCount = 0L
+            if (savedCursor.moveToNext()) savedCount = savedCursor.getLong(0)
+            savedCursor.close()
+
+            assertEquals(2L, websitesCount)
+            assertEquals(4L, savedCount)
+        } finally {
+            roomDb.close()
+            context.deleteDatabase("test_real_v2_migration.db")
+        }
+    }
 }
