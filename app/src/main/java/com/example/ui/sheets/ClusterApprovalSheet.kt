@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -159,20 +160,6 @@ fun ClusterApprovalSheet(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Summaries
-        Text(
-            text = "${preprocessResult.internalDuplicatesCount} duplicates skipped",
-            fontSize = 13.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.testTag("summary_duplicates_text")
-        )
-        Text(
-            text = "${preprocessResult.unsupportedSchemeCount} unsupported links skipped (javascript:, chrome://, ...)",
-            fontSize = 13.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.testTag("summary_unsupported_text")
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -201,14 +188,13 @@ fun ClusterApprovalSheet(
 
         // Fold the rest into expandable "Other" row
         if (otherClusters.isNotEmpty()) {
-            val otherTotalLinks = otherClusters.sumOf { it.linkCount }
             Surface(
+                onClick = { isOtherExpanded = !isOtherExpanded },
                 shape = RoundedCornerShape(12.dp),
                 color = appColors.surface,
                 border = BorderStroke(0.75.dp, appColors.separator),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isOtherExpanded = !isOtherExpanded }
                     .testTag("other_clusters_row")
             ) {
                 Row(
@@ -216,19 +202,12 @@ fun ClusterApprovalSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(
-                            text = "Other (${otherClusters.size} categories)",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = appColors.label
-                        )
-                        Text(
-                            text = "$otherTotalLinks links total",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
+                    Text(
+                        text = "Other (${otherClusters.size} categories)",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = appColors.label
+                    )
                     Icon(
                         imageVector = if (isOtherExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = "Toggle other categories",
@@ -444,11 +423,10 @@ private fun ClusterRow(
             // Dropdown menu button
             Box {
                 Surface(
+                    onClick = { isDropdownOpen = true },
                     shape = RoundedCornerShape(8.dp),
                     color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
-                    modifier = Modifier
-                        .clickable { isDropdownOpen = true }
-                        .testTag("cluster_dropdown_${cluster.id}")
+                    modifier = Modifier.testTag("cluster_dropdown_${cluster.id}")
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -480,8 +458,36 @@ private fun ClusterRow(
                         width = 0.5.dp,
                         color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
                     ),
-                    modifier = Modifier.widthIn(min = 180.dp)
+                    modifier = Modifier
+                        .widthIn(min = 180.dp)
+                        .heightIn(max = 280.dp)
                 ) {
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = appColors.accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "New tag...",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.accent
+                            )
+                        },
+                        onClick = {
+                            isDropdownOpen = false
+                            onRequestNewTag()
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                    )
                     val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
                     distinctCats.forEach { cat ->
                         val isSelected = cat.equals(assignedCategory, ignoreCase = true)
@@ -510,32 +516,6 @@ private fun ClusterRow(
                             }
                         )
                     }
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
-                    )
-                    DropdownMenuItem(
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = appColors.accent,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        text = {
-                            Text(
-                                text = "New tag...",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = appColors.accent
-                            )
-                        },
-                        onClick = {
-                            isDropdownOpen = false
-                            onRequestNewTag()
-                        }
-                    )
                 }
             }
         }

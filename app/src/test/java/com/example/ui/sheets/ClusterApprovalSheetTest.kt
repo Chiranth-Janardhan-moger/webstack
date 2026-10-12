@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.bookmarks.BookmarkCluster
 import com.example.bookmarks.CategorySource
@@ -112,5 +113,56 @@ class ClusterApprovalSheetTest {
         }
 
         composeTestRule.onNodeWithTag("netscape_header_warning_banner").assertDoesNotExist()
+    }
+
+    @Test
+    fun testCategoryDropdownWith20Categories_showsNewTagAtTop() {
+        val twentyCategories = (1..20).map { "Category $it" }
+        val result = ImportPreprocessResult(
+            classifiedBookmarks = listOf(
+                ClassifiedBookmark(
+                    url = "https://github.com",
+                    title = "GitHub",
+                    dedupeKey = "https://github.com",
+                    folderPath = listOf("Development"),
+                    createdAtMs = 0L,
+                    category = "Development",
+                    source = CategorySource.FOLDER,
+                    sourcePath = "Development",
+                    host = "github.com",
+                    registrableDomain = "github.com"
+                )
+            ),
+            clusters = listOf(
+                BookmarkCluster(
+                    id = "c1",
+                    displayName = "Development",
+                    linkCount = 1,
+                    source = CategorySource.FOLDER,
+                    sampleDomains = listOf("github.com"),
+                    assignedCategory = "Development",
+                    isIncluded = true
+                )
+            ),
+            internalDuplicatesCount = 0,
+            unsupportedSchemeCount = 0,
+            warnings = emptyList(),
+            hasNetscapeHeader = true
+        )
+
+        composeTestRule.setContent {
+            ClusterApprovalSheet(
+                preprocessResult = result,
+                existingCategories = twentyCategories,
+                onConfirmImport = {},
+                onCancel = {}
+            )
+        }
+
+        // Open dropdown for cluster c1
+        composeTestRule.onNodeWithTag("cluster_dropdown_c1").performClick()
+
+        // "New tag..." is immediately visible at the top without scrolling
+        composeTestRule.onNodeWithText("New tag...").assertIsDisplayed()
     }
 }

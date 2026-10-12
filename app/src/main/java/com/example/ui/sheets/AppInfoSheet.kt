@@ -190,7 +190,7 @@ fun AppInfoBottomSheetContent(
 
                 StandaloneInfoRow(
                     title = "Roadmap & Future Ideas",
-                    subtitle = "Backup encryption, PC companion mode & roadmap",
+                    subtitle = "PC companion mode & future roadmap",
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         currentSubScreen = AppInfoSubScreen.ROADMAP
