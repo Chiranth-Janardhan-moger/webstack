@@ -374,6 +374,7 @@ fun WebStackScreen(
                     },
                     onOpenSettings = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showSettingsSheet = true
                     }
                 )
@@ -594,7 +595,10 @@ fun WebStackScreen(
 
         // Settings Bottom Sheet
         if (showSettingsSheet) {
-            AppBottomSheet(onDismissRequest = { showSettingsSheet = false }) {
+            AppBottomSheet(onDismissRequest = {
+                viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+                showSettingsSheet = false
+            }) {
                 SettingsBottomSheetContent(
                     themeMode = themeMode,
                     onSetThemeMode = onSetThemeMode,
@@ -616,14 +620,19 @@ fun WebStackScreen(
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showVersion110Screen = true
                     },
                     onOpenAppInfo = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showAppInfoSheet = true
                     },
-                    onDismiss = { showSettingsSheet = false },
+                    onDismiss = {
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+                        showSettingsSheet = false
+                    },
                     viewModel = viewModel
                 )
             }
@@ -645,6 +654,7 @@ fun WebStackScreen(
                     onDismiss = { showAppInfoSheet = false },
                     onBack = {
                         showAppInfoSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showSettingsSheet = true
                     },
                     onOpenWhatsNew = {

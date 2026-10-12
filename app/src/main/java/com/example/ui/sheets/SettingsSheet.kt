@@ -127,6 +127,11 @@ fun SettingsBottomSheetContent(
         }
     }
 
+    val handleDismiss = {
+        navigateToSubScreen(SettingsSubScreen.MAIN)
+        onDismiss()
+    }
+
     fun setPreprocess(result: com.example.bookmarks.ImportPreprocessResult?) {
         if (viewModel != null) {
             viewModel.setPendingPreprocessResult(result)
@@ -311,7 +316,7 @@ fun SettingsBottomSheetContent(
                 layoutMode = layoutMode,
                 onSetLayoutMode = onSetLayoutMode,
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         SettingsSubScreen.BACKUP_RESTORE -> {
@@ -357,7 +362,7 @@ fun SettingsBottomSheetContent(
                     )
                 },
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         SettingsSubScreen.CLUSTER_APPROVAL -> {
@@ -440,7 +445,7 @@ fun SettingsBottomSheetContent(
                 )
             }
 
-            IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
+            IconButton(onClick = handleDismiss, modifier = Modifier.size(44.dp)) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
@@ -752,7 +757,7 @@ fun SettingsBottomSheetContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = onDismiss,
+            onClick = handleDismiss,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = appColors.label,

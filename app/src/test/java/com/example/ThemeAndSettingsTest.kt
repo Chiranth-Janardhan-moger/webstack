@@ -64,4 +64,18 @@ class ThemeAndSettingsTest {
             .getOrDefault(WebStackLayoutMode.LARGE_CARDS)
         assertEquals(WebStackLayoutMode.GRID_CARDS, restored)
     }
+
+    @Test
+    fun testSettingsSubScreen_navigationAndResetToMain() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+        assertEquals(com.example.ui.sheets.SettingsSubScreen.MAIN, vm.settingsSubScreen.value)
+
+        vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.APPEARANCE)
+        assertEquals(com.example.ui.sheets.SettingsSubScreen.APPEARANCE, vm.settingsSubScreen.value)
+
+        vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+        assertEquals(com.example.ui.sheets.SettingsSubScreen.MAIN, vm.settingsSubScreen.value)
+    }
 }

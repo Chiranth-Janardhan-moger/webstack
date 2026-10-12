@@ -72,7 +72,6 @@ object BackupManager {
                     if (url.isBlank()) continue
 
                     val title = siteObj.optString("title", "").ifBlank { url }
-                    val domain = siteObj.optString("domain", "").ifBlank { com.example.ui.util.extractDomain(url) }
                     val category = siteObj.optString("category", "Personal").ifBlank { "Personal" }
                     val createdAt = siteObj.optLong("createdAt", System.currentTimeMillis())
 
