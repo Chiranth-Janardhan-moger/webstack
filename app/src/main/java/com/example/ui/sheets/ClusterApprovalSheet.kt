@@ -129,16 +129,14 @@ fun ClusterApprovalSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         if (!preprocessResult.hasNetscapeHeader) {
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = Color(0xFFFFF3CD),
                 border = BorderStroke(1.dp, Color(0xFFFFEEBA)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
                     .testTag("netscape_header_warning_banner")
             ) {
                 Row(
@@ -153,10 +151,9 @@ fun ClusterApprovalSheet(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = "CATEGORIES (${preprocessResult.clusters.size})",
