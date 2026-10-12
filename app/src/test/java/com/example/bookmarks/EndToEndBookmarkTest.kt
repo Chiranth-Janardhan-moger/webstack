@@ -204,5 +204,75 @@ class EndToEndBookmarkTest {
             exportFile.delete()
         }
     }
+
+    @Test
+    fun testExportToFreshDbEquality() {
+        runBlocking {
+            val db1 = Room.inMemoryDatabaseBuilder(context, WebsiteDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            val db2 = Room.inMemoryDatabaseBuilder(context, WebsiteDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            val exportFile = File(context.cacheDir, "export_fresh_db_equality.html")
+            try {
+                // Populate db1 with diverse categories and root uncategorized links
+                val testItems = listOf(
+                    Website(0, "https://github.com/kotlin", "Kotlin Lang", "Development", "https://github.com/kotlin", "Development", 1710000000000L),
+                    Website(0, "https://developer.android.com/jetpack", "Jetpack Docs", "Development", "https://developer.android.com/jetpack", "Development", 1710000001000L),
+                    Website(0, "https://medium.com/@dev/story", "Android Story", "Reading", "https://medium.com/@dev/story", "Reading", 1710000002000L),
+                    Website(0, "https://youtube.com/watch?v=123", "Compose Tutorial", "Media", "https://youtube.com/watch?v=123", "Media", 1710000003000L),
+                    Website(0, "https://reddit.com/r/androiddev", "Android Dev Reddit", "Social", "https://reddit.com/r/androiddev", "Social", 1710000004000L),
+                    Website(0, "https://customsite.org/page", "Custom Site", "Custom Folder", "https://customsite.org/page", "Custom Folder", 1710000005000L),
+                    Website(0, "https://uncategorized-example.com/item", "Root Uncat", "Uncategorized", "https://uncategorized-example.com/item", null, 1710000006000L)
+                )
+
+                BookmarkImporter.importBookmarks(db1, db1.websiteDao(), testItems)
+                assertEquals(testItems.size, db1.websiteDao().getAllWebsitesList().size)
+
+                // Export db1 to HTML
+                FileOutputStream(exportFile).use { out ->
+                    BookmarkExporter.exportBookmarks(out, db1.websiteDao(), 1710000000000L)
+                }
+                assertTrue(exportFile.length() > 0)
+
+                // Parse and import into fresh db2
+                val classifier = DomainClassifier.loadFromAssets(context)
+                val preprocessed = FileInputStream(exportFile).use {
+                    BookmarkImporter.preprocess(it, classifier)
+                }
+                val db2Items = preprocessed.classifiedBookmarks.map { b ->
+                    Website(
+                        url = b.url,
+                        title = b.title,
+                        category = b.category,
+                        dedupeKey = b.dedupeKey,
+                        sourcePath = b.sourcePath,
+                        createdAtMs = b.createdAtMs
+                    )
+                }
+                val db2ImportResult = BookmarkImporter.importBookmarks(db2, db2.websiteDao(), db2Items)
+                assertEquals(testItems.size, db2ImportResult.inserted)
+
+                // Verify row equality between db1 and db2 ignoring local auto-increment id
+                val list1 = db1.websiteDao().getAllWebsitesList().sortedBy { it.url }
+                val list2 = db2.websiteDao().getAllWebsitesList().sortedBy { it.url }
+
+                assertEquals("Total row count must match between DB1 and fresh DB2", list1.size, list2.size)
+                for (i in list1.indices) {
+                    val row1 = list1[i]
+                    val row2 = list2[i]
+                    assertEquals("URL must match at index $i", row1.url, row2.url)
+                    assertEquals("Title must match at index $i", row1.title, row2.title)
+                    assertEquals("Category must match at index $i", row1.category, row2.category)
+                    assertEquals("DedupeKey must match at index $i", row1.dedupeKey, row2.dedupeKey)
+                }
+            } finally {
+                db1.close()
+                db2.close()
+                exportFile.delete()
+            }
+        }
+    }
 }
 }

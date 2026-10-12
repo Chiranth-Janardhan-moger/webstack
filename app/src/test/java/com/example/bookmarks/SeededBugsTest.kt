@@ -165,17 +165,25 @@ class SeededBugsTest {
         assertEquals(listOf("Folder"), res.bookmarks[0].folderPath)
     }
 
-    // Bug 12: Cluster threshold > 3 instead of >= 3
+    // Bug 12: Cluster threshold >= 2 instead of >= 3 (boundary check)
     @Test
     fun testSeededBug12_clusterThresholdExactlyThreeFormsCluster() {
+        val twoLinks = listOf(
+            ParsedBookmark("https://site2.org/1", "1", 0L, emptyList()),
+            ParsedBookmark("https://site2.org/2", "2", 0L, emptyList())
+        )
+        val classifiedTwo = DomainClassifier().classifyAll(twoLinks)
+        assertEquals("Exactly 2 links must NOT cluster", "Uncategorized", classifiedTwo[0].category)
+        assertEquals(CategorySource.UNCATEGORIZED, classifiedTwo[0].source)
+
         val threeLinks = listOf(
             ParsedBookmark("https://site3.org/1", "1", 0L, emptyList()),
             ParsedBookmark("https://site3.org/2", "2", 0L, emptyList()),
             ParsedBookmark("https://site3.org/3", "3", 0L, emptyList())
         )
-        val classified = DomainClassifier().classifyAll(threeLinks)
-        assertEquals("Site3", classified[0].category)
-        assertEquals(CategorySource.CLUSTER, classified[0].source)
+        val classifiedThree = DomainClassifier().classifyAll(threeLinks)
+        assertEquals("Exactly 3 links must form cluster", "Site3", classifiedThree[0].category)
+        assertEquals(CategorySource.CLUSTER, classifiedThree[0].source)
     }
 
     // Bug 13: Folder / taxonomy precedence swapped
@@ -252,6 +260,8 @@ class SeededBugsTest {
         val emptyClassifier = DomainClassifier(emptyMap())
         val githubBookmark = ParsedBookmark("https://github.com/torvalds/linux", "Linux", 0L, emptyList())
         val emptyResult = emptyClassifier.classifyAll(listOf(githubBookmark))
+        assertNotEquals("Empty taxonomy must NOT classify github.com as Development",
+            "Development", emptyResult[0].category)
         assertNotEquals("Empty taxonomy must NOT classify github.com as DOMAIN_RULE",
             CategorySource.DOMAIN_RULE, emptyResult[0].source)
 

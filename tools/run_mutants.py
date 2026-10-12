@@ -46,9 +46,9 @@ MUTANTS = [
     {
         "id": 6,
         "name": "unique index or OnConflictStrategy.IGNORE removed",
-        "file": "app/src/main/java/com/example/bookmarks/BookmarkImporter.kt",
-        "orig": "inserted += insertChunk(chunk).count { it != -1L }",
-        "mut": "inserted += chunk.size // mutant: ignores duplicate filtering",
+        "file": "app/src/main/java/com/example/data/WebsiteDao.kt",
+        "orig": "    @Insert(onConflict = OnConflictStrategy.IGNORE)\n    suspend fun insertAll(items: List<Website>): List<Long>",
+        "mut": "    @Insert(onConflict = OnConflictStrategy.REPLACE)\n    suspend fun insertAll(items: List<Website>): List<Long>",
         "test": "testSeededBug6_duplicateKeyIgnoredAtomically"
     },
     {
@@ -93,10 +93,10 @@ MUTANTS = [
     },
     {
         "id": 12,
-        "name": "cluster threshold > 3 instead of >= 3",
+        "name": "cluster threshold >= 2 instead of >= 3",
         "file": "app/src/main/java/com/example/bookmarks/DomainClassifier.kt",
         "orig": "if (regDomain.isNotEmpty() && group.size >= 3) {",
-        "mut": "if (regDomain.isNotEmpty() && group.size > 3) {",
+        "mut": "if (regDomain.isNotEmpty() && group.size >= 2) {",
         "test": "testSeededBug12_clusterThresholdExactlyThreeFormsCluster"
     },
     {
@@ -212,7 +212,8 @@ def run():
             "test": test,
             "status": status,
             "exit_code": res.returncode,
-            "excerpt": failure_excerpt.strip()
+            "excerpt": failure_excerpt.strip(),
+            "raw_gradle_output": output.strip()
         })
 
         # Reset git commit

@@ -17,6 +17,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
+import java.lang.management.ManagementFactory
+import java.lang.management.MemoryType
 import java.nio.charset.StandardCharsets
 
 @RunWith(RobolectricTestRunner::class)
@@ -181,6 +183,12 @@ class BookmarkScaleBenchmarkTest {
             val runtime = Runtime.getRuntime()
             System.gc()
             val heapBefore = runtime.totalMemory() - runtime.freeMemory()
+            val memoryPools = try {
+                ManagementFactory.getMemoryPoolMXBeans().filter { it.type == MemoryType.HEAP }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            memoryPools.forEach { try { it.resetPeakUsage() } catch (_: Exception) {} }
 
             // 1. Bulk Database Import (Room SQLite chunked in 500s within transaction)
             val importStart = System.currentTimeMillis()
@@ -208,6 +216,9 @@ class BookmarkScaleBenchmarkTest {
 
             assertEquals(totalCount, parseResult.bookmarks.size)
 
+            val peakHeapBytes = memoryPools.sumOf { it.peakUsage?.used ?: 0L }
+            val peakHeapMB = peakHeapBytes.toDouble() / (1024 * 1024)
+
             System.gc()
             val heapAfter = runtime.totalMemory() - runtime.freeMemory()
             val heapDeltaMB = (heapAfter - heapBefore).toDouble() / (1024 * 1024)
@@ -217,7 +228,8 @@ class BookmarkScaleBenchmarkTest {
             println("50,000 Room Export time: ${exportDurationMs} ms")
             println("50,000 File Parse time: ${parseDurationMs} ms")
             println("Round-trip total time: ${importDurationMs + exportDurationMs + parseDurationMs} ms")
-            println("Measured Heap Delta: ${String.format("%.2f", heapDeltaMB)} MB")
+            println("Measured Retained Heap Delta: ${String.format("%.2f", heapDeltaMB)} MB")
+            println("Measured Peak Heap Allocation: ${String.format("%.2f", peakHeapMB)} MB")
 
             exportFile.delete()
         } finally {

@@ -23,8 +23,12 @@
   "programiz.com": "Development",
   "takeuforward.org": "Development",
   "jsfiddle.net": "Development",
-  "google.com": "Search",
-  "unstop.com": "Education",
+  "scholar.google.com": "Reading",
+  "news.google.com": "Reading",
+  "docs.google.com": "Development",
+  "drive.google.com": "Development",
+  "mail.google.com": "Development",
+  "unstop.com": "Development",
   "amazon": "Shopping",
   "ebay": "Shopping"
 }

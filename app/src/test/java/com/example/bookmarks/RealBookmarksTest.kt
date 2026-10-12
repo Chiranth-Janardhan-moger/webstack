@@ -186,6 +186,11 @@ class RealBookmarksTest {
             println("Exported HTML size bytes: ${exportFile.length()}")
             assertTrue("Exported file must not be empty", exportFile.length() > 0)
 
+            val h3Regex = Regex("""<H3[^>]*>(.*?)</H3>""", RegexOption.IGNORE_CASE)
+            val h3Names = h3Regex.findAll(exportFile.readText(StandardCharsets.UTF_8)).map { it.groupValues[1] }.toList()
+            println("\n=== EXPORTED <H3> FOLDER NAMES (${h3Names.size}) ===")
+            h3Names.forEachIndexed { idx, name -> println("${idx + 1}: '$name'") }
+
             // 6. VALIDATE NETSCAPE STRUCTURE USING PYTHON VALIDATOR
             val root = findProjectRoot()
             val validatorScript = File(root, "tools/validate_netscape.py")

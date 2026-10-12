@@ -19,3 +19,4 @@ captures/
 testdata/real/
 __pycache__/
 *.pyc
+scratch/
