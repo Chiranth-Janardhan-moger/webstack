@@ -17,3 +17,5 @@ captures/
 *.aab
 *.idsig
 testdata/real/
+__pycache__/
+*.pyc

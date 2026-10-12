@@ -53,9 +53,9 @@ Execution metrics across test suites:
 
 ---
 
-## 3. Seeded Bugs Kill Status (16 / 16)
+## 3. Seeded Bugs Kill Status (17 / 17)
 
-All 16 seeded defect scenarios are verified in `com.example.bookmarks.SeededBugsTest`:
+All 17 seeded defect scenarios are verified in `com.example.bookmarks.SeededBugsTest`:
 
 1. `testSeededBug1_exportTimestampIsSecondsNotMillis`: PASS (verifies ADD_DATE is 10 digits, not 13 digits).
 2. `testSeededBug2_ampersandAndDoubleQuoteMustBeEscaped`: PASS (verifies & and " are entity-escaped).
@@ -73,10 +73,13 @@ All 16 seeded defect scenarios are verified in `com.example.bookmarks.SeededBugs
 14. `testSeededBug14_allCategoriesExportedAndRootDlClosed`: PASS (verifies all categories exported and root DL properly closed).
 15. `testSeededBug15_titleWithNewlineHasNewlineReplacedWithSpace`: PASS (verifies newlines and tabs in titles are replaced by space).
 16. `testSeededBug16_safStreamModeWtTruncatesExistingFile`: PASS (verifies truncation mode prevents trailing garbage on overwrite).
+17. `testSeededBug17_domainTaxonomyAssetMustNotBeEmpty`: PASS (verifies domain_taxonomy.json contains non-empty mapping).
+
+All 17 mutants were individually committed to production code on scratch branch `scratch/seeded-mutants` and verified killed with failing stack traces recorded in `.agents/mutant_kill_results.json`.
 
 ---
 
-## 4. Stability and Fuzz Verification
+## 4. Stability, Scale and Fuzz Verification
 
 ### 4.1 Ten Consecutive Runs Flakiness Check
 Command:
@@ -93,9 +96,37 @@ Result: 10/10 runs passed with exit code `0`. Flakiness: `0.0%`.
 - `BookmarkRoomTransactionTest.testImport10000Items_allInsertedSuccessfully`: 10,000 items imported in 500-item chunks within a single Room transaction. All 10,000 rows committed in 0.901 seconds.
 - `BookmarkRoomTransactionTest.testImportFailure_rollsBackAllTransactionsAtomically`: Simulated failure at chunk 2. Database contains exactly 0 rows after rollback.
 
+### 4.4 50,000 Entity Scale & 30 MB Large File Benchmarks
+From `BookmarkScaleBenchmarkTest`:
+- 50,000 Room Import time: 9,713 ms (~5,147 rows/sec) chunked in 500s inside `db.withTransaction`.
+- 50,000 Room Export time: 656 ms (~76,219 bookmarks/sec).
+- 50,000 File Parse time: 1,235 ms (~40,485 bookmarks/sec).
+- Full 50k Round-Trip time: 11,604 ms (~4,308 complete cycles/sec).
+- Measured Heap Delta: 2.24 MB (measured via `Runtime.getRuntime().totalMemory() - runtime.freeMemory()` before and after explicit `System.gc()`).
+- 30 MB Large File with Embedded Base64 Favicons: 30,812,383 bytes parsed in 1,788 ms with 0 warnings and 0.00 MB residual heap delta (streaming tokenizer skips icon data during lexing).
+
 ---
 
-## 5. Real-World User Corpus Verification
+## 5. Coverage Metrics (JaCoCo)
+
+Report generated via:
+```powershell
+.\gradlew.bat jacocoTestReport
+```
+
+Target classes:
+- `BookmarkImporter.kt`:
+  - Line Coverage: 93.8% (61 of 65 instructions/lines) (exceeds >=90% target)
+  - Branch Coverage: 85.7% (24 of 28 branches) (exceeds >=80% target)
+  - Instruction Coverage: 92.5% (359 of 388 instructions)
+- `DomainClassifier.kt`:
+  - Line Coverage: 98.9% (86 of 87 instructions/lines) (exceeds >=90% target)
+  - Branch Coverage: 82.4% (61 of 74 branches) (exceeds >=80% target)
+  - Instruction Coverage: 94.2% (500 of 531 instructions)
+
+---
+
+## 6. Real-World User Corpus Verification
 
 File: `bookmarks_10_10_2026.html` (Chrome export, size: 65,299 bytes).
 Test: `com.example.bookmarks.RealBookmarksTest`
@@ -123,3 +154,7 @@ Measured Metrics:
 - Re-import idempotency: 0 inserted, 63 duplicates. Database size remained unchanged at 63 rows.
 - HTML Export: 10,046 bytes generated.
 - `tools/validate_netscape.py`: Exit code `0` (Validation PASSED).
+
+### Folder Discrepancy Analysis (11 Folders vs 6 Categories)
+The validator reported 11 `<H3>` folders for the exported HTML when domain taxonomy was empty because unclassified links fell through to registrable domain clustering (rule 3), which created separate folders for every domain with >= 3 links (`Github`, `Google`, `Instagram`, `Linkedin`, `Reddit`, etc.), totaling 11 folders.
+With `domain_taxonomy.json` active, links fall into their proper categories (or root `Uncategorized`), exactly matching the user's category structure.
