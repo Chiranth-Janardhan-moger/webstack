@@ -61,6 +61,7 @@ import com.example.ui.theme.LocalAppColors
 fun ClusterApprovalSheet(
     preprocessResult: ImportPreprocessResult,
     existingCategories: List<String>,
+    importProgress: Pair<Int, Int>? = null,
     onConfirmImport: (List<ClassifiedBookmark>) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -253,6 +254,34 @@ fun ClusterApprovalSheet(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        if (importProgress != null) {
+            val (done, total) = importProgress
+            val fraction = if (total > 0) (done.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .testTag("import_progress_indicator"),
+                    color = appColors.label,
+                    trackColor = appColors.separator
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Importing: $done / $total bookmarks (${(fraction * 100).toInt()}%)",
+                    fontSize = 12.sp,
+                    color = appColors.secondaryLabel,
+                    modifier = Modifier.testTag("import_progress_text")
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Action buttons
@@ -262,6 +291,7 @@ fun ClusterApprovalSheet(
         ) {
             OutlinedButton(
                 onClick = onCancel,
+                enabled = importProgress == null,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
@@ -281,7 +311,7 @@ fun ClusterApprovalSheet(
                     }
                     onConfirmImport(finalBookmarks)
                 },
-                enabled = totalIncludedCount > 0,
+                enabled = totalIncludedCount > 0 && importProgress == null,
                 modifier = Modifier
                     .weight(2f)
                     .height(48.dp)

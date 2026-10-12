@@ -4,6 +4,8 @@ import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 import com.example.data.Website
 import com.example.data.WebsiteDao
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.io.InputStream
 
 data class ImportResult(
@@ -118,6 +120,7 @@ object BookmarkImporter {
     ): ImportResult {
         var inserted = 0
         items.chunked(500).forEachIndexed { i, chunk ->
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             inserted += insertChunk(chunk).count { it != -1L }
             onProgress(minOf((i + 1) * 500, items.size), items.size)
         }
@@ -126,6 +129,7 @@ object BookmarkImporter {
 
     /**
      * Executes atomic Room import as specified in Section 2.6.
+     * Guaranteed to be executed in exactly ONE Room transaction.
      * ZERO rows are committed if an exception occurs mid-import.
      */
     suspend fun importBookmarks(
@@ -134,6 +138,29 @@ object BookmarkImporter {
         items: List<Website>,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     ): ImportResult = db.withTransaction {
-        executeBatchInsert(items, { chunk -> dao.insertAll(chunk) }, onProgress)
+        val stmt = db.openHelper.writableDatabase.compileStatement(
+            "INSERT OR IGNORE INTO `websites` (`url`,`title`,`category`,`dedupeKey`,`sourcePath`,`createdAtMs`) VALUES (?,?,?,?,?,?)"
+        )
+        try {
+            var inserted = 0
+            items.chunked(500).forEachIndexed { i, chunk ->
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                for (w in chunk) {
+                    stmt.bindString(1, w.url)
+                    stmt.bindString(2, w.title)
+                    stmt.bindString(3, w.category)
+                    stmt.bindString(4, w.dedupeKey)
+                    if (w.sourcePath != null) stmt.bindString(5, w.sourcePath) else stmt.bindNull(5)
+                    stmt.bindLong(6, w.createdAtMs)
+                    val rowId = stmt.executeInsert()
+                    if (rowId != -1L) inserted++
+                    stmt.clearBindings()
+                }
+                onProgress(minOf((i + 1) * 500, items.size), items.size)
+            }
+            ImportResult(inserted = inserted, duplicates = items.size - inserted)
+        } finally {
+            stmt.close()
+        }
     }
 }

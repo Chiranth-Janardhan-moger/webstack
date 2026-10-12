@@ -36,6 +36,27 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
 
+    private val _settingsSubScreen = MutableStateFlow(com.example.ui.sheets.SettingsSubScreen.MAIN)
+    val settingsSubScreen: StateFlow<com.example.ui.sheets.SettingsSubScreen> = _settingsSubScreen.asStateFlow()
+
+    private val _pendingPreprocessResult = MutableStateFlow<com.example.bookmarks.ImportPreprocessResult?>(null)
+    val pendingPreprocessResult: StateFlow<com.example.bookmarks.ImportPreprocessResult?> = _pendingPreprocessResult.asStateFlow()
+
+    private val _importProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+    val importProgress: StateFlow<Pair<Int, Int>?> = _importProgress.asStateFlow()
+
+    fun setSettingsSubScreen(subScreen: com.example.ui.sheets.SettingsSubScreen) {
+        _settingsSubScreen.value = subScreen
+    }
+
+    fun setPendingPreprocessResult(result: com.example.bookmarks.ImportPreprocessResult?) {
+        _pendingPreprocessResult.value = result
+    }
+
+    fun clearPendingPreprocessResult() {
+        _pendingPreprocessResult.value = null
+    }
+
     init {
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
@@ -330,6 +351,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     ): Result<com.example.bookmarks.ImportResult> = withContext(Dispatchers.IO) {
         try {
+            _importProgress.value = Pair(0, bookmarks.size)
             val websites = bookmarks.map { b ->
                 Website(
                     url = b.url,
@@ -344,7 +366,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
                 db = database,
                 dao = repository.websiteDao,
                 items = websites,
-                onProgress = onProgress
+                onProgress = { done, total ->
+                    _importProgress.value = Pair(done, total)
+                    onProgress(done, total)
+                }
             )
 
             val newCats = bookmarks.map { it.category }.distinct()
@@ -365,6 +390,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             Result.success(result)
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            _importProgress.value = null
         }
     }
 }

@@ -48,7 +48,7 @@ class RealBookmarksTest {
         return if (File(userDir, "testdata").exists()) userDir else userDir.parentFile ?: userDir
     }
 
-    private fun findRealHtmlFile(): File {
+    private fun findRealHtmlFile(): File? {
         val root = findProjectRoot()
         val inProject = File(root, "testdata/real/bookmarks_10_10_2026.html")
         if (inProject.exists()) return inProject
@@ -57,13 +57,18 @@ class RealBookmarksTest {
         val userFile = File("C:/Users/Chiranth/Downloads/bookmarks_10_10_2026.html")
         if (userFile.exists()) return userFile
 
-        throw IllegalStateException("Real bookmarks HTML file not found")
+        return null
     }
 
     @Test
     fun testRealUserBookmarkImportExportPipeline() {
         runBlocking {
             val file = findRealHtmlFile()
+            org.junit.Assume.assumeTrue(
+                "Real user bookmarks file not found in testdata/real; skipping private fixture test on clean checkout",
+                file != null && file.exists()
+            )
+            requireNotNull(file)
             assertTrue("Real bookmarks file must exist: ${file.absolutePath}", file.exists())
 
             // 1. PARSE
@@ -236,9 +241,14 @@ class RealBookmarksTest {
             println("========================================================")
 
             for (fileName in fileNames) {
-                val candidate1 = File(root, "testdata/real/$fileName")
-                val candidate2 = File("C:/Users/Chiranth/Downloads/$fileName")
-                val file = if (candidate1.exists()) candidate1 else candidate2
+                val candidatePublic = File(root, "testdata/public/$fileName")
+                val candidateReal = File(root, "testdata/real/$fileName")
+                val candidateDownloads = File("C:/Users/Chiranth/Downloads/$fileName")
+                val file = when {
+                    candidatePublic.exists() -> candidatePublic
+                    candidateReal.exists() -> candidateReal
+                    else -> candidateDownloads
+                }
                 assertTrue("File must exist: $fileName", file.exists())
 
                 val rawBytes = file.readBytes()

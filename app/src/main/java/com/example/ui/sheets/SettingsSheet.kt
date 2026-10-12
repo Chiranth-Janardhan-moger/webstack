@@ -110,8 +110,30 @@ fun SettingsBottomSheetContent(
         }
     }
 
-    var currentSubScreen by remember { mutableStateOf(SettingsSubScreen.MAIN) }
-    var pendingPreprocessResult by remember { mutableStateOf<com.example.bookmarks.ImportPreprocessResult?>(null) }
+    var localSubScreen by remember { mutableStateOf(SettingsSubScreen.MAIN) }
+    var localPreprocessResult by remember { mutableStateOf<com.example.bookmarks.ImportPreprocessResult?>(null) }
+
+    val vmSubScreen = viewModel?.settingsSubScreen?.collectAsState()?.value
+    val vmPreprocessResult = viewModel?.pendingPreprocessResult?.collectAsState()?.value
+
+    val currentSubScreen = if (viewModel != null && vmSubScreen != null) vmSubScreen else localSubScreen
+    val pendingPreprocessResult = if (viewModel != null) vmPreprocessResult else localPreprocessResult
+
+    fun navigateToSubScreen(screen: SettingsSubScreen) {
+        if (viewModel != null) {
+            viewModel.setSettingsSubScreen(screen)
+        } else {
+            localSubScreen = screen
+        }
+    }
+
+    fun setPreprocess(result: com.example.bookmarks.ImportPreprocessResult?) {
+        if (viewModel != null) {
+            viewModel.setPendingPreprocessResult(result)
+        } else {
+            localPreprocessResult = result
+        }
+    }
 
     val exportWebstackLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
@@ -197,15 +219,15 @@ fun SettingsBottomSheetContent(
                 ""
             }
 
-            val isHtml = displayName.endsWith(".html", ignoreCase = true) || displayName.endsWith(".htm", ignoreCase = true)
-            val isSupported = isHtml || displayName.endsWith(".webstack", ignoreCase = true) ||
-                    displayName.endsWith(".json", ignoreCase = true)
+            val isHtmlExt = displayName.endsWith(".html", ignoreCase = true) || displayName.endsWith(".htm", ignoreCase = true)
+            val isJsonExt = displayName.endsWith(".webstack", ignoreCase = true) || displayName.endsWith(".json", ignoreCase = true)
+            val isSupportedExt = isHtmlExt || isJsonExt
 
-            if (!isSupported && displayName.isNotEmpty()) {
+            if (!isSupportedExt && displayName.isNotEmpty() && displayName.contains(".")) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 Toast.makeText(
                     context,
-                    "Invalid format. Please select a .webstack, .json, or .html backup",
+                    "Invalid format. Please select a .webstack, .json, .html, or .htm backup",
                     Toast.LENGTH_LONG
                 ).show()
                 return@rememberLauncherForActivityResult
@@ -213,9 +235,36 @@ fun SettingsBottomSheetContent(
 
             coroutineScope.launch {
                 try {
-                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    context.contentResolver.openInputStream(uri)?.use { rawStream ->
+                        val bufferedStream = if (rawStream.markSupported()) rawStream else java.io.BufferedInputStream(rawStream, 8192)
+                        bufferedStream.mark(1024)
+                        val sniffBuffer = ByteArray(1024)
+                        var bytesRead = 0
+                        while (bytesRead < 1024) {
+                            val r = bufferedStream.read(sniffBuffer, bytesRead, 1024 - bytesRead)
+                            if (r == -1) break
+                            bytesRead += r
+                        }
+                        bufferedStream.reset()
+
+                        val sniffedFormat = com.example.bookmarks.BackupContentSniffer.sniff(sniffBuffer, bytesRead)
+                        val isHtml = sniffedFormat == com.example.bookmarks.DetectedBackupFormat.HTML_BOOKMARKS ||
+                                (sniffedFormat == com.example.bookmarks.DetectedBackupFormat.UNKNOWN && isHtmlExt)
+                        val isJson = sniffedFormat == com.example.bookmarks.DetectedBackupFormat.JSON_BACKUP ||
+                                (sniffedFormat == com.example.bookmarks.DetectedBackupFormat.UNKNOWN && isJsonExt)
+
+                        if (!isHtml && !isJson) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            Toast.makeText(
+                                context,
+                                "Invalid format. Please select a valid backup or bookmark export file (.webstack, .json, .html, or .htm)",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+
                         if (isHtml) {
-                            val result = viewModel.preprocessHtmlBookmarks(inputStream)
+                            val result = viewModel.preprocessHtmlBookmarks(bufferedStream)
                             result.onSuccess { prep ->
                                 if (prep.classifiedBookmarks.isEmpty()) {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -225,14 +274,14 @@ fun SettingsBottomSheetContent(
                                         Toast.LENGTH_LONG
                                     ).show()
                                 } else {
-                                    pendingPreprocessResult = prep
-                                    currentSubScreen = SettingsSubScreen.CLUSTER_APPROVAL
+                                    setPreprocess(prep)
+                                    navigateToSubScreen(SettingsSubScreen.CLUSTER_APPROVAL)
                                 }
                             }.onFailure { err ->
                                 Toast.makeText(context, "Failed to parse bookmarks: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
                             }
                         } else {
-                            val result = viewModel.restoreBackup(inputStream)
+                            val result = viewModel.restoreBackup(bufferedStream)
                             result.onSuccess { (imported, newCats) ->
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val msg = if (imported > 0) {
@@ -255,18 +304,18 @@ fun SettingsBottomSheetContent(
 
     when (currentSubScreen) {
         SettingsSubScreen.APPEARANCE -> {
-            BackHandler { currentSubScreen = SettingsSubScreen.MAIN }
+            BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
             AppearanceSubSheetContent(
                 themeMode = themeMode,
                 onSetThemeMode = onSetThemeMode,
                 layoutMode = layoutMode,
                 onSetLayoutMode = onSetLayoutMode,
-                onBack = { currentSubScreen = SettingsSubScreen.MAIN },
+                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
                 onDismiss = onDismiss
             )
         }
         SettingsSubScreen.BACKUP_RESTORE -> {
-            BackHandler { currentSubScreen = SettingsSubScreen.MAIN }
+            BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
             BackupRestoreSubSheetContent(
                 totalBookmarks = totalBookmarks,
                 onExportWebstack = {
@@ -307,18 +356,20 @@ fun SettingsBottomSheetContent(
                         )
                     )
                 },
-                onBack = { currentSubScreen = SettingsSubScreen.MAIN },
+                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
                 onDismiss = onDismiss
             )
         }
         SettingsSubScreen.CLUSTER_APPROVAL -> {
-            BackHandler { currentSubScreen = SettingsSubScreen.BACKUP_RESTORE }
+            BackHandler { navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE) }
             val prep = pendingPreprocessResult
             if (prep != null && viewModel != null) {
                 val cats = viewModel.categories.collectAsState().value
+                val progress = viewModel.importProgress.collectAsState().value
                 ClusterApprovalSheet(
                     preprocessResult = prep,
                     existingCategories = cats,
+                    importProgress = progress,
                     onConfirmImport = { bookmarksToImport ->
                         coroutineScope.launch {
                             val impResult = viewModel.commitImportBookmarks(bookmarksToImport)
@@ -332,20 +383,20 @@ fun SettingsBottomSheetContent(
                                     "Imported ${res.inserted} bookmarks (${res.duplicates} duplicates skipped)",
                                     Toast.LENGTH_LONG
                                 ).show()
-                                pendingPreprocessResult = null
-                                currentSubScreen = SettingsSubScreen.MAIN
+                                setPreprocess(null)
+                                navigateToSubScreen(SettingsSubScreen.MAIN)
                             }.onFailure { err ->
                                 Toast.makeText(context, "Import failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
                             }
                         }
                     },
                     onCancel = {
-                        pendingPreprocessResult = null
-                        currentSubScreen = SettingsSubScreen.BACKUP_RESTORE
+                        setPreprocess(null)
+                        navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE)
                     }
                 )
             } else {
-                currentSubScreen = SettingsSubScreen.BACKUP_RESTORE
+                navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE)
             }
         }
         SettingsSubScreen.MAIN -> {
@@ -425,7 +476,7 @@ fun SettingsBottomSheetContent(
         Surface(
             onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                currentSubScreen = SettingsSubScreen.APPEARANCE
+                navigateToSubScreen(SettingsSubScreen.APPEARANCE)
             },
             interactionSource = appearanceInteractionSource,
             shape = RoundedCornerShape(14.dp),
@@ -570,7 +621,7 @@ fun SettingsBottomSheetContent(
         Surface(
             onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                currentSubScreen = SettingsSubScreen.BACKUP_RESTORE
+                navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE)
             },
             interactionSource = backupInteractionSource,
             shape = RoundedCornerShape(14.dp),

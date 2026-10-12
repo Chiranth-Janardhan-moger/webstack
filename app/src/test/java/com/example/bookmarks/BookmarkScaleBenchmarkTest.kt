@@ -3,6 +3,8 @@ package com.example.bookmarks
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.Website
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -303,10 +305,14 @@ class BookmarkScaleBenchmarkTest {
             val prefs = app.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE)
             prefs.edit().clear().commit()
 
-            val viewModel = com.example.ui.viewmodel.WebsiteViewModel(app)
+            // Ensure clean database state
+            resetDatabaseSingleton()
+            app.deleteDatabase("webstack_database")
 
+            // 1. Initial ViewModel run: import 200 items through ViewModel
+            val vm1 = com.example.ui.viewmodel.WebsiteViewModel(app)
             val totalCount = 200
-            val bookmarks = (1..totalCount).map { i ->
+            val classified = (1..totalCount).map { i ->
                 ClassifiedBookmark(
                     url = "https://example200.com/page_$i",
                     title = "Bookmark 200 #$i",
@@ -321,26 +327,70 @@ class BookmarkScaleBenchmarkTest {
                 )
             }
 
-            val result = viewModel.commitImportBookmarks(bookmarks)
-            assertTrue(result.isSuccess)
-            assertEquals(200, result.getOrThrow().inserted)
+            val importResult = vm1.commitImportBookmarks(classified)
+            assertTrue("ViewModel import must succeed", importResult.isSuccess)
+            assertEquals(200, importResult.getOrThrow().inserted)
 
-            // 1. Verify SharedPreferences cache is capped to exactly 50 items
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+
+            // Verify SharedPreferences cache is capped to exactly 50 items
             val cachedJson = prefs.getString("cached_websites_json", null)
-            assertTrue("Cache JSON must exist", !cachedJson.isNullOrBlank())
+            assertTrue("Cache JSON must exist in SharedPreferences", !cachedJson.isNullOrBlank())
             val cachedArray = org.json.JSONArray(cachedJson)
-            assertEquals("Cache must be capped to exactly 50 items", 50, cachedArray.length())
+            assertEquals("SharedPreferences cache must be capped at exactly 50 items", 50, cachedArray.length())
 
-            // 2. Simulate App Restart: instantiate a new WebsiteViewModel
-            val restartedViewModel = com.example.ui.viewmodel.WebsiteViewModel(app)
+            // 2. Simulate complete app restart / process death:
+            // Close database singleton to simulate fresh process
+            resetDatabaseSingleton()
 
-            // Cold initial value from SharedPreferences has at most 50 items
-            val initialCached = restartedViewModel.websitesList.value
-            assertTrue("Cold cache initial value has <= 50 items", (initialCached?.size ?: 0) <= 50)
+            // 3. New ViewModel instance created on app cold start
+            val restartedVm = com.example.ui.viewmodel.WebsiteViewModel(app)
 
-            // 3. Verify Room database contains all 200 items loaded intact
-            val dbWebsites = restartedViewModel.websiteDao.getAllWebsitesList()
-            assertEquals("All 200 bookmarks must be preserved after restart", totalCount, dbWebsites.size)
+            // Cold start initial value (from SharedPreferences) contains the capped 50 items
+            // providing instant UI display without disk stall
+            val coldStartInitialValue = restartedVm.websitesList.value
+            assertEquals(
+                "Cold-start initial value from SharedPreferences cache must have capped 50 items",
+                50,
+                coldStartInitialValue?.size
+            )
+
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+
+            // As Room asynchronous query flow emits on cold-start, websitesList receives all 200 items
+            var fullWebsitesAfterRestart: List<Website>? = null
+            for (i in 0 until 50) {
+                org.robolectric.shadows.ShadowLooper.idleMainLooper()
+                val current = restartedVm.websitesList.value
+                if (current != null && current.size == 200) {
+                    fullWebsitesAfterRestart = current
+                    break
+                }
+                Thread.sleep(50)
+            }
+
+            assertEquals(
+                "ViewModel's cold-start websitesList must contain all 200 items after restart",
+                200,
+                fullWebsitesAfterRestart?.size
+            )
+
+            // Confirm Room database also contains all 200 rows intact
+            assertEquals(200, restartedVm.websiteDao.getAllWebsitesList().size)
+
+            // Clean up
+            resetDatabaseSingleton()
+            app.deleteDatabase("webstack_database")
         }
+    }
+
+    private fun resetDatabaseSingleton() {
+        try {
+            val field = com.example.data.WebsiteDatabase::class.java.getDeclaredField("INSTANCE")
+            field.isAccessible = true
+            val db = field.get(null) as? com.example.data.WebsiteDatabase
+            db?.close()
+            field.set(null, null)
+        } catch (_: Exception) {}
     }
 }
