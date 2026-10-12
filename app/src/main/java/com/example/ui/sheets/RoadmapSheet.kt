@@ -200,7 +200,7 @@ fun RoadmapSubSheetContent(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "We are exploring several high-impact additions for upcoming WebStack releases. Your feedback shapes what gets built first.",
+                    text = "Upcoming features in planning. Your feedback shapes what gets built.",
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                     color = appColors.secondaryLabel
@@ -223,7 +223,7 @@ fun RoadmapSubSheetContent(
         RoadmapFeatureCard(
             number = 1,
             title = "PC Companion Mode",
-            description = "Turn your phone into a lightweight local server. WebStack gives you a local Wi-Fi URL (e.g., http://192.168.1.10:8080) that you open on your computer's browser to view, search, and manage your bookmarks on PC without requiring any third-party cloud accounts.",
+            description = "Access and manage your stack from any computer over local Wi-Fi without cloud accounts.",
             icon = Icons.Outlined.Devices
         )
 
@@ -232,7 +232,7 @@ fun RoadmapSubSheetContent(
         RoadmapFeatureCard(
             number = 2,
             title = "Bulk Selection & Triage",
-            description = "Long-press multi-select on the home screen to assign tags, delete, or export bookmarks in batches.",
+            description = "Multi-select bookmarks to tag, export, or delete in batches.",
             icon = Icons.Outlined.Checklist
         )
 

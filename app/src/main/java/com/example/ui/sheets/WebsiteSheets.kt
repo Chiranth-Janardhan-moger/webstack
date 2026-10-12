@@ -98,7 +98,7 @@ fun AddWebsiteSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Save Website Link",
+                text = "New Bookmark",
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
                 color = appColors.label,
@@ -206,7 +206,7 @@ fun AddWebsiteSheetContent(
 
         // Category Tag Selection
         Text(
-            text = "Category Tag",
+            text = "Tag",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = appColors.secondaryLabel,
@@ -233,7 +233,7 @@ fun AddWebsiteSheetContent(
                     color = appColors.accent
                 )
                 Text(
-                    text = "Resolving URL & capturing visuals...",
+                    text = "Fetching preview...",
                     color = appColors.secondaryLabel,
                     fontSize = 12.sp
                 )
@@ -269,7 +269,7 @@ fun AddWebsiteSheetContent(
                 .testTag("save_website_button")
         ) {
             Text(
-                text = "Save Link",
+                text = "Save",
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 letterSpacing = (-0.2).sp
@@ -313,7 +313,7 @@ fun EditWebsiteSheetContent(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "Edit Website Link",
+                    text = "Edit Bookmark",
                     fontWeight = FontWeight.Bold,
                     fontSize = 19.sp,
                     color = appColors.label,
@@ -497,7 +497,7 @@ private fun CategorySelectionRow(
                         modifier = Modifier.size(13.dp)
                     )
                     Text(
-                        text = "New Tag",
+                        text = "Tag",
                         color = appColors.label,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold

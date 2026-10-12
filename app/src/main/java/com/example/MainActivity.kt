@@ -462,7 +462,7 @@ fun WebStackScreen(
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         if (!fetchWebPreviews) {
-                                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                                         } else {
                                             viewModel.refreshScreenshot(website.id)
                                             refreshTokens[website.id] = System.currentTimeMillis()
@@ -524,11 +524,6 @@ fun WebStackScreen(
                     },
                     onDelete = {
                         categoryToDelete = targetTag
-                        categoryForOptions = null
-                    },
-                    onFilterByTag = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        selectedCategory = targetTag
                         categoryForOptions = null
                     },
                     onDismiss = { categoryForOptions = null }
@@ -717,7 +712,7 @@ fun WebStackScreen(
                     onRefresh = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         if (!fetchWebPreviews) {
-                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                         } else {
                             viewModel.refreshScreenshot(targetWebsite.id)
                             refreshTokens[targetWebsite.id] = System.currentTimeMillis()
@@ -775,7 +770,7 @@ fun WebStackScreen(
                 tonalElevation = 0.dp,
                 title = {
                     Text(
-                        text = "Remove Link",
+                        text = "Delete Bookmark",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = appColors.label
@@ -783,7 +778,7 @@ fun WebStackScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to remove \"${websiteToDelete?.title}\" from your stack?",
+                        text = "Delete \"${websiteToDelete?.title}\" from your stack?",
                         fontSize = 14.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 20.sp

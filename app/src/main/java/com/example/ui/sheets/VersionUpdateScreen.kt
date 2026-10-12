@@ -161,7 +161,7 @@ fun VersionUpdateScreen(
                         // Feature 1: HTML Import
                         VersionFeatureTile(
                             title = "Browser HTML Import",
-                            description = "Import .html bookmarks from Chrome, Brave, Firefox & all browsers"
+                            description = "Import bookmarks from any browser"
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.FileDownload,
@@ -174,7 +174,7 @@ fun VersionUpdateScreen(
                         // Feature 2: HTML Export
                         VersionFeatureTile(
                             title = "Netscape HTML Export",
-                            description = "Export .html bookmarks compatible with all desktop and mobile browsers"
+                            description = "Universal browser HTML export"
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.FileUpload,
@@ -187,7 +187,7 @@ fun VersionUpdateScreen(
                         // Feature 3: Deduplication & Database v3
                         VersionFeatureTile(
                             title = "Deduplication & Schema v3",
-                            description = "Lossless SQLite migration with canonical URL deduplication"
+                            description = "Automatic duplicate detection"
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Check,
@@ -215,8 +215,8 @@ fun VersionUpdateScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             VersionFeatureTile(
-                                title = "WebStack Features",
-                                description = "See all capabilities & tools"
+                                title = "All Features",
+                                description = "View full changelog"
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Star,

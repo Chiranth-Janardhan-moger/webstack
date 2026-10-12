@@ -66,7 +66,7 @@ class ClusterApprovalSheetTest {
         }
 
         composeTestRule.onNodeWithTag("netscape_header_warning_banner").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Warning: Missing standard Netscape bookmark header. File may not be an official browser export.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Non-standard file format. May not be an official browser export.").assertIsDisplayed()
     }
 
     @Test
@@ -162,7 +162,7 @@ class ClusterApprovalSheetTest {
         // Open dropdown for cluster c1
         composeTestRule.onNodeWithTag("cluster_dropdown_c1").performClick()
 
-        // "New tag..." is immediately visible at the top without scrolling
-        composeTestRule.onNodeWithText("New tag...").assertIsDisplayed()
+        // "Tag" is immediately visible at the top without scrolling
+        composeTestRule.onNodeWithText("Tag").assertIsDisplayed()
     }
 }

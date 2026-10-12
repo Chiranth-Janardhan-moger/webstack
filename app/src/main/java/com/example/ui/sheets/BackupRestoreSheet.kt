@@ -145,7 +145,7 @@ fun BackupRestoreSubSheetContent(
                             color = appColors.label
                         )
                         Text(
-                            text = if (totalBookmarks == 1) "1 bookmark ready to backup" else "$totalBookmarks bookmarks ready to backup",
+                            text = if (totalBookmarks == 1) "1 bookmark ready" else "$totalBookmarks bookmarks ready",
                             fontSize = 13.sp,
                             color = appColors.secondaryLabel
                         )
@@ -329,9 +329,9 @@ fun BackupRestoreSubSheetContent(
                             )
                             Text(
                                 text = when (selectedFormat) {
-                                    ExportFormat.WEBSTACK -> "Export .webstack Backup"
-                                    ExportFormat.JSON -> "Export .json Backup"
-                                    ExportFormat.HTML -> "Export .html Bookmarks"
+                                    ExportFormat.WEBSTACK -> "Export .webstack"
+                                    ExportFormat.JSON -> "Export .json"
+                                    ExportFormat.HTML -> "Export .html"
                                 },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
@@ -348,7 +348,7 @@ fun BackupRestoreSubSheetContent(
                         modifier = Modifier.fillMaxWidth().height(44.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Share HTML Bookmarks via...", fontSize = 13.sp)
+                        Text("Share HTML File", fontSize = 13.sp)
                     }
                 }
             }
@@ -435,7 +435,7 @@ fun BackupRestoreSubSheetContent(
                                 .size(14.dp)
                         )
                         Text(
-                            text = "Merges new bookmarks without replacing existing ones.",
+                            text = "Merges bookmarks without duplicates.",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = appColors.secondaryLabel,
@@ -490,7 +490,7 @@ fun BackupRestoreSubSheetContent(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Select Backup File",
+                                text = "Choose File",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = appColors.label

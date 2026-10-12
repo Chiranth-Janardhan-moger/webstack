@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -36,10 +35,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,6 +55,7 @@ import com.example.bookmarks.BookmarkCluster
 import com.example.bookmarks.CategorySource
 import com.example.bookmarks.ClassifiedBookmark
 import com.example.bookmarks.ImportPreprocessResult
+import com.example.ui.dialogs.AddTagDialog
 import com.example.ui.theme.LocalAppColors
 
 @Composable
@@ -86,7 +84,6 @@ fun ClusterApprovalSheet(
 
     var isOtherExpanded by remember { mutableStateOf(false) }
     var showNewTagDialogForCluster by remember { mutableStateOf<String?>(null) }
-    var newTagInput by remember { mutableStateOf("") }
 
     val topClusters = remember(preprocessResult.clusters) {
         preprocessResult.clusters.take(7)
@@ -149,7 +146,7 @@ fun ClusterApprovalSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Warning: Missing standard Netscape bookmark header. File may not be an official browser export.",
+                        text = "Non-standard file format. May not be an official browser export.",
                         color = Color(0xFF856404),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -304,7 +301,7 @@ fun ClusterApprovalSheet(
                 )
             ) {
                 Text(
-                    text = "Import $totalIncludedCount Bookmarks",
+                    text = "Import ($totalIncludedCount)",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -314,43 +311,16 @@ fun ClusterApprovalSheet(
     // New Tag Dialog
     if (showNewTagDialogForCluster != null) {
         val clusterId = showNewTagDialogForCluster!!
-        AlertDialog(
-            onDismissRequest = {
+        AddTagDialog(
+            onAdd = { newTag ->
+                val trimmed = newTag.trim()
+                if (trimmed.isNotEmpty()) {
+                    categoryMap[clusterId] = trimmed
+                }
                 showNewTagDialogForCluster = null
-                newTagInput = ""
             },
-            title = { Text("New Category") },
-            text = {
-                OutlinedTextField(
-                    value = newTagInput,
-                    onValueChange = { newTagInput = it },
-                    label = { Text("Category name") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val trimmed = newTagInput.trim()
-                        if (trimmed.isNotEmpty()) {
-                            categoryMap[clusterId] = trimmed
-                        }
-                        showNewTagDialogForCluster = null
-                        newTagInput = ""
-                    }
-                ) {
-                    Text("Apply")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showNewTagDialogForCluster = null
-                        newTagInput = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showNewTagDialogForCluster = null
             }
         )
     }
@@ -472,7 +442,7 @@ private fun ClusterRow(
                         },
                         text = {
                             Text(
-                                text = "New tag...",
+                                text = "Tag",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = appColors.accent
