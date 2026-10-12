@@ -199,9 +199,10 @@ class EndToEndBookmarkTest {
             }.toSet()
             val db2Sites = freshDb.websiteDao().getAllWebsitesList().map { Triple(it.url, it.title, it.category) }.toSet()
             assertEquals("Round trip multiset of (url, title, category) must match exactly", db1Sites, db2Sites)
-        } finally {
-            freshDb.close()
-            exportFile.delete()
+            } finally {
+                freshDb.close()
+                exportFile.delete()
+            }
         }
     }
 
@@ -274,5 +275,4 @@ class EndToEndBookmarkTest {
             }
         }
     }
-}
 }

@@ -213,4 +213,96 @@ class RealBookmarksTest {
             exportFile.delete()
         }
     }
+
+    @Test
+    fun testAdditionalBrowserCorpusFiles() {
+        runBlocking {
+            val fileNames = listOf(
+                "redditsaver.html",
+                "ie_sans_charset.html",
+                "firefox_bookmark_keyword.html",
+                "firefox23.html",
+                "epiphany.html",
+                "empty_folder.html",
+                "firefox2.html"
+            )
+
+            val classifier = DomainClassifier.loadFromAssets(context)
+            val root = findProjectRoot()
+            val validatorScript = File(root, "tools/validate_netscape.py")
+
+            println("\n========================================================")
+            println("=== ADDITIONAL BROWSER CORPUS VERIFICATION (7 FILES) ===")
+            println("========================================================")
+
+            for (fileName in fileNames) {
+                val candidate1 = File(root, "testdata/real/$fileName")
+                val candidate2 = File("C:/Users/Chiranth/Downloads/$fileName")
+                val file = if (candidate1.exists()) candidate1 else candidate2
+                assertTrue("File must exist: $fileName", file.exists())
+
+                val rawBytes = file.readBytes()
+                val parseResult = BookmarkParser.parse(ByteArrayInputStream(rawBytes))
+                val preprocessed = BookmarkImporter.preprocess(ByteArrayInputStream(rawBytes), classifier)
+
+                println("\n--- File: $fileName (${file.length()} bytes) ---")
+                println("Parsed <a> tags: ${parseResult.bookmarks.size}")
+                println("Unsupported schemes skipped: ${preprocessed.unsupportedSchemeCount}")
+                println("Internal duplicates: ${preprocessed.internalDuplicatesCount}")
+                println("Classified valid links: ${preprocessed.classifiedBookmarks.size}")
+
+                val categories = preprocessed.classifiedBookmarks.map { it.category }.distinct()
+                println("Categories (${categories.size}): $categories")
+
+                // Database import into fresh in-memory Room DB
+                val tempDb = Room.inMemoryDatabaseBuilder(context, WebsiteDatabase::class.java)
+                    .allowMainThreadQueries()
+                    .build()
+                try {
+                    val websites = preprocessed.classifiedBookmarks.map { b ->
+                        Website(
+                            url = b.url,
+                            title = b.title,
+                            category = b.category,
+                            dedupeKey = b.dedupeKey,
+                            sourcePath = b.sourcePath,
+                            createdAtMs = b.createdAtMs
+                        )
+                    }
+                    val importResult = BookmarkImporter.importBookmarks(tempDb, tempDb.websiteDao(), websites)
+                    assertEquals("Inserted must match unique classified count", websites.size, importResult.inserted)
+
+                    // Export to HTML
+                    val exportFile = File(context.cacheDir, "export_$fileName")
+                    FileOutputStream(exportFile).use { out ->
+                        val exportDao = object : ExportDao {
+                            override suspend fun categoriesSorted(): List<String> = tempDb.websiteDao().categoriesSorted()
+                            override suspend fun byCategory(category: String): List<Website> = tempDb.websiteDao().byCategory(category)
+                        }
+                        BookmarkExporter.exportBookmarks(out, exportDao, 1710000000000L)
+                    }
+
+                    // Validate exported HTML structure
+                    if (validatorScript.exists()) {
+                        val proc = ProcessBuilder("python", validatorScript.absolutePath, exportFile.absolutePath)
+                            .redirectErrorStream(true)
+                            .start()
+                        val validatorOutput = proc.inputStream.bufferedReader().readText()
+                        val exitCode = proc.waitFor()
+                        assertEquals("Netscape validator must exit 0 for $fileName: $validatorOutput", 0, exitCode)
+                        println("Validator: PASSED (exit code 0)")
+                    }
+
+                    // Re-parse and verify count
+                    val reParsed = FileInputStream(exportFile).use { BookmarkParser.parse(it) }
+                    assertEquals("Re-parsed count must match exported database count", websites.size, reParsed.bookmarks.size)
+
+                    exportFile.delete()
+                } finally {
+                    tempDb.close()
+                }
+            }
+        }
+    }
 }
+
