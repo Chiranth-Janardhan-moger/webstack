@@ -126,4 +126,42 @@ class BookmarkRoomTransactionTest {
         assertTrue("Expected simulated exception to be thrown", threw)
         assertEquals("Database must contain 0 rows after rollback", 0, dao.getAllWebsitesList().size)
     }
+
+    @Test
+    fun testMigration2to3_duplicateUrlsInUpgrade() {
+        val sqliteDb = db.openHelper.writableDatabase
+        // 1. Create legacy version 2 table: saved_websites
+        sqliteDb.execSQL("""
+            CREATE TABLE IF NOT EXISTS `saved_websites` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `url` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `domain` TEXT NOT NULL,
+                `faviconUrl` TEXT NOT NULL,
+                `category` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        // 2. Insert duplicate case: example.com/page and www.example.com/page/
+        sqliteDb.execSQL("INSERT INTO `saved_websites` VALUES (1, 'example.com/page', 'Page 1', 'example.com', '', 'General', 1000)")
+        sqliteDb.execSQL("INSERT INTO `saved_websites` VALUES (2, 'www.example.com/page/', 'Page 2', 'example.com', '', 'General', 2000)")
+
+        // 3. Run MIGRATION_2_3
+        WebsiteDatabase.MIGRATION_2_3.migrate(sqliteDb)
+
+        // 4. Query websites table
+        val cursor = sqliteDb.query("SELECT id, url, dedupeKey FROM websites ORDER BY id ASC")
+        val results = mutableListOf<Triple<Long, String, String>>()
+        while (cursor.moveToNext()) {
+            results.add(Triple(cursor.getLong(0), cursor.getString(1), cursor.getString(2)))
+        }
+        cursor.close()
+
+        println("Surviving rows after upgrade: $results")
+        // Both survive because raw url was used as dedupeKey in SQL ('example.com/page' != 'www.example.com/page/')
+        assertEquals(2, results.size)
+        assertEquals("example.com/page", results[0].second)
+        assertEquals("www.example.com/page/", results[1].second)
+    }
 }

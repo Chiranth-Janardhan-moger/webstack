@@ -29,12 +29,10 @@ abstract class WebsiteDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_websites_dedupeKey` ON `websites` (`dedupeKey`)")
-                try {
-                    db.execSQL("""
-                        INSERT OR IGNORE INTO `websites` (`id`, `url`, `title`, `category`, `dedupeKey`, `sourcePath`, `createdAtMs`)
-                        SELECT `id`, `url`, `title`, `category`, `url`, NULL, `createdAt` FROM `saved_websites`
-                    """.trimIndent())
-                } catch (_: Exception) {}
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `websites` (`id`, `url`, `title`, `category`, `dedupeKey`, `sourcePath`, `createdAtMs`)
+                    SELECT `id`, `url`, `title`, `category`, `url`, NULL, `createdAt` FROM `saved_websites`
+                """.trimIndent())
             }
         }
 
