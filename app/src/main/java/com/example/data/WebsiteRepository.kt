@@ -10,8 +10,8 @@ import java.util.concurrent.TimeUnit
 
 class WebsiteRepository(val websiteDao: WebsiteDao) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .readTimeout(3, TimeUnit.SECONDS)
         .build()
 
     val allWebsites = websiteDao.getAllWebsites()
@@ -44,6 +44,10 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
         websiteDao.resetCategoryToDefault(category)
     }
 
+    suspend fun updateTitle(id: Long, title: String) {
+        websiteDao.updateTitle(id, title)
+    }
+
     suspend fun fetchAndSave(inputUrl: String, customCategory: String? = null): Result<Website> = withContext(Dispatchers.IO) {
         var url = inputUrl.trim()
         if (url.isBlank()) {
@@ -62,8 +66,25 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
         }
 
         val domain = extractDomain(url)
-        var title = ""
+        val category = if (!customCategory.isNullOrBlank() && customCategory != "All") {
+            customCategory
+        } else {
+            inferCategory(domain, "", url)
+        }
 
+        val website = Website(
+            url = url,
+            title = "",
+            category = category,
+            dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url
+        )
+
+        val id = websiteDao.insertWebsite(website)
+        Result.success(website.copy(id = id))
+    }
+
+    suspend fun fetchTitleAsync(id: Long, url: String, domain: String) = withContext(Dispatchers.IO) {
+        var title = ""
         try {
             val request = Request.Builder()
                 .url(url)
@@ -81,30 +102,14 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
                     title = extractTitleFromHtml(html) ?: ""
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (_: Exception) {}
 
-        // Fallback title generation if fetch failed or returned empty
-        if (title.isBlank()) {
-            title = domain.substringBefore(".").replaceFirstChar { it.uppercaseChar() }
-        }
-
-        val category = if (!customCategory.isNullOrBlank() && customCategory != "All") {
-            customCategory
+        val finalTitle = if (title.isNotBlank()) {
+            title
         } else {
-            inferCategory(domain, title, url)
+            domain.substringBefore(".").replaceFirstChar { it.uppercaseChar() }
         }
-
-        val website = Website(
-            url = url,
-            title = title,
-            category = category,
-            dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url
-        )
-
-        val id = websiteDao.insertWebsite(website)
-        Result.success(website.copy(id = id))
+        websiteDao.updateTitle(id, finalTitle)
     }
 
     private fun inferCategory(domain: String, title: String, url: String): String {

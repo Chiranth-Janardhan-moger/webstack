@@ -74,10 +74,11 @@ fun openWebsiteInBrowser(context: Context, url: String) {
 
 fun shareWebsiteLink(context: Context, website: Website) {
     try {
+        val titleDisplay = website.title.ifBlank { website.domain }
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, website.title)
-            putExtra(Intent.EXTRA_TEXT, "${website.title} - ${website.url}")
+            putExtra(Intent.EXTRA_SUBJECT, titleDisplay)
+            putExtra(Intent.EXTRA_TEXT, "$titleDisplay - ${website.url}")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(shareIntent)

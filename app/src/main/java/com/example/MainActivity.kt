@@ -102,6 +102,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class MainActivity : ComponentActivity() {
     private val sharedUrlState = MutableStateFlow<String?>(null)
     private val sharedBackupUriState = MutableStateFlow<android.net.Uri?>(null)
+    private val shortcutActionState = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,6 +130,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val sharedUrl by sharedUrlState.collectAsState()
                     val sharedBackupUri by sharedBackupUriState.collectAsState()
+                    val shortcutAction by shortcutActionState.collectAsState()
                     WebStackScreen(
                         themeMode = themeMode,
                         onSetThemeMode = { newMode ->
@@ -138,7 +140,9 @@ class MainActivity : ComponentActivity() {
                         incomingSharedUrl = sharedUrl,
                         onClearIncomingUrl = { sharedUrlState.value = null },
                         incomingBackupUri = sharedBackupUri,
-                        onClearIncomingBackupUri = { sharedBackupUriState.value = null }
+                        onClearIncomingBackupUri = { sharedBackupUriState.value = null },
+                        incomingShortcut = shortcutAction,
+                        onClearIncomingShortcut = { shortcutActionState.value = null }
                     )
                 }
             }
@@ -152,6 +156,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        val shortcut = intent?.getStringExtra("shortcut")
+        if (!shortcut.isNullOrBlank()) {
+            shortcutActionState.value = shortcut
+        }
+
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
             val extracted = extractUrlFromText(text) ?: text.trim()
@@ -172,7 +181,9 @@ fun WebStackScreen(
     incomingSharedUrl: String? = null,
     onClearIncomingUrl: () -> Unit = {},
     incomingBackupUri: android.net.Uri? = null,
-    onClearIncomingBackupUri: () -> Unit = {}
+    onClearIncomingBackupUri: () -> Unit = {},
+    incomingShortcut: String? = null,
+    onClearIncomingShortcut: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -237,6 +248,20 @@ fun WebStackScreen(
             initialAddUrl = incomingSharedUrl
             showAddSheet = true
             onClearIncomingUrl()
+        }
+    }
+
+    // Handle incoming launcher shortcuts ("add" or "search")
+    LaunchedEffect(incomingShortcut) {
+        when (incomingShortcut) {
+            "add" -> {
+                showAddSheet = true
+                onClearIncomingShortcut()
+            }
+            "search" -> {
+                isSearchExpanded = true
+                onClearIncomingShortcut()
+            }
         }
     }
 
@@ -460,12 +485,9 @@ fun WebStackScreen(
                             val hasCachedImage = cachedScreenshotIds.contains(website.id)
                             Box(
                                 modifier = Modifier.animateItem(
-                                    placementSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    ),
-                                    fadeInSpec = tween(durationMillis = 180),
-                                    fadeOutSpec = tween(durationMillis = 120)
+                                    placementSpec = null,
+                                    fadeInSpec = tween(durationMillis = 140),
+                                    fadeOutSpec = tween(durationMillis = 100)
                                 )
                             ) {
                                 val onCardClick = remember(website.url) {

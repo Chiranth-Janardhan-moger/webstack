@@ -153,7 +153,7 @@ fun ClusterApprovalSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = "CATEGORIES (${preprocessResult.clusters.size})",

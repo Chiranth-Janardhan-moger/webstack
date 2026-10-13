@@ -233,7 +233,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             val result = repository.fetchAndSave(trimmed, category)
             _isSaving.value = false
             if (result.isSuccess) {
+                val savedWebsite = result.getOrThrow()
                 onSuccess()
+                launch(Dispatchers.IO) {
+                    repository.fetchTitleAsync(savedWebsite.id, savedWebsite.url, savedWebsite.domain)
+                }
             } else {
                 _saveError.value = result.exceptionOrNull()?.message ?: "Failed to save website"
             }

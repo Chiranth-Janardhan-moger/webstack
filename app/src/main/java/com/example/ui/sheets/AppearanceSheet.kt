@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -131,7 +132,7 @@ fun AppearanceSubSheetContent(
                 // Animated sliding thumb: Black in light mode, White in dark mode
                 Box(
                     modifier = Modifier
-                        .offset(x = animatedOffset)
+                        .offset { IntOffset(x = animatedOffset.roundToPx(), y = 0) }
                         .width(segmentWidth)
                         .fillMaxHeight()
                         .background(
