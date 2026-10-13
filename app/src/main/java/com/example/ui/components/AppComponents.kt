@@ -50,6 +50,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
@@ -1070,6 +1073,244 @@ fun AppExplainerDialog(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Unified dialog presenting all 3 WebStack backup formats side by side.
+ */
+@Composable
+fun BackupFormatsExplainerDialog(
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            visible = true
+        }
+
+        val scale by animateFloatAsState(
+            targetValue = if (visible) 1f else 0.88f,
+            animationSpec = spring(
+                dampingRatio = 0.78f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "formats_dialog_scale"
+        )
+        val alpha by animateFloatAsState(
+            targetValue = if (visible) 1f else 0f,
+            animationSpec = tween(durationMillis = 180),
+            label = "formats_dialog_alpha"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f * alpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 400.dp)
+                    .padding(horizontal = 20.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consume click inside card
+                    ),
+                shape = RoundedCornerShape(24.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                shadowElevation = if (appColors.isDark) 0.dp else 12.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = appColors.fill,
+                        border = BorderStroke(0.5.dp, appColors.separator.copy(alpha = 0.5f)),
+                        modifier = Modifier.size(50.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.CloudUpload,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Backup Formats",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = appColors.label,
+                        textAlign = TextAlign.Center,
+                        letterSpacing = (-0.3).sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        BackupFormatCard(
+                            ext = ".webstack",
+                            title = "WebStack Backup",
+                            description = "Our native backup format. Best for moving your entire stack to another phone in 1 tap.",
+                            icon = Icons.Outlined.CloudUpload
+                        )
+
+                        BackupFormatCard(
+                            ext = ".html",
+                            title = "Browser Bookmarks",
+                            description = "Universal Netscape bookmark file. Import directly into Chrome, Firefox, Safari, or Brave on your PC or Mac.",
+                            icon = Icons.Default.Public
+                        )
+
+                        BackupFormatCard(
+                            ext = ".json",
+                            title = "Plain JSON",
+                            description = "Plain structured data. Ideal for developers, custom scripts, or data tools.",
+                            icon = Icons.Outlined.Code
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    val btnInteractionSource = remember { MutableInteractionSource() }
+                    val isBtnPressed by btnInteractionSource.collectIsPressedAsState()
+                    val btnScale by animateFloatAsState(
+                        targetValue = if (isBtnPressed) 0.94f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        label = "formats_got_it_btn"
+                    )
+
+                    Button(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onDismiss()
+                        },
+                        interactionSource = btnInteractionSource,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = appColors.label,
+                            contentColor = appColors.systemBackground
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .graphicsLayer {
+                                scaleX = btnScale
+                                scaleY = btnScale
+                            }
+                    ) {
+                        Text(
+                            text = "Got It",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            letterSpacing = (-0.2).sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupFormatCard(
+    ext: String,
+    title: String,
+    description: String,
+    icon: ImageVector
+) {
+    val appColors = LocalAppColors.current
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = appColors.fill,
+        border = BorderStroke(0.5.dp, appColors.separator.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = appColors.surface,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = appColors.label,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = ext,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = appColors.label
+                    )
+                    Text(
+                        text = "• $title",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = appColors.secondaryLabel
+                    )
+                }
+
+                Text(
+                    text = description,
+                    fontSize = 12.sp,
+                    color = appColors.secondaryLabel,
+                    lineHeight = 16.sp
+                )
             }
         }
     }

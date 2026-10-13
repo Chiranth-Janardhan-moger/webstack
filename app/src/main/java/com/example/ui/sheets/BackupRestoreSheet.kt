@@ -35,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.FileDownload
@@ -43,6 +42,7 @@ import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.ui.components.AppExplainerDialog
 import com.example.ui.components.AppSubSheetHeader
+import com.example.ui.components.BackupFormatsExplainerDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -72,12 +72,6 @@ enum class ExportFormat {
     HTML
 }
 
-private data class FormatExplainer(
-    val title: String,
-    val description: String,
-    val icon: ImageVector
-)
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BackupRestoreSubSheetContent(
@@ -93,7 +87,8 @@ fun BackupRestoreSubSheetContent(
     val haptics = LocalHapticFeedback.current
     val appColors = LocalAppColors.current
     var selectedFormat by remember { mutableStateOf(ExportFormat.WEBSTACK) }
-    var activeExplainer by remember { mutableStateOf<FormatExplainer?>(null) }
+    var showFormatsExplainer by remember { mutableStateOf(false) }
+    var showImportExplainer by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -135,7 +130,18 @@ fun BackupRestoreSubSheetContent(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showFormatsExplainer = true
+                            }
+                        )
                 ) {
                     Surface(
                         color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
@@ -154,7 +160,7 @@ fun BackupRestoreSubSheetContent(
 
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Full Library Backup",
+                            text = "Export Backup",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = appColors.label
@@ -234,11 +240,7 @@ fun BackupRestoreSubSheetContent(
                                         },
                                         onLongClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            activeExplainer = FormatExplainer(
-                                                title = "WebStack Backup (.webstack)",
-                                                description = "Our native backup format. Best for moving your entire stack to another phone running WebStack. Restores in 1 tap.",
-                                                icon = Icons.Outlined.CloudUpload
-                                            )
+                                            showFormatsExplainer = true
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
@@ -267,11 +269,7 @@ fun BackupRestoreSubSheetContent(
                                         },
                                         onLongClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            activeExplainer = FormatExplainer(
-                                                title = "Plain JSON (.json)",
-                                                description = "Raw structured JSON data. Ideal for developers, custom scripts, or importing into data analysis tools.",
-                                                icon = Icons.Outlined.Code
-                                            )
+                                            showFormatsExplainer = true
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
@@ -300,11 +298,7 @@ fun BackupRestoreSubSheetContent(
                                         },
                                         onLongClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            activeExplainer = FormatExplainer(
-                                                title = "Browser Bookmarks (.html)",
-                                                description = "Universal Netscape HTML format. Import directly into Chrome, Firefox, Safari, Edge, or Brave on your PC or Mac.",
-                                                icon = Icons.Default.Public
-                                            )
+                                            showFormatsExplainer = true
                                         }
                                     ),
                                 contentAlignment = Alignment.Center
@@ -423,7 +417,18 @@ fun BackupRestoreSubSheetContent(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showImportExplainer = true
+                            }
+                        )
                 ) {
                     Surface(
                         color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
@@ -455,37 +460,6 @@ fun BackupRestoreSubSheetContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Merge callout
-                Surface(
-                    color = if (appColors.isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            tint = appColors.secondaryLabel,
-                            modifier = Modifier
-                                .padding(top = 1.dp)
-                                .size(14.dp)
-                        )
-                        Text(
-                            text = "Merges bookmarks without duplicates.",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = appColors.secondaryLabel,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Bouncy Select Backup File Button
@@ -501,11 +475,6 @@ fun BackupRestoreSubSheetContent(
                 )
 
                 Surface(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onRestore()
-                    },
-                    interactionSource = restoreInteractionSource,
                     shape = RoundedCornerShape(12.dp),
                     color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
                     border = BorderStroke(0.75.dp, appColors.separator),
@@ -516,6 +485,18 @@ fun BackupRestoreSubSheetContent(
                             scaleX = restoreScale
                             scaleY = restoreScale
                         }
+                        .combinedClickable(
+                            interactionSource = restoreInteractionSource,
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onRestore()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showImportExplainer = true
+                            }
+                        )
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -563,12 +544,16 @@ fun BackupRestoreSubSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    activeExplainer?.let { exp ->
+    if (showFormatsExplainer) {
+        BackupFormatsExplainerDialog(onDismiss = { showFormatsExplainer = false })
+    }
+
+    if (showImportExplainer) {
         AppExplainerDialog(
-            title = exp.title,
-            description = exp.description,
-            icon = exp.icon,
-            onDismiss = { activeExplainer = null }
+            title = "Import Backup",
+            description = "Merges bookmarks without duplicates. Existing bookmarks in your stack remain safe and untouched.",
+            icon = Icons.Outlined.Restore,
+            onDismiss = { showImportExplainer = false }
         )
     }
 }

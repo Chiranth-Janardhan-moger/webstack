@@ -34,7 +34,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -77,6 +81,12 @@ enum class SettingsSubScreen {
     CLUSTER_APPROVAL
 }
 
+private data class SettingsExplainer(
+    val title: String,
+    val description: String,
+    val icon: ImageVector
+)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsBottomSheetContent(
@@ -101,7 +111,7 @@ fun SettingsBottomSheetContent(
     var lastBackupTimestamp by remember {
         mutableStateOf(prefs.getLong("last_backup_timestamp", 0L))
     }
-    var showPreviewExplainer by remember { mutableStateOf(false) }
+    var activeExplainer by remember { mutableStateOf<SettingsExplainer?>(null) }
     val websitesState = viewModel?.websitesList?.collectAsState()
     val totalBookmarks = websitesState?.value?.size ?: 0
 
@@ -459,7 +469,27 @@ fun SettingsBottomSheetContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(start = 2.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.TouchApp,
+                contentDescription = null,
+                tint = appColors.secondaryLabel,
+                modifier = Modifier.size(13.dp)
+            )
+            Text(
+                text = "Touch and hold any setting for details",
+                fontSize = 12.sp,
+                color = appColors.secondaryLabel
+            )
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
 
         // Section: Look and Feel
         Text(
@@ -472,76 +502,18 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        val appearanceInteractionSource = remember { MutableInteractionSource() }
-        val isAppearancePressed by appearanceInteractionSource.collectIsPressedAsState()
-        val appearanceScale by animateFloatAsState(
-            targetValue = if (isAppearancePressed) 0.96f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
-            label = "appearance_card_bouncy"
-        )
-
-        Surface(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                navigateToSubScreen(SettingsSubScreen.APPEARANCE)
-            },
-            interactionSource = appearanceInteractionSource,
-            shape = RoundedCornerShape(14.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = appearanceScale
-                    scaleY = appearanceScale
-                }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_appearance),
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Appearance",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = appColors.label
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = appColors.tertiaryLabel,
-                    modifier = Modifier.size(16.dp)
+        SettingsNavCard(
+            title = "Appearance",
+            iconPainter = painterResource(id = R.drawable.ic_appearance),
+            onClick = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
+            onLongClick = {
+                activeExplainer = SettingsExplainer(
+                    title = "Appearance",
+                    description = "Customize your theme (Light, Dark, or System) and switch between Compact or Cozy card layouts.",
+                    icon = Icons.Outlined.Palette
                 )
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -577,10 +549,17 @@ fun SettingsBottomSheetContent(
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { onToggleFetchWebPreviews(!fetchWebPreviews) },
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onToggleFetchWebPreviews(!fetchWebPreviews)
+                            },
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                showPreviewExplainer = true
+                                activeExplainer = SettingsExplainer(
+                                    title = "Fetch Web Previews",
+                                    description = "Downloads visual snapshot cards from the web when you save links. Turn this off for zero data usage or offline operation.",
+                                    icon = Icons.Default.Public
+                                )
                             }
                         )
                 ) {
@@ -637,83 +616,19 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        val backupInteractionSource = remember { MutableInteractionSource() }
-        val isBackupPressed by backupInteractionSource.collectIsPressedAsState()
-        val backupScale by animateFloatAsState(
-            targetValue = if (isBackupPressed) 0.96f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
-            label = "backup_card_bouncy"
-        )
-
-        Surface(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE)
-            },
-            interactionSource = backupInteractionSource,
-            shape = RoundedCornerShape(14.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = backupScale
-                    scaleY = backupScale
-                }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Restore,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = "Backup and restore",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = appColors.label
-                        )
-                        Text(
-                            text = lastBackupText,
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = appColors.tertiaryLabel,
-                    modifier = Modifier.size(16.dp)
+        SettingsNavCard(
+            title = "Backup and restore",
+            subtitle = lastBackupText,
+            icon = Icons.Outlined.Restore,
+            onClick = { navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE) },
+            onLongClick = {
+                activeExplainer = SettingsExplainer(
+                    title = "Backup and Restore",
+                    description = "Export bookmarks as .webstack, .json, or .html files, or restore an existing backup with automatic deduplication.",
+                    icon = Icons.Outlined.Restore
                 )
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -728,56 +643,18 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // App Info Entry
-        Surface(
+        SettingsNavCard(
+            title = "App Info",
+            icon = Icons.Outlined.Info,
             onClick = onOpenAppInfo,
-            shape = RoundedCornerShape(14.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        color = appColors.fill,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Info,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = appColors.label
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "App Info",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appColors.label
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = appColors.tertiaryLabel,
-                    modifier = Modifier.size(18.dp)
+            onLongClick = {
+                activeExplainer = SettingsExplainer(
+                    title = "App Info",
+                    description = "View version number, update notes, build details, and open-source acknowledgments.",
+                    icon = Icons.Outlined.Info
                 )
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -800,12 +677,121 @@ fun SettingsBottomSheetContent(
     }
     }
 
-    if (showPreviewExplainer) {
+    activeExplainer?.let { exp ->
         AppExplainerDialog(
-            title = "Fetch Web Previews",
-            description = "Downloads visual snapshot cards from the web when you save links. Turn this off if you want zero data usage or strictly offline operation.",
-            icon = Icons.Default.Public,
-            onDismiss = { showPreviewExplainer = false }
+            title = exp.title,
+            description = exp.description,
+            icon = exp.icon,
+            onDismiss = { activeExplainer = null }
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SettingsNavCard(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    iconPainter: Painter? = null,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "settings_card_bounce"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = appColors.surface,
+        border = BorderStroke(0.75.dp, appColors.separator),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                },
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (icon != null) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        } else if (iconPainter != null) {
+                            Icon(
+                                painter = iconPainter,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appColors.label
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
+                }
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = appColors.tertiaryLabel,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
