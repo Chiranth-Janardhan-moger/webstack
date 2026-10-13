@@ -3,7 +3,6 @@ package com.example.ui.sheets
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,32 +10,33 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -55,12 +55,14 @@ import com.example.bookmarks.BookmarkCluster
 import com.example.bookmarks.CategorySource
 import com.example.bookmarks.ClassifiedBookmark
 import com.example.bookmarks.ImportPreprocessResult
+import com.example.ui.dialogs.AddTagDialog
 import com.example.ui.theme.LocalAppColors
 
 @Composable
 fun ClusterApprovalSheet(
     preprocessResult: ImportPreprocessResult,
     existingCategories: List<String>,
+    importProgress: Pair<Int, Int>? = null,
     onConfirmImport: (List<ClassifiedBookmark>) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -82,7 +84,6 @@ fun ClusterApprovalSheet(
 
     var isOtherExpanded by remember { mutableStateOf(false) }
     var showNewTagDialogForCluster by remember { mutableStateOf<String?>(null) }
-    var newTagInput by remember { mutableStateOf("") }
 
     val topClusters = remember(preprocessResult.clusters) {
         preprocessResult.clusters.take(7)
@@ -128,16 +129,14 @@ fun ClusterApprovalSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         if (!preprocessResult.hasNetscapeHeader) {
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = Color(0xFFFFF3CD),
                 border = BorderStroke(1.dp, Color(0xFFFFEEBA)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
                     .testTag("netscape_header_warning_banner")
             ) {
                 Row(
@@ -145,31 +144,16 @@ fun ClusterApprovalSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Warning: Missing standard Netscape bookmark header. File may not be an official browser export.",
+                        text = "Non-standard file format. May not be an official browser export.",
                         color = Color(0xFF856404),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Summaries
-        Text(
-            text = "${preprocessResult.internalDuplicatesCount} duplicates skipped",
-            fontSize = 13.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.testTag("summary_duplicates_text")
-        )
-        Text(
-            text = "${preprocessResult.unsupportedSchemeCount} unsupported links skipped (javascript:, chrome://, ...)",
-            fontSize = 13.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.testTag("summary_unsupported_text")
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = "CATEGORIES (${preprocessResult.clusters.size})",
@@ -197,14 +181,13 @@ fun ClusterApprovalSheet(
 
         // Fold the rest into expandable "Other" row
         if (otherClusters.isNotEmpty()) {
-            val otherTotalLinks = otherClusters.sumOf { it.linkCount }
             Surface(
+                onClick = { isOtherExpanded = !isOtherExpanded },
                 shape = RoundedCornerShape(12.dp),
                 color = appColors.surface,
                 border = BorderStroke(0.75.dp, appColors.separator),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isOtherExpanded = !isOtherExpanded }
                     .testTag("other_clusters_row")
             ) {
                 Row(
@@ -212,19 +195,12 @@ fun ClusterApprovalSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(
-                            text = "Other (${otherClusters.size} categories)",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = appColors.label
-                        )
-                        Text(
-                            text = "$otherTotalLinks links total",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
+                    Text(
+                        text = "Other (${otherClusters.size} categories)",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = appColors.label
+                    )
                     Icon(
                         imageVector = if (isOtherExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = "Toggle other categories",
@@ -253,6 +229,34 @@ fun ClusterApprovalSheet(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        if (importProgress != null) {
+            val (done, total) = importProgress
+            val fraction = if (total > 0) (done.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .testTag("import_progress_indicator"),
+                    color = appColors.label,
+                    trackColor = appColors.separator
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Importing: $done / $total bookmarks (${(fraction * 100).toInt()}%)",
+                    fontSize = 12.sp,
+                    color = appColors.secondaryLabel,
+                    modifier = Modifier.testTag("import_progress_text")
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Action buttons
@@ -262,6 +266,7 @@ fun ClusterApprovalSheet(
         ) {
             OutlinedButton(
                 onClick = onCancel,
+                enabled = importProgress == null,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
@@ -281,7 +286,7 @@ fun ClusterApprovalSheet(
                     }
                     onConfirmImport(finalBookmarks)
                 },
-                enabled = totalIncludedCount > 0,
+                enabled = totalIncludedCount > 0 && importProgress == null,
                 modifier = Modifier
                     .weight(2f)
                     .height(48.dp)
@@ -293,7 +298,7 @@ fun ClusterApprovalSheet(
                 )
             ) {
                 Text(
-                    text = "Import $totalIncludedCount Bookmarks",
+                    text = "Import ($totalIncludedCount)",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -303,43 +308,16 @@ fun ClusterApprovalSheet(
     // New Tag Dialog
     if (showNewTagDialogForCluster != null) {
         val clusterId = showNewTagDialogForCluster!!
-        AlertDialog(
-            onDismissRequest = {
+        AddTagDialog(
+            onAdd = { newTag ->
+                val trimmed = newTag.trim()
+                if (trimmed.isNotEmpty()) {
+                    categoryMap[clusterId] = trimmed
+                }
                 showNewTagDialogForCluster = null
-                newTagInput = ""
             },
-            title = { Text("New Category") },
-            text = {
-                OutlinedTextField(
-                    value = newTagInput,
-                    onValueChange = { newTagInput = it },
-                    label = { Text("Category name") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val trimmed = newTagInput.trim()
-                        if (trimmed.isNotEmpty()) {
-                            categoryMap[clusterId] = trimmed
-                        }
-                        showNewTagDialogForCluster = null
-                        newTagInput = ""
-                    }
-                ) {
-                    Text("Apply")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showNewTagDialogForCluster = null
-                        newTagInput = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showNewTagDialogForCluster = null
             }
         )
     }
@@ -411,11 +389,10 @@ private fun ClusterRow(
             // Dropdown menu button
             Box {
                 Surface(
+                    onClick = { isDropdownOpen = true },
                     shape = RoundedCornerShape(8.dp),
                     color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
-                    modifier = Modifier
-                        .clickable { isDropdownOpen = true }
-                        .testTag("cluster_dropdown_${cluster.id}")
+                    modifier = Modifier.testTag("cluster_dropdown_${cluster.id}")
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -438,25 +415,73 @@ private fun ClusterRow(
 
                 DropdownMenu(
                     expanded = isDropdownOpen,
-                    onDismissRequest = { isDropdownOpen = false }
+                    onDismissRequest = { isDropdownOpen = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 8.dp,
+                    border = BorderStroke(
+                        width = 0.5.dp,
+                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                    ),
+                    modifier = Modifier
+                        .widthIn(min = 180.dp)
+                        .heightIn(max = 280.dp)
                 ) {
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = appColors.accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Tag",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.accent
+                            )
+                        },
+                        onClick = {
+                            isDropdownOpen = false
+                            onRequestNewTag()
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                    )
                     val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
                     distinctCats.forEach { cat ->
+                        val isSelected = cat.equals(assignedCategory, ignoreCase = true)
                         DropdownMenuItem(
-                            text = { Text(cat) },
+                            text = {
+                                Text(
+                                    text = cat,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (isSelected) appColors.accent else appColors.label
+                                )
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = appColors.accent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
                             onClick = {
                                 onSelectCategory(cat)
                                 isDropdownOpen = false
                             }
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text("+ New tag...") },
-                        onClick = {
-                            isDropdownOpen = false
-                            onRequestNewTag()
-                        }
-                    )
                 }
             }
         }

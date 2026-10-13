@@ -1,9 +1,15 @@
 package com.example.ui.cards
 
 import android.graphics.Bitmap
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -29,7 +35,6 @@ import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -43,7 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -67,6 +73,48 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+@Composable
+fun TiltedShimmerBox(
+    modifier: Modifier = Modifier
+) {
+    val appColors = LocalAppColors.current
+    val shimmerColors = remember(appColors.isDark) {
+        val base = if (appColors.isDark) Color(0xFF222224) else Color(0xFFE5E5EA)
+        val highlight = if (appColors.isDark) Color(0xFF38383C) else Color(0xFFF4F4F6)
+        listOf(base, highlight, base)
+    }
+
+    val transition = rememberInfiniteTransition(label = "tilted_shimmer")
+    val progress by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1350, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_progress"
+    )
+
+    Spacer(
+        modifier = modifier.drawBehind {
+            val width = size.width
+            val height = size.height
+
+            val startX = progress * width
+            val startY = progress * height
+            val endX = startX + width * 0.75f
+            val endY = startY + height * 0.75f
+
+            val brush = Brush.linearGradient(
+                colors = shimmerColors,
+                start = Offset(startX, startY),
+                end = Offset(endX, endY)
+            )
+
+            drawRect(brush = brush)
+        }
+    )
+}
 
 @Composable
 fun WebsiteSnapshotImage(
@@ -110,21 +158,38 @@ fun WebsiteSnapshotImage(
                 contentScale = ContentScale.Crop
             )
         } else if (fetchWebPreviews) {
-            val previewUrl = remember(website.url, refreshToken) {
-                try {
+            var activePreviewUrl by remember(website.url, refreshToken) {
+                val initialUrl = try {
                     val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
                     val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
                     "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
                 } catch (e: Exception) {
                     website.url
                 }
+                mutableStateOf(initialUrl)
             }
 
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(previewUrl)
+                    .data(activePreviewUrl)
                     .crossfade(true)
                     .build(),
+                onError = {
+                    if (activePreviewUrl.startsWith("https://api.microlink.io")) {
+                        val fullUrl = if (website.url.startsWith("http://") || website.url.startsWith("https://")) {
+                            website.url
+                        } else {
+                            "https://${website.url}"
+                        }
+                        val target = if (refreshToken > 0) {
+                            val sep = if (fullUrl.contains("?")) "&" else "?"
+                            "$fullUrl${sep}t=$refreshToken"
+                        } else {
+                            fullUrl
+                        }
+                        activePreviewUrl = "https://image.thum.io/get/noanimate/width/800/crop/600/$target"
+                    }
+                },
                 onSuccess = { state ->
                     val drawable = state.result.drawable
                     coroutineScope.launch(Dispatchers.IO) {
@@ -148,16 +213,7 @@ fun WebsiteSnapshotImage(
                     .clip(cornerShape),
                 contentScale = ContentScale.Crop,
                 loading = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(if (isCompact) 16.dp else if (isGrid) 20.dp else 24.dp),
-                            color = appColors.accent,
-                            strokeWidth = if (isCompact || isGrid) 2.dp else 2.5.dp
-                        )
-                    }
+                    TiltedShimmerBox(modifier = Modifier.fillMaxSize())
                 },
                 error = {
                     Box(
@@ -359,21 +415,13 @@ fun WebsiteCard(
     CardContainer(
         cardShape = cardShape,
         pressedScale = 0.985f,
+        border = BorderStroke(0.5.dp, appColors.separator),
         testTag = "website_card_${website.id}",
         onClick = onClick,
         onLongClick = onLongClick
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = if (appColors.isDark) 3.dp else 6.dp,
-                    shape = cardShape,
-                    ambientColor = Color.Black.copy(alpha = if (appColors.isDark) 0.2f else 0.03f),
-                    spotColor = Color.Black.copy(alpha = if (appColors.isDark) 0.35f else 0.05f)
-                )
-                .background(appColors.surface, cardShape)
-                .border(BorderStroke(0.5.dp, appColors.separator), cardShape)
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Top Preview Slot displaying Website Screenshot
             WebsiteSnapshotImage(
@@ -398,15 +446,24 @@ fun WebsiteCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = website.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = appColors.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        letterSpacing = (-0.2).sp
-                    )
+                    if (website.title.isBlank()) {
+                        TiltedShimmerBox(
+                            modifier = Modifier
+                                .fillMaxWidth(0.65f)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                        )
+                    } else {
+                        Text(
+                            text = website.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = appColors.label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            letterSpacing = (-0.2).sp
+                        )
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = website.url,
@@ -456,21 +513,13 @@ fun GridWebsiteCard(
     CardContainer(
         cardShape = cardShape,
         pressedScale = 0.96f,
+        border = BorderStroke(0.5.dp, appColors.separator),
         testTag = "website_grid_card_${website.id}",
         onClick = onClick,
         onLongClick = onLongClick
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = if (appColors.isDark) 3.dp else 6.dp,
-                    shape = cardShape,
-                    ambientColor = Color.Black.copy(alpha = if (appColors.isDark) 0.2f else 0.03f),
-                    spotColor = Color.Black.copy(alpha = if (appColors.isDark) 0.3f else 0.05f)
-                )
-                .background(appColors.surface, cardShape)
-                .border(BorderStroke(0.5.dp, appColors.separator), cardShape)
+            modifier = Modifier.fillMaxWidth()
         ) {
             // Snapshot Preview Header (105dp)
             WebsiteSnapshotImage(
@@ -491,15 +540,23 @@ fun GridWebsiteCard(
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 9.dp)
             ) {
-                Text(
-                    text = website.title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = appColors.label,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.sp
-                )
+                if (website.title.isBlank()) {
+                    TiltedShimmerBox(
+                        modifier = Modifier
+                            .fillMaxWidth(0.75f)
+                            .height(13.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                    )
+                } else {
+                    Text(
+                        text = website.title,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = appColors.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -572,14 +629,23 @@ fun CompactWebsiteRow(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = website.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = appColors.label,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (website.title.isBlank()) {
+                    TiltedShimmerBox(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                    )
+                } else {
+                    Text(
+                        text = website.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = appColors.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

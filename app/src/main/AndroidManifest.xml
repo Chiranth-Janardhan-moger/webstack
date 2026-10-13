@@ -45,6 +45,9 @@
                 <data android:mimeType="application/octet-stream" />
                 <data android:pathPattern=".*\\.webstack" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <provider

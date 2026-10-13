@@ -258,7 +258,7 @@ fun AddTagDialog(
         iconTint = appColors.accent,
         iconBg = appColors.accent.copy(alpha = if (appColors.isDark) 0.25f else 0.15f),
         placeholder = "e.g., AI, Finance, Inspo",
-        confirmText = "Create Tag",
+        confirmText = "Create",
         suggestedTags = listOf("Inspiration", "Finance", "Social", "AI Tools", "Dev", "Articles", "Design", "Research"),
         onConfirm = onAdd,
         onDismiss = onDismiss
@@ -321,7 +321,7 @@ fun DeleteTagConfirmDialog(
         },
         text = {
             Text(
-                text = "Are you sure you want to delete \"$tagName\"? Saved links will remain safe in \"Personal\".",
+                text = "Delete tag \"$tagName\"? Existing links will move to Personal.",
                 fontSize = 14.sp,
                 color = appColors.secondaryLabel,
                 lineHeight = 20.sp
@@ -336,7 +336,7 @@ fun DeleteTagConfirmDialog(
                     contentColor = Color.White
                 )
             ) {
-                Text("Delete Tag", fontWeight = FontWeight.Bold)
+                Text("Delete", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

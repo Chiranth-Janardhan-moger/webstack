@@ -36,6 +36,27 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
 
+    private val _settingsSubScreen = MutableStateFlow(com.example.ui.sheets.SettingsSubScreen.MAIN)
+    val settingsSubScreen: StateFlow<com.example.ui.sheets.SettingsSubScreen> = _settingsSubScreen.asStateFlow()
+
+    private val _pendingPreprocessResult = MutableStateFlow<com.example.bookmarks.ImportPreprocessResult?>(null)
+    val pendingPreprocessResult: StateFlow<com.example.bookmarks.ImportPreprocessResult?> = _pendingPreprocessResult.asStateFlow()
+
+    private val _importProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+    val importProgress: StateFlow<Pair<Int, Int>?> = _importProgress.asStateFlow()
+
+    fun setSettingsSubScreen(subScreen: com.example.ui.sheets.SettingsSubScreen) {
+        _settingsSubScreen.value = subScreen
+    }
+
+    fun setPendingPreprocessResult(result: com.example.bookmarks.ImportPreprocessResult?) {
+        _pendingPreprocessResult.value = result
+    }
+
+    fun clearPendingPreprocessResult() {
+        _pendingPreprocessResult.value = null
+    }
+
     init {
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
@@ -77,12 +98,19 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val array = JSONArray(json)
             val list = ArrayList<Website>(array.length())
+            val seenIds = HashSet<Long>()
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
+                val id = obj.optLong("id", 0L)
+                if (id <= 0L || !seenIds.add(id)) {
+                    // Invalid or duplicate ID: drop the entire cache for this launch and let Room populate
+                    prefs.edit().remove("cached_websites_json").apply()
+                    return null
+                }
                 val url = obj.optString("url", "")
                 list.add(
                     Website(
-                        id = obj.optLong("id", 0L),
+                        id = id,
                         url = url,
                         title = obj.optString("title", ""),
                         category = obj.optString("category", "General"),
@@ -94,6 +122,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             }
             list
         } catch (_: Exception) {
+            prefs.edit().remove("cached_websites_json").apply()
             null
         }
     }
@@ -102,7 +131,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         try {
             val array = JSONArray()
             // Cap cold-start cache to top 50 bookmarks to prevent OOM and disk bloat on large imports
-            for (site in websites.take(50)) {
+            val valid = websites.filter { it.id > 0L }.distinctBy { it.id }.take(50)
+            for (site in valid) {
                 val obj = JSONObject()
                 obj.put("id", site.id)
                 obj.put("url", site.url)
@@ -203,7 +233,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             val result = repository.fetchAndSave(trimmed, category)
             _isSaving.value = false
             if (result.isSuccess) {
+                val savedWebsite = result.getOrThrow()
                 onSuccess()
+                launch(Dispatchers.IO) {
+                    repository.fetchTitleAsync(savedWebsite.id, savedWebsite.url, savedWebsite.domain)
+                }
             } else {
                 _saveError.value = result.exceptionOrNull()?.message ?: "Failed to save website"
             }
@@ -330,6 +364,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
     ): Result<com.example.bookmarks.ImportResult> = withContext(Dispatchers.IO) {
         try {
+            _importProgress.value = Pair(0, bookmarks.size)
             val websites = bookmarks.map { b ->
                 Website(
                     url = b.url,
@@ -344,7 +379,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
                 db = database,
                 dao = repository.websiteDao,
                 items = websites,
-                onProgress = onProgress
+                onProgress = { done, total ->
+                    _importProgress.value = Pair(done, total)
+                    onProgress(done, total)
+                }
             )
 
             val newCats = bookmarks.map { it.category }.distinct()
@@ -360,11 +398,14 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
                 _categories.value = current
                 saveCategoriesToPrefs(current)
             }
-            saveWebsitesToPrefs(websites)
+            val persisted = repository.getAllWebsitesList()
+            saveWebsitesToPrefs(persisted)
 
             Result.success(result)
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            _importProgress.value = null
         }
     }
 }

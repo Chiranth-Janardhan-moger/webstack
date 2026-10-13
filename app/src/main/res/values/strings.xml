@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">WebStack</string>
+    <string name="shortcut_add_short">Add Link</string>
+    <string name="shortcut_add_long">Add new bookmark</string>
+    <string name="shortcut_search_short">Search</string>
+    <string name="shortcut_search_long">Search bookmarks</string>
 </resources>

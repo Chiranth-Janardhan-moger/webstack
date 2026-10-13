@@ -8,7 +8,7 @@ val DEFAULT_CATEGORIES = listOf("Personal", "Design", "Tools", "Work", "Reading"
 fun getCategoryAccentColor(category: String, isDark: Boolean): Color {
     val clean = category.trim().lowercase()
     if (clean.isEmpty() || clean == "all" || clean == "uncategorized") {
-        return if (isDark) AppGray else AppGray
+        return AppGray
     }
 
     // Explicit curated mappings for common standard categories

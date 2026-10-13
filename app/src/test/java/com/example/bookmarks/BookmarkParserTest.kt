@@ -224,5 +224,74 @@ class BookmarkParserTest {
         assertEquals(1, result.bookmarks.size)
         assertEquals("Fallback Test", result.bookmarks[0].title)
     }
+
+    @Test
+    fun testUtf8EmojiStraddles8192Boundary_decodesAccurately() {
+        // Construct stream where a 4-byte UTF-8 emoji straddles byte 8192:
+        // Bytes 0..8189: ASCII prefix (8190 bytes)
+        // Bytes 8190..8191: First 2 bytes of grinning face \uD83D\uDE00 (0xF0, 0x9F)
+        // Bytes 8192..8193: Remaining 2 bytes (0x98, 0x80)
+        // Followed by closing tags
+        val prefix = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n<DL><p>\r\n<DT><A HREF=\"https://boundary.example.com\">"
+        val prefixBytes = prefix.toByteArray(StandardCharsets.US_ASCII)
+        val paddingLen = 8190 - prefixBytes.size
+        val padding = "A".repeat(paddingLen).toByteArray(StandardCharsets.US_ASCII)
+
+        val emojiBytes = "\uD83D\uDE00".toByteArray(StandardCharsets.UTF_8) // 4 bytes: F0 9F 98 80
+        assertEquals(4, emojiBytes.size)
+
+        val suffix = "</A>\r\n</DL><p>\r\n"
+        val suffixBytes = suffix.toByteArray(StandardCharsets.US_ASCII)
+
+        val totalBytes = prefixBytes + padding + emojiBytes + suffixBytes
+        assertEquals(8190, prefixBytes.size + padding.size)
+        // Emoji starts exactly at index 8190 and extends to 8194, straddling boundary 8192
+
+        val result = BookmarkParser.parse(ByteArrayInputStream(totalBytes))
+        assertEquals(1, result.bookmarks.size)
+        assertEquals("https://boundary.example.com", result.bookmarks[0].url)
+        assertTrue("Title must end with decoded emoji", result.bookmarks[0].title.endsWith("\uD83D\uDE00"))
+        assertTrue("Title must not contain replacement characters", !result.bookmarks[0].title.contains("\uFFFD"))
+    }
+
+    @Test
+    fun testUtf16LeAndBeBomFiles_parsedCorrectly() {
+        val html = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n<DL><p>\r\n<DT><A HREF=\"https://utf16.example.com\">UTF16 Bookmark \uD83D\uDE00</A>\r\n</DL><p>\r\n"
+
+        // UTF-16LE with BOM (0xFF, 0xFE)
+        val leContent = html.toByteArray(StandardCharsets.UTF_16LE)
+        val leBytes = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + leContent
+        val leResult = BookmarkParser.parse(ByteArrayInputStream(leBytes))
+        assertEquals(1, leResult.bookmarks.size)
+        assertEquals("https://utf16.example.com", leResult.bookmarks[0].url)
+        assertEquals("UTF16 Bookmark \uD83D\uDE00", leResult.bookmarks[0].title)
+
+        // UTF-16BE with BOM (0xFE, 0xFF)
+        val beContent = html.toByteArray(StandardCharsets.UTF_16BE)
+        val beBytes = byteArrayOf(0xFE.toByte(), 0xFF.toByte()) + beContent
+        val beResult = BookmarkParser.parse(ByteArrayInputStream(beBytes))
+        assertEquals(1, beResult.bookmarks.size)
+        assertEquals("https://utf16.example.com", beResult.bookmarks[0].url)
+        assertEquals("UTF16 Bookmark \uD83D\uDE00", beResult.bookmarks[0].title)
+    }
+
+    @Test
+    fun testNonAsciiOnlyAfter8Kb_parsedCorrectly() {
+        val asciiPreamble = buildString {
+            append("<!DOCTYPE NETSCAPE-Bookmark-file-1>\r\n<DL><p>\r\n")
+            while (length < 8500) {
+                append("<DT><A HREF=\"https://ascii.example.com/item\">ASCII Link Preamble</A>\r\n")
+            }
+            append("<DT><A HREF=\"https://late-non-ascii.example.com\">Café München “Zürich” — Über & Co</A>\r\n")
+            append("</DL><p>\r\n")
+        }
+        val bytes = asciiPreamble.toByteArray(StandardCharsets.UTF_8)
+        val result = BookmarkParser.parse(ByteArrayInputStream(bytes))
+        assertTrue(result.bookmarks.size >= 2)
+        val lateBookmark = result.bookmarks.find { it.url == "https://late-non-ascii.example.com" }
+        org.junit.Assert.assertNotNull(lateBookmark)
+        assertEquals("Café München “Zürich” — Über & Co", lateBookmark?.title)
+        assertTrue("Must not contain replacement characters", lateBookmark?.title?.contains("\uFFFD") == false)
+    }
 }
 

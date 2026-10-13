@@ -27,6 +27,9 @@ interface WebsiteDao : ExportDao {
     @Query("DELETE FROM websites WHERE id = :id")
     suspend fun deleteWebsite(id: Long)
 
+    @Query("UPDATE websites SET title = :title WHERE id = :id")
+    suspend fun updateTitle(id: Long, title: String)
+
     @Query("UPDATE websites SET category = :newCategory WHERE category = :oldCategory")
     suspend fun renameCategory(oldCategory: String, newCategory: String)
 

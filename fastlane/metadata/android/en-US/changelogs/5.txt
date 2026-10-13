@@ -1,0 +1,6 @@
+- Universal Browser HTML Import & Export: seamless migration with Chrome, Firefox, Brave, and Edge
+- Instant Optimistic Save: bookmarks persist immediately with zero UI delay
+- Typographic Title Skeleton: smooth shimmer placeholder while page titles resolve
+- Fluid Category Switching: zero-stutter grid transitions and optimized touch response
+- Database Schema v3: automated duplicate URL detection and migration safety
+- UI Performance: eliminated layout overdraw and reduced recomposition overhead

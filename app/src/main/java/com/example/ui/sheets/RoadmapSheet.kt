@@ -26,10 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -200,7 +200,7 @@ fun RoadmapSubSheetContent(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "We are exploring several high-impact additions for upcoming WebStack releases. Your feedback shapes what gets built first.",
+                    text = "Upcoming features in planning. Your feedback shapes what gets built.",
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                     color = appColors.secondaryLabel
@@ -211,7 +211,7 @@ fun RoadmapSubSheetContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "IN PLANNING",
+            text = "IN THINKING",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appColors.secondaryLabel,
@@ -222,18 +222,18 @@ fun RoadmapSubSheetContent(
 
         RoadmapFeatureCard(
             number = 1,
-            title = "Backup Encryption",
-            description = "Optional password-protected AES encryption for .webstack and .json backup files. Keeps sensitive bookmarks and private reading lists secure even when exported to external cloud drives or shared between devices.",
-            icon = Icons.Outlined.Lock
+            title = "PC Companion Mode",
+            description = "Access and manage your stack from any computer over local Wi-Fi without cloud accounts.",
+            icon = Icons.Outlined.Devices
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
         RoadmapFeatureCard(
             number = 2,
-            title = "PC Companion Mode",
-            description = "Turn your phone into a lightweight local server. WebStack gives you a local Wi-Fi URL (e.g., http://192.168.1.10:8080) that you open on your computer's browser to view, search, and manage your bookmarks on PC without requiring any third-party cloud accounts.",
-            icon = Icons.Outlined.Devices
+            title = "Bulk Selection & Triage",
+            description = "Multi-select bookmarks to tag, export, or delete in batches.",
+            icon = Icons.Outlined.Checklist
         )
 
         Spacer(modifier = Modifier.height(24.dp))

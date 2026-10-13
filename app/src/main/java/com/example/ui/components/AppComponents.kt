@@ -138,7 +138,10 @@ fun AppFloatingIconButton(
         shadowElevation = 0.dp,
         modifier = modifier
             .size(size)
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .testTag(testTag)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

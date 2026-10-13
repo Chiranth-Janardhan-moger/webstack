@@ -47,7 +47,7 @@ import com.example.ui.util.formatMiddleTruncatedDomain
 import com.example.ui.util.getCategoryAccentColor
 
 @Composable
-private fun ActionTile(
+internal fun ActionTile(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,

@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,6 +102,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class MainActivity : ComponentActivity() {
     private val sharedUrlState = MutableStateFlow<String?>(null)
     private val sharedBackupUriState = MutableStateFlow<android.net.Uri?>(null)
+    private val shortcutActionState = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,6 +130,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val sharedUrl by sharedUrlState.collectAsState()
                     val sharedBackupUri by sharedBackupUriState.collectAsState()
+                    val shortcutAction by shortcutActionState.collectAsState()
                     WebStackScreen(
                         themeMode = themeMode,
                         onSetThemeMode = { newMode ->
@@ -135,7 +140,9 @@ class MainActivity : ComponentActivity() {
                         incomingSharedUrl = sharedUrl,
                         onClearIncomingUrl = { sharedUrlState.value = null },
                         incomingBackupUri = sharedBackupUri,
-                        onClearIncomingBackupUri = { sharedBackupUriState.value = null }
+                        onClearIncomingBackupUri = { sharedBackupUriState.value = null },
+                        incomingShortcut = shortcutAction,
+                        onClearIncomingShortcut = { shortcutActionState.value = null }
                     )
                 }
             }
@@ -149,6 +156,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        val shortcut = intent?.getStringExtra("shortcut")
+        if (!shortcut.isNullOrBlank()) {
+            shortcutActionState.value = shortcut
+        }
+
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
             val extracted = extractUrlFromText(text) ?: text.trim()
@@ -169,7 +181,9 @@ fun WebStackScreen(
     incomingSharedUrl: String? = null,
     onClearIncomingUrl: () -> Unit = {},
     incomingBackupUri: android.net.Uri? = null,
-    onClearIncomingBackupUri: () -> Unit = {}
+    onClearIncomingBackupUri: () -> Unit = {},
+    incomingShortcut: String? = null,
+    onClearIncomingShortcut: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -191,7 +205,7 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 4) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 5) }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -220,12 +234,34 @@ fun WebStackScreen(
     // Refresh token map for forcing screenshot reload
     val refreshTokens = remember { mutableStateMapOf<Long, Long>() }
 
+    // Lazy grid scroll state and clean top-scroll on category switch
+    val gridState = rememberLazyGridState()
+    LaunchedEffect(selectedCategory) {
+        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
+            gridState.scrollToItem(0)
+        }
+    }
+
     // Handle incoming shared URL from System Share Sheet
     LaunchedEffect(incomingSharedUrl) {
         if (!incomingSharedUrl.isNullOrBlank()) {
             initialAddUrl = incomingSharedUrl
             showAddSheet = true
             onClearIncomingUrl()
+        }
+    }
+
+    // Handle incoming launcher shortcuts ("add" or "search")
+    LaunchedEffect(incomingShortcut) {
+        when (incomingShortcut) {
+            "add" -> {
+                showAddSheet = true
+                onClearIncomingShortcut()
+            }
+            "search" -> {
+                isSearchExpanded = true
+                onClearIncomingShortcut()
+            }
         }
     }
 
@@ -374,6 +410,7 @@ fun WebStackScreen(
                     },
                     onOpenSettings = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showSettingsSheet = true
                     }
                 )
@@ -423,10 +460,12 @@ fun WebStackScreen(
                         else -> GridCells.Fixed(1)
                     }
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = gridColumns,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
+                            .clipToBounds()
                             .testTag("websites_list"),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -444,7 +483,13 @@ fun WebStackScreen(
                         ) { website ->
                             val refreshToken = refreshTokens[website.id] ?: 0L
                             val hasCachedImage = cachedScreenshotIds.contains(website.id)
-                            Box(modifier = Modifier.animateItem()) {
+                            Box(
+                                modifier = Modifier.animateItem(
+                                    placementSpec = null,
+                                    fadeInSpec = tween(durationMillis = 140),
+                                    fadeOutSpec = tween(durationMillis = 100)
+                                )
+                            ) {
                                 val onCardClick = remember(website.url) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -461,7 +506,7 @@ fun WebStackScreen(
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         if (!fetchWebPreviews) {
-                                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                                         } else {
                                             viewModel.refreshScreenshot(website.id)
                                             refreshTokens[website.id] = System.currentTimeMillis()
@@ -523,11 +568,6 @@ fun WebStackScreen(
                     },
                     onDelete = {
                         categoryToDelete = targetTag
-                        categoryForOptions = null
-                    },
-                    onFilterByTag = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        selectedCategory = targetTag
                         categoryForOptions = null
                     },
                     onDismiss = { categoryForOptions = null }
@@ -594,7 +634,10 @@ fun WebStackScreen(
 
         // Settings Bottom Sheet
         if (showSettingsSheet) {
-            AppBottomSheet(onDismissRequest = { showSettingsSheet = false }) {
+            AppBottomSheet(onDismissRequest = {
+                viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+                showSettingsSheet = false
+            }) {
                 SettingsBottomSheetContent(
                     themeMode = themeMode,
                     onSetThemeMode = onSetThemeMode,
@@ -616,14 +659,19 @@ fun WebStackScreen(
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showVersion110Screen = true
                     },
                     onOpenAppInfo = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showAppInfoSheet = true
                     },
-                    onDismiss = { showSettingsSheet = false },
+                    onDismiss = {
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+                        showSettingsSheet = false
+                    },
                     viewModel = viewModel
                 )
             }
@@ -645,6 +693,7 @@ fun WebStackScreen(
                     onDismiss = { showAppInfoSheet = false },
                     onBack = {
                         showAppInfoSheet = false
+                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showSettingsSheet = true
                     },
                     onOpenWhatsNew = {
@@ -707,7 +756,7 @@ fun WebStackScreen(
                     onRefresh = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         if (!fetchWebPreviews) {
-                            Toast.makeText(context, "Enable 'Fetch Web Previews' in Settings to update snapshots", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                         } else {
                             viewModel.refreshScreenshot(targetWebsite.id)
                             refreshTokens[targetWebsite.id] = System.currentTimeMillis()
@@ -765,7 +814,7 @@ fun WebStackScreen(
                 tonalElevation = 0.dp,
                 title = {
                     Text(
-                        text = "Remove Link",
+                        text = "Delete Bookmark",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = appColors.label
@@ -773,7 +822,7 @@ fun WebStackScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to remove \"${websiteToDelete?.title}\" from your stack?",
+                        text = "Delete \"${websiteToDelete?.title}\" from your stack?",
                         fontSize = 14.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 20.sp
@@ -818,7 +867,7 @@ fun WebStackScreen(
         ) {
             VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 4).apply()
+                    prefs.edit().putInt("last_seen_version_code", 5).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {

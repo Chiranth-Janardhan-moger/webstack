@@ -1,0 +1,12 @@
+The bookmark HTML test fixtures contained in this directory:
+- empty_folder.html
+- epiphany.html
+- firefox2.html
+- firefox23.html
+- firefox_bookmark_keyword.html
+- ie_sans_charset.html
+- redditsaver.html
+
+These files are public test fixtures derived from Chromium and Mozilla browser
+test suites used under public test fixture usage to verify Netscape Bookmark
+HTML parser compatibility across browser versions and platforms.

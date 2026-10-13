@@ -31,19 +31,7 @@ object FolderCleaner {
 
         val canonical = HashMap<String, String>()
         for ((key, instances) in groups) {
-            val frequencies = LinkedHashMap<String, Int>()
-            for (inst in instances) {
-                frequencies[inst] = (frequencies[inst] ?: 0) + 1
-            }
-            var bestCasing = instances.first()
-            var maxFreq = 0
-            for ((casing, freq) in frequencies) {
-                if (freq > maxFreq) {
-                    maxFreq = freq
-                    bestCasing = casing
-                }
-            }
-            canonical[key] = bestCasing
+            canonical[key] = instances.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: instances.first()
         }
         return canonical
     }

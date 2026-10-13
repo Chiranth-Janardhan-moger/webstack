@@ -159,8 +159,8 @@ fun AppInfoBottomSheetContent(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     StandaloneInfoRow(
-                        title = "What's New in WebStack",
-                        subtitle = "Explore latest features and changes",
+                        title = "What's New",
+                        subtitle = "Recent updates & improvements",
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onOpenWhatsNew()
@@ -189,8 +189,7 @@ fun AppInfoBottomSheetContent(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 StandaloneInfoRow(
-                    title = "Roadmap & Future Ideas",
-                    subtitle = "Backup encryption, PC companion mode & roadmap",
+                    title = "Roadmap",
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         currentSubScreen = AppInfoSubScreen.ROADMAP
@@ -218,8 +217,8 @@ fun AppInfoBottomSheetContent(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 StandaloneInfoRow(
-                    title = "Sponsor WebStack",
-                    subtitle = "Support independent development on GitHub",
+                    title = "Sponsor",
+                    subtitle = "Support on GitHub",
                     iconBgColor = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -351,7 +350,7 @@ fun AppInfoBottomSheetContent(
                                     }
 
                                     Text(
-                                        text = "Report Bugs or Suggest Features",
+                                        text = "Feedback & Issues",
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 15.sp,
                                         color = appColors.label
@@ -404,7 +403,7 @@ fun AppInfoBottomSheetContent(
 @Composable
 private fun StandaloneInfoRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     iconBgColor: Color? = null,
     onClick: () -> Unit,
     icon: @Composable () -> Unit
@@ -446,11 +445,13 @@ private fun StandaloneInfoRow(
                         fontSize = 15.sp,
                         color = appColors.label
                     )
-                    Text(
-                        text = subtitle,
-                        fontSize = 11.sp,
-                        color = appColors.secondaryLabel
-                    )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            text = subtitle,
+                            fontSize = 11.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
                 }
             }
 
