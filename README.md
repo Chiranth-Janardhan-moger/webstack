@@ -155,6 +155,9 @@ WebStack is officially published in the upstream F-Droid repository:
 - Recipe file: [`metadata/com.chiranth7.webstack.yml`](metadata/com.chiranth7.webstack.yml)
 
 
+## Star History
+
+<img width="1617" height="1261" alt="star-history-20261012" src="https://github.com/user-attachments/assets/4b76a4a5-531b-4098-bb9a-5687f14061c4" />
 
 
 ---
