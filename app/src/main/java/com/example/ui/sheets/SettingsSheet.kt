@@ -9,8 +9,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import com.example.ui.components.AppExplainerDialog
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +77,7 @@ enum class SettingsSubScreen {
     CLUSTER_APPROVAL
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsBottomSheetContent(
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
@@ -97,6 +101,7 @@ fun SettingsBottomSheetContent(
     var lastBackupTimestamp by remember {
         mutableStateOf(prefs.getLong("last_backup_timestamp", 0L))
     }
+    var showPreviewExplainer by remember { mutableStateOf(false) }
     val websitesState = viewModel?.websitesList?.collectAsState()
     val totalBookmarks = websitesState?.value?.size ?: 0
 
@@ -567,7 +572,17 @@ fun SettingsBottomSheetContent(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onToggleFetchWebPreviews(!fetchWebPreviews) },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showPreviewExplainer = true
+                            }
+                        )
                 ) {
                     Surface(
                         color = if (fetchWebPreviews) appColors.label else appColors.fill,
@@ -584,12 +599,22 @@ fun SettingsBottomSheetContent(
                         }
                     }
 
-                    Text(
-                        text = "Fetch Web Previews",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appColors.label
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Fetch Web Previews",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Generates visual card snapshots",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
                 }
 
                 AppSwitch(
@@ -773,5 +798,14 @@ fun SettingsBottomSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
     }
     }
+    }
+
+    if (showPreviewExplainer) {
+        AppExplainerDialog(
+            title = "Fetch Web Previews",
+            description = "Downloads visual snapshot cards from the web when you save links. Turn this off if you want zero data usage or strictly offline operation.",
+            icon = Icons.Default.Public,
+            onDismiss = { showPreviewExplainer = false }
+        )
     }
 }

@@ -57,11 +57,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -913,3 +918,160 @@ fun AppFeatureTile(
         }
     }
 }
+
+/**
+ * Elegant modal dialog with spring physics entrance animation displaying an icon, title, description, and "Got It" button.
+ */
+@Composable
+fun AppExplainerDialog(
+    title: String,
+    description: String,
+    icon: ImageVector? = null,
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            visible = true
+        }
+
+        val scale by animateFloatAsState(
+            targetValue = if (visible) 1f else 0.88f,
+            animationSpec = spring(
+                dampingRatio = 0.78f,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "explainer_card_scale"
+        )
+        val alpha by animateFloatAsState(
+            targetValue = if (visible) 1f else 0f,
+            animationSpec = tween(durationMillis = 180),
+            label = "explainer_card_alpha"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f * alpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 380.dp)
+                    .padding(horizontal = 24.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consume click inside card
+                    ),
+                shape = RoundedCornerShape(24.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                shadowElevation = if (appColors.isDark) 0.dp else 12.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 22.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (icon != null) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = appColors.fill,
+                            border = BorderStroke(0.5.dp, appColors.separator.copy(alpha = 0.5f)),
+                            modifier = Modifier.size(54.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = appColors.label,
+                        textAlign = TextAlign.Center,
+                        letterSpacing = (-0.3).sp
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = description,
+                        fontSize = 14.sp,
+                        color = appColors.secondaryLabel,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    val btnInteractionSource = remember { MutableInteractionSource() }
+                    val isBtnPressed by btnInteractionSource.collectIsPressedAsState()
+                    val btnScale by animateFloatAsState(
+                        targetValue = if (isBtnPressed) 0.94f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        label = "explainer_got_it_btn"
+                    )
+
+                    Button(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onDismiss()
+                        },
+                        interactionSource = btnInteractionSource,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = appColors.label,
+                            contentColor = appColors.systemBackground
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .graphicsLayer {
+                                scaleX = btnScale
+                                scaleY = btnScale
+                            }
+                    ) {
+                        Text(
+                            text = "Got It",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            letterSpacing = (-0.2).sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+

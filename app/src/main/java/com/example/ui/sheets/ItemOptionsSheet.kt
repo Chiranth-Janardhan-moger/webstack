@@ -21,8 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,8 +122,9 @@ fun ItemOptionsBottomSheetContent(
     website: Website,
     onOpen: () -> Unit,
     onEdit: () -> Unit,
-    onRefresh: () -> Unit = {},
+    onCopy: () -> Unit = {},
     onShare: () -> Unit,
+    onRefresh: () -> Unit = {},
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -214,12 +217,12 @@ fun ItemOptionsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2x2 Action Grid (Open, Edit, Share, Delete)
+        // 3x2 Action Grid: Layout B (Semantic Action Zones)
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Row 1: Open & Edit
+            // Row 1: Primary (Open & Edit)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -240,17 +243,38 @@ fun ItemOptionsBottomSheetContent(
                 )
             }
 
-            // Row 2: Share & Delete
+            // Row 2: Link Sharing (Copy Link & Share)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                ActionTile(
+                    label = "Copy Link",
+                    icon = Icons.Outlined.ContentCopy,
+                    onClick = onCopy,
+                    modifier = Modifier.weight(1f),
+                    testTag = "action_copy_website"
+                )
                 ActionTile(
                     label = "Share",
                     icon = Icons.Outlined.Share,
                     onClick = onShare,
                     modifier = Modifier.weight(1f),
                     testTag = "action_share_website"
+                )
+            }
+
+            // Row 3: Maintenance (Refresh & Delete)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ActionTile(
+                    label = "Refresh",
+                    icon = Icons.Outlined.Refresh,
+                    onClick = onRefresh,
+                    modifier = Modifier.weight(1f),
+                    testTag = "action_refresh_website"
                 )
                 ActionTile(
                     label = "Delete",

@@ -27,16 +27,22 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Close
-import com.example.ui.components.AppSubSheetHeader
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.ui.components.AppExplainerDialog
+import com.example.ui.components.AppSubSheetHeader
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -66,6 +72,13 @@ enum class ExportFormat {
     HTML
 }
 
+private data class FormatExplainer(
+    val title: String,
+    val description: String,
+    val icon: ImageVector
+)
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BackupRestoreSubSheetContent(
     totalBookmarks: Int,
@@ -80,6 +93,7 @@ fun BackupRestoreSubSheetContent(
     val haptics = LocalHapticFeedback.current
     val appColors = LocalAppColors.current
     var selectedFormat by remember { mutableStateOf(ExportFormat.WEBSTACK) }
+    var activeExplainer by remember { mutableStateOf<FormatExplainer?>(null) }
 
     Column(
         modifier = Modifier
@@ -202,22 +216,31 @@ fun BackupRestoreSubSheetContent(
                                 )
                         )
 
-                        // Interactive touch segments
+                        // Interactive touch segments (Tap to select, long-press to explain)
                         Row(modifier = Modifier.fillMaxSize()) {
                             // Option: .webstack
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clickable(
+                                    .combinedClickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
-                                        if (selectedFormat != ExportFormat.WEBSTACK) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            selectedFormat = ExportFormat.WEBSTACK
+                                        indication = null,
+                                        onClick = {
+                                            if (selectedFormat != ExportFormat.WEBSTACK) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedFormat = ExportFormat.WEBSTACK
+                                            }
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            activeExplainer = FormatExplainer(
+                                                title = "WebStack Backup (.webstack)",
+                                                description = "Our native backup format. Best for moving your entire stack to another phone running WebStack. Restores in 1 tap.",
+                                                icon = Icons.Outlined.CloudUpload
+                                            )
                                         }
-                                    },
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -233,15 +256,24 @@ fun BackupRestoreSubSheetContent(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clickable(
+                                    .combinedClickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
-                                        if (selectedFormat != ExportFormat.JSON) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            selectedFormat = ExportFormat.JSON
+                                        indication = null,
+                                        onClick = {
+                                            if (selectedFormat != ExportFormat.JSON) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedFormat = ExportFormat.JSON
+                                            }
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            activeExplainer = FormatExplainer(
+                                                title = "Plain JSON (.json)",
+                                                description = "Raw structured JSON data. Ideal for developers, custom scripts, or importing into data analysis tools.",
+                                                icon = Icons.Outlined.Code
+                                            )
                                         }
-                                    },
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -257,15 +289,24 @@ fun BackupRestoreSubSheetContent(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clickable(
+                                    .combinedClickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
-                                        if (selectedFormat != ExportFormat.HTML) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            selectedFormat = ExportFormat.HTML
+                                        indication = null,
+                                        onClick = {
+                                            if (selectedFormat != ExportFormat.HTML) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedFormat = ExportFormat.HTML
+                                            }
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            activeExplainer = FormatExplainer(
+                                                title = "Browser Bookmarks (.html)",
+                                                description = "Universal Netscape HTML format. Import directly into Chrome, Firefox, Safari, Edge, or Brave on your PC or Mac.",
+                                                icon = Icons.Default.Public
+                                            )
                                         }
-                                    },
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -520,5 +561,14 @@ fun BackupRestoreSubSheetContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    activeExplainer?.let { exp ->
+        AppExplainerDialog(
+            title = exp.title,
+            description = exp.description,
+            icon = exp.icon,
+            onDismiss = { activeExplainer = null }
+        )
     }
 }

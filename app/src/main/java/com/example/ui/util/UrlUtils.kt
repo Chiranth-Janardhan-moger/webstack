@@ -87,6 +87,17 @@ fun shareWebsiteLink(context: Context, website: Website) {
     }
 }
 
+fun copyWebsiteLink(context: Context, url: String) {
+    try {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Website Link", url)
+        clipboard?.setPrimaryClip(clip)
+        Toast.makeText(context, "Link copied to clipboard", Toast.LENGTH_SHORT).show()
+    } catch (_: Exception) {
+        Toast.makeText(context, "Could not copy link", Toast.LENGTH_SHORT).show()
+    }
+}
+
 fun formatMiddleTruncatedDomain(domain: String, maxLength: Int = 32): String {
     if (domain.length <= maxLength) return domain
     if (maxLength <= 3) return domain.take(maxLength)

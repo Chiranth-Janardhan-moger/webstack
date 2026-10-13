@@ -94,6 +94,7 @@ import com.example.ui.sheets.VersionUpdateScreen
 import com.example.ui.sheets.WhatsNewBottomSheetContent
 import com.example.ui.theme.LocalAppColors
 import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.util.copyWebsiteLink
 import com.example.ui.util.extractUrlFromText
 import com.example.ui.util.openWebsiteInBrowser
 import com.example.ui.util.shareWebsiteLink
@@ -764,6 +765,11 @@ fun WebStackScreen(
                     onEdit = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         websiteToEdit = targetWebsite
+                        websiteForOptions = null
+                    },
+                    onCopy = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        copyWebsiteLink(context, targetWebsite.url)
                         websiteForOptions = null
                     },
                     onRefresh = {
