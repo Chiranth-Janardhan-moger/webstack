@@ -45,7 +45,6 @@ import com.example.ui.components.AppSubSheetHeader
 import com.example.ui.components.BackupFormatsExplainerDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -79,7 +78,6 @@ fun BackupRestoreSubSheetContent(
     onExportWebstack: () -> Unit,
     onExportJson: () -> Unit,
     onExportHtml: () -> Unit = {},
-    onShareHtml: () -> Unit = {},
     onRestore: () -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit
@@ -173,17 +171,7 @@ fun BackupRestoreSubSheetContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = "FORMAT",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.secondaryLabel,
-                    letterSpacing = 1.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Segmented Slider Pill
                 Surface(
@@ -377,16 +365,6 @@ fun BackupRestoreSubSheetContent(
                     }
                 }
 
-                if (selectedFormat == ExportFormat.HTML) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = onShareHtml,
-                        modifier = Modifier.fillMaxWidth().height(44.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Share HTML File", fontSize = 13.sp)
-                    }
-                }
             }
         }
 

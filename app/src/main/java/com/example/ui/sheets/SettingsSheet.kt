@@ -350,21 +350,6 @@ fun SettingsBottomSheetContent(
                     val fileName = com.example.bookmarks.BookmarkDelivery.formatExportFileName()
                     exportHtmlLauncher.launch(fileName)
                 },
-                onShareHtml = {
-                    if (viewModel != null) {
-                        coroutineScope.launch {
-                            try {
-                                val shareIntent = com.example.bookmarks.BookmarkDelivery.createShareIntent(
-                                    context = context,
-                                    dao = viewModel.websiteDao
-                                )
-                                context.startActivity(shareIntent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Share failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                },
                 onRestore = {
                     restoreLauncher.launch(
                         arrayOf(
