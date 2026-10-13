@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -205,7 +206,7 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 5) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 6) }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -455,9 +456,21 @@ fun WebStackScreen(
                         }
                     )
                 } else {
+                    val screenWidthDp = LocalConfiguration.current.screenWidthDp
                     val gridColumns = when (layoutMode) {
-                        WebStackLayoutMode.GRID_CARDS -> GridCells.Fixed(2)
-                        else -> GridCells.Fixed(1)
+                        WebStackLayoutMode.GRID_CARDS -> when {
+                            screenWidthDp >= 840 -> GridCells.Fixed(4)
+                            screenWidthDp >= 600 -> GridCells.Fixed(3)
+                            else -> GridCells.Fixed(2)
+                        }
+                        WebStackLayoutMode.LARGE_CARDS -> when {
+                            screenWidthDp >= 600 -> GridCells.Fixed(2)
+                            else -> GridCells.Fixed(1)
+                        }
+                        WebStackLayoutMode.COMPACT_LIST -> when {
+                            screenWidthDp >= 720 -> GridCells.Fixed(2)
+                            else -> GridCells.Fixed(1)
+                        }
                     }
                     LazyVerticalGrid(
                         state = gridState,
@@ -867,7 +880,7 @@ fun WebStackScreen(
         ) {
             VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 5).apply()
+                    prefs.edit().putInt("last_seen_version_code", 6).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {

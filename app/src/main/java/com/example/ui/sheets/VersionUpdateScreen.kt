@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Star
@@ -66,11 +67,11 @@ fun VersionUpdateScreen(
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    var targetDigit by remember { mutableStateOf("1") }
+    var targetDigit by remember { mutableStateOf("2") }
 
     LaunchedEffect(Unit) {
         delay(450)
-        targetDigit = "2"
+        targetDigit = "3"
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
@@ -158,39 +159,13 @@ fun VersionUpdateScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Feature 1: HTML Import
+                        // Feature: Adaptive Foldable & Tablet Canvas
                         VersionFeatureTile(
-                            title = "Browser HTML Import",
-                            description = "Import bookmarks from any browser"
+                            title = "Adaptive Foldable & Tablet Canvas",
+                            description = "Dynamic multi-column grid tailored for foldables, flips, and tablets"
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.FileDownload,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        // Feature 2: HTML Export
-                        VersionFeatureTile(
-                            title = "Netscape HTML Export",
-                            description = "Universal browser HTML export"
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.FileUpload,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        // Feature 3: Deduplication & Database v3
-                        VersionFeatureTile(
-                            title = "Deduplication & Schema v3",
-                            description = "Automatic duplicate detection"
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
+                                imageVector = Icons.Outlined.Devices,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)

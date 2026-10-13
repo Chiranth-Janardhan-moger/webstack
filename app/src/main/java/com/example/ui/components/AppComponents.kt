@@ -862,6 +862,7 @@ fun AppBottomSheet(
     val appColors = LocalAppColors.current
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
+        sheetMaxWidth = 560.dp,
         containerColor = appColors.secondaryGroupedBackground,
         scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),

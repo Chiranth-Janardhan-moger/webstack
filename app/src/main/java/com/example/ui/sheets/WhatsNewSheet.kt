@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -98,6 +99,12 @@ fun WhatsNewBottomSheetContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         // Feature items
+        WhatsNewFeatureItem(
+            icon = Icons.Outlined.Devices,
+            title = "Adaptive Foldable & Tablet Canvas",
+            description = "Dynamic multi-column layout tailored for foldables, flips, and large screens."
+        )
+
         WhatsNewFeatureItem(
             icon = Icons.Default.GridView,
             title = "3 Distinct Layout Modes",
