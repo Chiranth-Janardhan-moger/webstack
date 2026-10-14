@@ -98,6 +98,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import com.example.R
 import com.example.data.Website
 import com.example.ui.theme.LocalAppColors
@@ -871,8 +872,10 @@ fun AppBottomSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val appColors = LocalAppColors.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
         sheetMaxWidth = 560.dp,
         containerColor = appColors.secondaryGroupedBackground,
         scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),

@@ -503,8 +503,8 @@ private fun ClusterRow(
             .graphicsLayer { alpha = if (isIncluded) 1f else 0.52f }
             .testTag("cluster_row_${cluster.id}")
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Row 1: Checkbox + Title & Count + Expand Chevron
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            // Main Row: Checkbox + (Title & Domains) on left + (Tag & Chevron) on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -519,183 +519,176 @@ private fun ClusterRow(
                     modifier = Modifier.testTag("cluster_checkbox_${cluster.id}")
                 )
 
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Left: Title + Sample Domains
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = cluster.displayName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = if (isIncluded && excludedCount > 0) "($activeCount/${cluster.linkCount})" else "(${cluster.linkCount})",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isIncluded) appColors.secondaryLabel else appColors.tertiaryLabel
+                        )
+                    }
+
+                    if (cluster.sampleDomains.isNotEmpty()) {
+                        Text(
+                            text = cluster.sampleDomains.joinToString(", "),
+                            fontSize = 11.sp,
+                            color = appColors.tertiaryLabel,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.width(6.dp))
 
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Right: Tag Pill on top, Expand Chevron stacked directly underneath
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        text = cluster.displayName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appColors.label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = if (isIncluded && excludedCount > 0) "($activeCount/${cluster.linkCount})" else "(${cluster.linkCount})",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isIncluded) appColors.secondaryLabel else appColors.tertiaryLabel
-                    )
-                }
-
-                if (clusterBookmarks.isNotEmpty()) {
-                    IconButton(
-                        onClick = onToggleExpand,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .testTag("expand_cluster_${cluster.id}")
-                    ) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (isExpanded) "Collapse links" else "Expand links",
-                            tint = appColors.secondaryLabel,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // Row 2: Metadata (Sample domains) + Category Tag Dropdown
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 38.dp, top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (cluster.sampleDomains.isNotEmpty()) {
-                    Text(
-                        text = cluster.sampleDomains.joinToString(", "),
-                        fontSize = 11.sp,
-                        color = appColors.tertiaryLabel,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
-                // Dropdown menu button with category accent dot
-                Box {
-                    Surface(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            isDropdownOpen = true
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
-                        modifier = Modifier.testTag("cluster_dropdown_${cluster.id}")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(accentColor, CircleShape)
-                            )
-                            Text(
-                                text = assignedCategory,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = appColors.label,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 110.dp)
-                            )
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                tint = appColors.secondaryLabel,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    DropdownMenu(
-                        expanded = isDropdownOpen,
-                        onDismissRequest = { isDropdownOpen = false },
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 8.dp,
-                        border = BorderStroke(
-                            width = 0.5.dp,
-                            color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
-                        ),
-                        modifier = Modifier
-                            .widthIn(min = 180.dp)
-                            .heightIn(max = 280.dp)
-                    ) {
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = appColors.accent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            text = {
-                                Text(
-                                    text = "Tag",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = appColors.accent
-                                )
-                            },
+                    Box {
+                        Surface(
                             onClick = {
-                                isDropdownOpen = false
-                                onRequestNewTag()
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isDropdownOpen = true
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                            modifier = Modifier.testTag("cluster_dropdown_${cluster.id}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = assignedCategory,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = appColors.label,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.widthIn(max = 100.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    tint = appColors.secondaryLabel,
+                                    modifier = Modifier.size(15.dp)
+                                )
                             }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
-                        )
-                        val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
-                        distinctCats.forEach { cat ->
-                            val isSelected = cat.equals(assignedCategory, ignoreCase = true)
-                            val catAccent = getCategoryAccentColor(cat, appColors.isDark)
+                        }
+
+                        DropdownMenu(
+                            expanded = isDropdownOpen,
+                            onDismissRequest = { isDropdownOpen = false },
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(
+                                width = 0.5.dp,
+                                color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                            ),
+                            modifier = Modifier
+                                .widthIn(min = 180.dp)
+                                .heightIn(max = 280.dp)
+                        ) {
                             DropdownMenuItem(
                                 leadingIcon = {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(catAccent, CircleShape)
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = appColors.accent,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 },
                                 text = {
                                     Text(
-                                        text = cat,
+                                        text = "Tag",
                                         fontSize = 14.sp,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (isSelected) appColors.accent else appColors.label
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = appColors.accent
                                     )
                                 },
-                                trailingIcon = if (isSelected) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = appColors.accent,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                } else null,
                                 onClick = {
-                                    onSelectCategory(cat)
                                     isDropdownOpen = false
+                                    onRequestNewTag()
                                 }
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+                            )
+                            val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
+                            distinctCats.forEach { cat ->
+                                val isSelected = cat.equals(assignedCategory, ignoreCase = true)
+                                val catAccent = getCategoryAccentColor(cat, appColors.isDark)
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(catAccent, CircleShape)
+                                        )
+                                    },
+                                    text = {
+                                        Text(
+                                            text = cat,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (isSelected) appColors.accent else appColors.label
+                                        )
+                                    },
+                                    trailingIcon = if (isSelected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = appColors.accent,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        onSelectCategory(cat)
+                                        isDropdownOpen = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (clusterBookmarks.isNotEmpty()) {
+                        IconButton(
+                            onClick = onToggleExpand,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .testTag("expand_cluster_${cluster.id}")
+                        ) {
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (isExpanded) "Collapse links" else "Expand links",
+                                tint = appColors.secondaryLabel,
+                                modifier = Modifier.size(17.dp)
                             )
                         }
                     }
