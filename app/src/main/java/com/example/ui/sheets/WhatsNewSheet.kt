@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Refresh
@@ -103,6 +104,12 @@ fun WhatsNewBottomSheetContent(
             icon = Icons.Outlined.Devices,
             title = "Adaptive Foldable & Tablet Canvas",
             description = "Dynamic multi-column layout tailored for foldables, flips, and large screens."
+        )
+
+        WhatsNewFeatureItem(
+            icon = Icons.Outlined.CheckCircle,
+            title = "Bug Fixes & Refinements",
+            description = "Unified spring physics and haptics across settings cards, 6-tile action grid, cleaner backup options, and navigation fixes."
         )
 
         WhatsNewFeatureItem(

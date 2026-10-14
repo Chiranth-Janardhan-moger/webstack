@@ -468,7 +468,7 @@ fun SettingsBottomSheetContent(
                 modifier = Modifier.size(13.dp)
             )
             Text(
-                text = "Touch and hold any setting for details",
+                text = "Press and hold for details",
                 fontSize = 12.sp,
                 color = appColors.secondaryLabel
             )
@@ -494,7 +494,7 @@ fun SettingsBottomSheetContent(
             onLongClick = {
                 activeExplainer = SettingsExplainer(
                     title = "Appearance",
-                    description = "Customize your theme (Light, Dark, or System) and switch between Compact or Cozy card layouts.",
+                    description = "Personalize your theme and switch between Grid, Card, or Compact layouts.",
                     icon = Icons.Outlined.Palette
                 )
             }
@@ -542,7 +542,7 @@ fun SettingsBottomSheetContent(
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 activeExplainer = SettingsExplainer(
                                     title = "Fetch Web Previews",
-                                    description = "Downloads visual snapshot cards from the web when you save links. Turn this off for zero data usage or offline operation.",
+                                    description = "Auto-generates card snapshot previews. Turn off for zero mobile data usage.",
                                     icon = Icons.Default.Public
                                 )
                             }
@@ -609,7 +609,7 @@ fun SettingsBottomSheetContent(
             onLongClick = {
                 activeExplainer = SettingsExplainer(
                     title = "Backup and Restore",
-                    description = "Export bookmarks as .webstack, .json, or .html files, or restore an existing backup with automatic deduplication.",
+                    description = "Safely export or restore your stack. Imports merge cleanly without duplicates.",
                     icon = Icons.Outlined.Restore
                 )
             }
@@ -635,7 +635,7 @@ fun SettingsBottomSheetContent(
             onLongClick = {
                 activeExplainer = SettingsExplainer(
                     title = "App Info",
-                    description = "View version number, update notes, build details, and open-source acknowledgments.",
+                    description = "Version details, what's new changelog, and open-source credits.",
                     icon = Icons.Outlined.Info
                 )
             }

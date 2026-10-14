@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
@@ -166,6 +167,24 @@ fun VersionUpdateScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Devices,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator.copy(alpha = 0.5f)
+                        )
+
+                        // Feature: Bug Fixes & Refinements
+                        VersionFeatureTile(
+                            title = "Bug Fixes & Refinements",
+                            description = "Unified bouncy haptics, 6-tile options grid, and cleaner backup flow"
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)

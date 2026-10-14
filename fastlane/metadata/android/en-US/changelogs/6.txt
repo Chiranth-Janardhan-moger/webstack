@@ -1,1 +1,4 @@
 - Adaptive Foldable & Tablet Canvas: dynamic multi-column grid tailored for foldables, flips, and large screens
+- 6-tile item options grid with long-press explainer dialogs
+- Unified spring physics and tactile haptic feedback across settings navigation cards
+- Streamlined backup export formats with cleaner layout and UI bug fixes

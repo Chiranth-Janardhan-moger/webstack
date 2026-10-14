@@ -529,7 +529,7 @@ fun BackupRestoreSubSheetContent(
     if (showImportExplainer) {
         AppExplainerDialog(
             title = "Import Backup",
-            description = "Merges bookmarks without duplicates. Existing bookmarks in your stack remain safe and untouched.",
+            description = "Imports merge seamlessly. Existing bookmarks are never duplicated or overwritten.",
             icon = Icons.Outlined.Restore,
             onDismiss = { showImportExplainer = false }
         )
