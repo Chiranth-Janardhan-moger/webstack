@@ -20,6 +20,9 @@ class DomainClassifierTest {
         assertTrue("Taxonomy must not be empty", classifier.taxonomyMap.isNotEmpty())
         assertTrue("Taxonomy must contain at least 15 domains", classifier.taxonomyMap.size >= 15)
         assertEquals("Development", classifier.taxonomyMap["github.com"])
+        assertEquals("Social", classifier.taxonomyMap["bsky.app"])
+        assertEquals("Social", classifier.taxonomyMap["threads.net"])
+        assertEquals("Social", classifier.taxonomyMap["instagram.com"])
 
         // github.com must classify as Development under DOMAIN_RULE before clustering
         val b = ParsedBookmark(

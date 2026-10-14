@@ -310,7 +310,10 @@ fun AppNavigationHeader(
 
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(
-                                    onClick = onClearQuery,
+                                    onClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onClearQuery()
+                                    },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Surface(
@@ -741,7 +744,7 @@ fun AppEmptyState(
 
             val descriptionText = when {
                 searchQuery.isNotBlank() -> "No bookmarks matched \"$searchQuery\". Try checking for typos or searching another term."
-                selectedCategory == "All" -> "Tap the '+' button below or share links from Safari, Chrome, or any app."
+                selectedCategory == "All" -> "Tap the '+' button below or share links from Chrome, Firefox, Brave, or any app."
                 else -> null
             }
 
