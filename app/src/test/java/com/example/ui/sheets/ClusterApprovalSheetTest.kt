@@ -165,4 +165,134 @@ class ClusterApprovalSheetTest {
         // "Tag" is immediately visible at the top without scrolling
         composeTestRule.onNodeWithText("Tag").assertIsDisplayed()
     }
+
+    @Test
+    fun testSelectAllDeselectAllToggle() {
+        val result = ImportPreprocessResult(
+            classifiedBookmarks = listOf(
+                ClassifiedBookmark(
+                    url = "https://github.com",
+                    title = "GitHub",
+                    dedupeKey = "https://github.com",
+                    folderPath = listOf("Dev"),
+                    createdAtMs = 0L,
+                    category = "Dev",
+                    source = CategorySource.FOLDER,
+                    sourcePath = "Dev",
+                    host = "github.com",
+                    registrableDomain = "github.com"
+                )
+            ),
+            clusters = listOf(
+                BookmarkCluster(
+                    id = "Dev",
+                    displayName = "Dev",
+                    linkCount = 1,
+                    source = CategorySource.FOLDER,
+                    sampleDomains = listOf("github.com"),
+                    assignedCategory = "Dev",
+                    isIncluded = true
+                )
+            ),
+            internalDuplicatesCount = 0,
+            unsupportedSchemeCount = 0,
+            warnings = emptyList(),
+            hasNetscapeHeader = true
+        )
+
+        composeTestRule.setContent {
+            ClusterApprovalSheet(
+                preprocessResult = result,
+                existingCategories = listOf("Dev"),
+                onConfirmImport = {},
+                onCancel = {}
+            )
+        }
+
+        // Initially all are selected -> button shows "Deselect All"
+        composeTestRule.onNodeWithText("Deselect All").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Import (1)").assertIsDisplayed()
+
+        // Click "Deselect All"
+        composeTestRule.onNodeWithText("Deselect All").performClick()
+        composeTestRule.onNodeWithText("Select All").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Import (0)").assertIsDisplayed()
+
+        // Click "Select All"
+        composeTestRule.onNodeWithText("Select All").performClick()
+        composeTestRule.onNodeWithText("Deselect All").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Import (1)").assertIsDisplayed()
+    }
+
+    @Test
+    fun testExpandClusterAndToggleIndividualLink() {
+        val b1 = ClassifiedBookmark(
+            url = "https://github.com/torvalds/linux",
+            title = "Linux Kernel",
+            dedupeKey = "https://github.com/torvalds/linux",
+            folderPath = listOf("Dev"),
+            createdAtMs = 0L,
+            category = "Dev",
+            source = CategorySource.FOLDER,
+            sourcePath = "Dev",
+            host = "github.com",
+            registrableDomain = "github.com"
+        )
+        val b2 = ClassifiedBookmark(
+            url = "https://kotlinlang.org",
+            title = "Kotlin",
+            dedupeKey = "https://kotlinlang.org",
+            folderPath = listOf("Dev"),
+            createdAtMs = 0L,
+            category = "Dev",
+            source = CategorySource.FOLDER,
+            sourcePath = "Dev",
+            host = "kotlinlang.org",
+            registrableDomain = "kotlinlang.org"
+        )
+        val result = ImportPreprocessResult(
+            classifiedBookmarks = listOf(b1, b2),
+            clusters = listOf(
+                BookmarkCluster(
+                    id = "Dev",
+                    displayName = "Dev",
+                    linkCount = 2,
+                    source = CategorySource.FOLDER,
+                    sampleDomains = listOf("github.com", "kotlinlang.org"),
+                    assignedCategory = "Dev",
+                    isIncluded = true
+                )
+            ),
+            internalDuplicatesCount = 0,
+            unsupportedSchemeCount = 0,
+            warnings = emptyList(),
+            hasNetscapeHeader = true
+        )
+
+        composeTestRule.setContent {
+            ClusterApprovalSheet(
+                preprocessResult = result,
+                existingCategories = listOf("Dev"),
+                onConfirmImport = {},
+                onCancel = {}
+            )
+        }
+
+        // Initially total count is 2
+        composeTestRule.onNodeWithText("Import (2)").assertIsDisplayed()
+
+        // Expand Dev cluster
+        composeTestRule.onNodeWithTag("expand_cluster_Dev").performClick()
+
+        // Both link titles are visible
+        composeTestRule.onNodeWithText("Linux Kernel").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Kotlin").assertIsDisplayed()
+
+        // Deselect Linux Kernel individual link
+        composeTestRule.onNodeWithTag("link_checkbox_https://github.com/torvalds/linux").performClick()
+
+        // Count drops to 1
+        composeTestRule.onNodeWithText("Import (1)").assertExists()
+        composeTestRule.onNodeWithText("(1/2)").assertExists()
+    }
 }
