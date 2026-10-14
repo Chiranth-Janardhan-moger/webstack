@@ -559,9 +559,9 @@ private fun ClusterRow(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Right: Tag Pill on top, Expand Chevron stacked directly underneath
+                // Right: Tag Pill on top, Expand Chevron stacked directly underneath (both right-aligned)
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Box {
@@ -609,7 +609,7 @@ private fun ClusterRow(
                                 color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
                             ),
                             modifier = Modifier
-                                .widthIn(min = 180.dp)
+                                .widthIn(min = 120.dp, max = 220.dp)
                                 .heightIn(max = 280.dp)
                         ) {
                             DropdownMenuItem(
@@ -641,15 +641,7 @@ private fun ClusterRow(
                             val distinctCats = availableCategories.filter { it.isNotBlank() }.distinct()
                             distinctCats.forEach { cat ->
                                 val isSelected = cat.equals(assignedCategory, ignoreCase = true)
-                                val catAccent = getCategoryAccentColor(cat, appColors.isDark)
                                 DropdownMenuItem(
-                                    leadingIcon = {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(catAccent, CircleShape)
-                                        )
-                                    },
                                     text = {
                                         Text(
                                             text = cat,
