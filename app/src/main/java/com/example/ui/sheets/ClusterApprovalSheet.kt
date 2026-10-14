@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bookmarks.BookmarkCluster
@@ -600,6 +601,7 @@ private fun ClusterRow(
                         DropdownMenu(
                             expanded = isDropdownOpen,
                             onDismissRequest = { isDropdownOpen = false },
+                            offset = DpOffset(x = (-12).dp, y = 4.dp),
                             shape = RoundedCornerShape(16.dp),
                             containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
                             tonalElevation = 0.dp,
@@ -609,7 +611,7 @@ private fun ClusterRow(
                                 color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
                             ),
                             modifier = Modifier
-                                .widthIn(min = 120.dp, max = 220.dp)
+                                .widthIn(min = 165.dp, max = 230.dp)
                                 .heightIn(max = 280.dp)
                         ) {
                             DropdownMenuItem(
