@@ -157,7 +157,8 @@ WebStack is officially published in the upstream F-Droid repository:
 
 ## Star History
 
-<img width="1617" height="1261" alt="star-history-20261012" src="https://github.com/user-attachments/assets/4b76a4a5-531b-4098-bb9a-5687f14061c4" />
+<img width="600" height="600" alt="star-history-20261016" src="https://github.com/user-attachments/assets/337ab42b-3987-412b-8f45-57adec6fa91b" />
+
 
 
 ---
