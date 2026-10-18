@@ -52,6 +52,15 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _importProgress = MutableStateFlow<Pair<Int, Int>?>(null)
     val importProgress: StateFlow<Pair<Int, Int>?> = _importProgress.asStateFlow()
 
+    private val _companionPort = MutableStateFlow(prefs.getInt(PREF_COMPANION_PORT, DEFAULT_COMPANION_PORT))
+    val companionPort: StateFlow<Int> = _companionPort.asStateFlow()
+
+    private val _companionUseFixedPin = MutableStateFlow(prefs.getBoolean(PREF_COMPANION_USE_FIXED_PIN, false))
+    val companionUseFixedPin: StateFlow<Boolean> = _companionUseFixedPin.asStateFlow()
+
+    private val _companionCustomPin = MutableStateFlow(prefs.getString(PREF_COMPANION_CUSTOM_PIN, "") ?: "")
+    val companionCustomPin: StateFlow<String> = _companionCustomPin.asStateFlow()
+
     private val localServer: com.example.server.LocalHttpServer by lazy {
         com.example.server.LocalHttpServer(
             context = application,
@@ -61,12 +70,37 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
     val serverStatus: StateFlow<com.example.server.ServerStatus> get() = localServer.status
 
-    fun startLocalServer(port: Int = 8080) {
-        localServer.start(port)
+    fun setCompanionPort(port: Int) {
+        val validPort = port.coerceIn(1024, 65535)
+        prefs.edit().putInt(PREF_COMPANION_PORT, validPort).apply()
+        _companionPort.value = validPort
+    }
+
+    fun setCompanionUseFixedPin(useFixed: Boolean) {
+        prefs.edit().putBoolean(PREF_COMPANION_USE_FIXED_PIN, useFixed).apply()
+        _companionUseFixedPin.value = useFixed
+    }
+
+    fun setCompanionCustomPin(pin: String) {
+        val cleanPin = pin.trim()
+        prefs.edit().putString(PREF_COMPANION_CUSTOM_PIN, cleanPin).apply()
+        _companionCustomPin.value = cleanPin
+    }
+
+    fun startLocalServer(
+        port: Int = _companionPort.value,
+        customPin: String? = if (_companionUseFixedPin.value && _companionCustomPin.value.isNotBlank()) _companionCustomPin.value else null
+    ) {
+        localServer.start(port, customPin)
     }
 
     fun stopLocalServer() {
         localServer.stop()
+    }
+
+    fun restartLocalServer() {
+        stopLocalServer()
+        startLocalServer()
     }
 
     fun setSettingsSubScreen(subScreen: com.example.ui.sheets.SettingsSubScreen) {
@@ -577,6 +611,13 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     override fun onCleared() {
         super.onCleared()
         localServer.stop()
+    }
+
+    companion object {
+        const val PREF_COMPANION_PORT = "pc_companion_port"
+        const val PREF_COMPANION_USE_FIXED_PIN = "pc_companion_use_fixed_pin"
+        const val PREF_COMPANION_CUSTOM_PIN = "pc_companion_custom_pin"
+        const val DEFAULT_COMPANION_PORT = 8080
     }
 }
 

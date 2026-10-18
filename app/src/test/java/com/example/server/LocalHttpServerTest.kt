@@ -203,4 +203,32 @@ class LocalHttpServerTest {
         assertEquals("Personal", array.getString(0))
         conn.disconnect()
     }
+
+    @Test
+    fun testServerWithCustomPinAndPort_usesProvidedValues() = runBlocking {
+        val customPort = 18895
+        val customPin = "987654"
+        server.start(preferredPort = customPort, customPin = customPin)
+        delay(150)
+
+        val status = server.status.value
+        assertTrue("Server should be running", status.isRunning)
+        assertEquals(customPort, status.port)
+        assertEquals(customPin, status.pin)
+
+        // Verify auth works with custom PIN
+        val url = URL("http://127.0.0.1:$customPort/api/auth")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.outputStream.bufferedWriter().use { it.write("""{"pin":"$customPin"}""") }
+
+        assertEquals(200, conn.responseCode)
+        val response = conn.inputStream.bufferedReader().use { it.readText() }
+        val json = JSONObject(response)
+        assertTrue(json.getBoolean("success"))
+        assertNotNull(json.getString("token"))
+        conn.disconnect()
+    }
 }

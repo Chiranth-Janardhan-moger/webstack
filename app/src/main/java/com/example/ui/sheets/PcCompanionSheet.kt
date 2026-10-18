@@ -11,11 +11,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -25,6 +28,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -33,13 +38,20 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.WifiOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,11 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.AppSubSheetHeader
@@ -86,10 +101,38 @@ fun PcCompanionSubSheetContent(
         if (qrUrl.isNotBlank()) QrCodeUtils.generateQrBitmap(qrUrl, 512) else null
     }
 
+    val currentPort by (viewModel?.companionPort?.collectAsState() ?: remember { mutableStateOf(8080) })
+    val currentUseFixedPin by (viewModel?.companionUseFixedPin?.collectAsState() ?: remember { mutableStateOf(false) })
+    val currentCustomPin by (viewModel?.companionCustomPin?.collectAsState() ?: remember { mutableStateOf("") })
+
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
     var copiedUrl by remember { mutableStateOf(false) }
     var copiedPin by remember { mutableStateOf(false) }
 
     BackHandler { onBack() }
+
+    if (showSettingsDialog) {
+        PcCompanionSettingsDialog(
+            initialPort = currentPort,
+            initialUseFixedPin = currentUseFixedPin,
+            initialCustomPin = currentCustomPin,
+            isRunning = isRunning,
+            onSave = { port, useFixed, customPin ->
+                viewModel?.setCompanionPort(port)
+                viewModel?.setCompanionUseFixedPin(useFixed)
+                viewModel?.setCompanionCustomPin(customPin)
+                if (isRunning) {
+                    viewModel?.restartLocalServer()
+                    Toast.makeText(context, "Server restarted on port $port", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Settings saved", Toast.LENGTH_SHORT).show()
+                }
+                showSettingsDialog = false
+            },
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -101,7 +144,23 @@ fun PcCompanionSubSheetContent(
         AppSubSheetHeader(
             title = "PC Companion",
             onBack = onBack,
-            onDismiss = onDismiss
+            onDismiss = onDismiss,
+            action = {
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showSettingsDialog = true
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = "PC Companion Settings",
+                        tint = appColors.label,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -171,7 +230,7 @@ fun PcCompanionSubSheetContent(
                         }
 
                         Text(
-                            text = if (isRunning) "Active • Port ${serverStatus.port}" else "Turn on to access from PC",
+                            text = if (isRunning) "Active • Port ${serverStatus.port}" else "Port $currentPort • ${if (currentUseFixedPin) "Fixed PIN" else "Dynamic PIN"}",
                             fontSize = 13.sp,
                             color = appColors.secondaryLabel
                         )
@@ -250,14 +309,7 @@ fun PcCompanionSubSheetContent(
                                 fontWeight = FontWeight.SemiBold,
                                 color = appColors.label
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Points desktop browser directly to your phone",
-                                fontSize = 12.sp,
-                                color = appColors.secondaryLabel
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             // High-contrast QR Container
                             Surface(
@@ -402,11 +454,30 @@ fun PcCompanionSubSheetContent(
                                 }
 
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Security PIN",
-                                        fontSize = 12.sp,
-                                        color = appColors.secondaryLabel
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Security PIN",
+                                            fontSize = 12.sp,
+                                            color = appColors.secondaryLabel
+                                        )
+                                        if (currentUseFixedPin) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = appColors.fill
+                                            ) {
+                                                Text(
+                                                    text = "FIXED",
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = appColors.secondaryLabel,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
                                         text = formatPin(serverStatus.pin),
                                         fontSize = 16.sp,
@@ -574,4 +645,290 @@ private fun GuideStepRow(step: String, text: String) {
 private fun formatPin(raw: String): String {
     if (raw.length != 6) return raw
     return "${raw.substring(0, 3)}  ${raw.substring(3, 6)}"
+}
+
+@Composable
+fun PcCompanionSettingsDialog(
+    initialPort: Int,
+    initialUseFixedPin: Boolean,
+    initialCustomPin: String,
+    isRunning: Boolean,
+    onSave: (port: Int, useFixedPin: Boolean, customPin: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    var portText by remember { mutableStateOf(initialPort.toString()) }
+    var useFixedPin by remember { mutableStateOf(initialUseFixedPin) }
+    var pinText by remember {
+        mutableStateOf(
+            if (initialCustomPin.isNotBlank()) initialCustomPin
+            else (100000..999999).random().toString()
+        )
+    }
+
+    val parsedPort = portText.trim().toIntOrNull()
+    val isPortValid = parsedPort != null && parsedPort in 1024..65535
+    val cleanPin = pinText.trim()
+    val isPinValid = !useFixedPin || cleanPin.length in 4..12
+    val canSave = isPortValid && isPinValid
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = appColors.secondaryGroupedBackground,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(24.dp)),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = appColors.fill,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = null,
+                            tint = appColors.label,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "Companion Settings",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appColors.label
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Port Section
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "PORT",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = appColors.secondaryLabel,
+                            letterSpacing = 0.5.sp
+                        )
+                        if (portText.trim() != "8080") {
+                            Text(
+                                text = "Reset to 8080",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.accent,
+                                modifier = Modifier.clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    portText = "8080"
+                                }
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(
+                            0.75.dp,
+                            if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            BasicTextField(
+                                value = portText,
+                                onValueChange = { portText = it.filter { ch -> ch.isDigit() }.take(5) },
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = appColors.label,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                cursorBrush = SolidColor(appColors.accent),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Next
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = if (!isPortValid && portText.isNotBlank()) "Port must be between 1024 and 65535" else "Default: 8080 (usable range: 1024 - 65535)",
+                        fontSize = 11.sp,
+                        color = if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30) else appColors.tertiaryLabel
+                    )
+                }
+
+                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
+
+                // Fixed PIN Section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Use Fixed PIN",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = if (useFixedPin) "Keep this PIN across all sessions" else "Generate fresh PIN on every start",
+                                fontSize = 12.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
+                        AppSwitch(
+                            checked = useFixedPin,
+                            onCheckedChange = { checked ->
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                useFixedPin = checked
+                            }
+                        )
+                    }
+
+                    AnimatedVisibility(visible = useFixedPin) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Surface(
+                                color = appColors.fill,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    0.75.dp,
+                                    if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(46.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    BasicTextField(
+                                        value = pinText,
+                                        onValueChange = { pinText = it.take(12) },
+                                        singleLine = true,
+                                        textStyle = androidx.compose.ui.text.TextStyle(
+                                            color = appColors.label,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            letterSpacing = 2.sp
+                                        ),
+                                        cursorBrush = SolidColor(appColors.accent),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            imeAction = ImeAction.Done
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    IconButton(
+                                        onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            pinText = (100000..999999).random().toString()
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Refresh,
+                                            contentDescription = "Randomize PIN",
+                                            tint = appColors.secondaryLabel,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be 4 to 12 characters" else "Saved PIN will be used every time you connect",
+                                fontSize = 11.sp,
+                                color = if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30) else appColors.tertiaryLabel
+                            )
+                        }
+                    }
+                }
+
+                if (isRunning) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFF9500).copy(alpha = 0.12f),
+                        border = BorderStroke(0.5.dp, Color(0xFFFF9500).copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Server is active. Saving will restart it with new settings immediately.",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9500),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val port = parsedPort
+                    if (canSave && port != null) {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onSave(port, useFixedPin, cleanPin)
+                    }
+                },
+                enabled = canSave,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground,
+                    disabledContainerColor = appColors.fill,
+                    disabledContentColor = appColors.tertiaryLabel
+                )
+            ) {
+                Text(if (isRunning) "Save & Restart" else "Save", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Medium)
+            }
+        }
+    )
 }

@@ -17,11 +17,13 @@ import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
 import java.security.SecureRandom
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.delay
 
 data class ServerStatus(
     val isRunning: Boolean = false,
@@ -47,10 +49,10 @@ class LocalHttpServer(
 
     private var activePin: String = ""
     private var activeSessionToken: String = ""
-    private val activeClients = AtomicInteger(0)
+    private val activeSessions = ConcurrentHashMap<String, Long>()
 
     @Synchronized
-    fun start(preferredPort: Int = 8080) {
+    fun start(preferredPort: Int = 8080, customPin: String? = null) {
         if (_status.value.isRunning) return
 
         val ip = WifiUtils.getLocalIpAddress()
@@ -62,13 +64,14 @@ class LocalHttpServer(
             return
         }
 
-        activePin = generatePin()
+        activePin = if (!customPin.isNullOrBlank()) customPin.trim() else generatePin()
         activeSessionToken = generateToken()
 
         serverJob = scope.launch {
             var boundSocket: ServerSocket? = null
             var boundPort = preferredPort
-            for (p in preferredPort..(preferredPort + 10)) {
+            val maxPort = (preferredPort + 10).coerceAtMost(65535)
+            for (p in preferredPort..maxPort) {
                 try {
                     boundSocket = ServerSocket(p)
                     boundPort = p
@@ -79,7 +82,7 @@ class LocalHttpServer(
             if (boundSocket == null) {
                 _status.value = ServerStatus(
                     isRunning = false,
-                    errorMessage = "Failed to bind local port (8080-8090)"
+                    errorMessage = "Failed to bind local port ($preferredPort-$maxPort)"
                 )
                 return@launch
             }
@@ -93,6 +96,13 @@ class LocalHttpServer(
                 connectedClients = 0,
                 errorMessage = null
             )
+
+            launch {
+                while (isActive) {
+                    delay(3000L)
+                    cleanupOldSessions()
+                }
+            }
 
             try {
                 while (isActive && !boundSocket.isClosed) {
@@ -119,8 +129,8 @@ class LocalHttpServer(
         serverSocket = null
         serverJob?.cancel()
         serverJob = null
-        activeClients.set(0)
-        _status.value = ServerStatus(isRunning = false)
+        activeSessions.clear()
+        _status.value = ServerStatus(isRunning = false, connectedClients = 0)
     }
 
     private fun generatePin(): String {
@@ -134,15 +144,22 @@ class LocalHttpServer(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun updateClientCount() {
-        if (_status.value.isRunning) {
-            _status.value = _status.value.copy(connectedClients = activeClients.get().coerceAtLeast(0))
+    private fun recordClientActivity(clientId: String) {
+        activeSessions[clientId] = System.currentTimeMillis()
+        cleanupOldSessions()
+    }
+
+    private fun cleanupOldSessions() {
+        val cutoff = System.currentTimeMillis() - 25_000L
+        activeSessions.entries.removeIf { it.value < cutoff }
+        val count = activeSessions.size
+        if (_status.value.isRunning && _status.value.connectedClients != count) {
+            _status.value = _status.value.copy(connectedClients = count)
         }
     }
 
     private suspend fun handleClient(socket: Socket) {
-        activeClients.incrementAndGet()
-        updateClientCount()
+        val remoteIp = (socket.remoteSocketAddress as? InetSocketAddress)?.address?.hostAddress ?: "client"
         try {
             socket.use { s ->
                 s.soTimeout = 12000
@@ -190,6 +207,8 @@ class LocalHttpServer(
                     return
                 }
 
+                recordClientActivity(remoteIp)
+
                 when {
                     uriPath == "/" || uriPath == "/index.html" -> {
                         serveWebCompanion(output)
@@ -204,6 +223,11 @@ class LocalHttpServer(
                     }
                     uriPath == "/api/auth" && method == "POST" -> {
                         handleAuth(body, output)
+                    }
+                    uriPath == "/api/disconnect" && method == "POST" -> {
+                        activeSessions.remove(remoteIp)
+                        cleanupOldSessions()
+                        sendJsonResponse(output, 200, """{"success":true}""")
                     }
                     uriPath == "/api/categories" -> {
                         if (!isAuthorized(headers, queryParams)) {
@@ -247,9 +271,6 @@ class LocalHttpServer(
                 }
             }
         } catch (_: Exception) {
-        } finally {
-            activeClients.decrementAndGet()
-            updateClientCount()
         }
     }
 

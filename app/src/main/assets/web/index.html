@@ -69,9 +69,9 @@
       -webkit-backdrop-filter: blur(16px);
     }
     .header-inner {
-      max-width: 1200px;
+      max-width: 1680px;
       margin: 0 auto;
-      padding: 14px 20px;
+      padding: 14px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -116,30 +116,116 @@
       gap: 5px;
       letter-spacing: 0.2px;
     }
+    @keyframes pulseBeacon {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
     .badge-live::before {
       content: "";
       width: 6px;
       height: 6px;
       background: #10B981;
       border-radius: 50%;
-      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      animation: pulseBeacon 2s infinite;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .bookmarks-count {
       font-size: 13px;
       color: var(--text-muted);
       font-weight: 500;
+      white-space: nowrap;
     }
 
-    /* Circular Add Button in Nav Bar */
+    /* Animated Nav Bar Search */
+    .search-nav {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-nav-expand {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%) scale(0.96);
+      width: 0;
+      opacity: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+      transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      z-index: 25;
+    }
+    .search-nav.open .search-nav-expand {
+      width: 320px;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) scale(1);
+      border-color: var(--border-focus);
+    }
+    .search-nav.open .btn-search-toggle {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .search-nav-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .search-nav-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 9px 36px 9px 34px;
+      outline: none;
+      font-family: inherit;
+    }
+    .btn-clear-search {
+      position: absolute;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--surface-hover);
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-clear-search:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    /* Circular Buttons in Nav Bar */
     .btn-circle-add {
-      width: 36px;
-      height: 36px;
+      position: relative;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
       background: var(--text);
       color: var(--bg);
@@ -148,16 +234,85 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
       flex-shrink: 0;
     }
     .btn-circle-add:hover {
-      transform: scale(1.08);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+      transform: translateY(-1px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
     }
     .btn-circle-add:active {
       transform: scale(0.94);
+    }
+
+    .btn-circle-action {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      flex-shrink: 0;
+    }
+    .btn-circle-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      color: var(--text);
+      border-color: var(--border-focus);
+    }
+    .btn-circle-action:active {
+      transform: scale(0.94);
+    }
+
+    /* Disconnect hover effect */
+    .btn-disconnect:hover {
+      color: #EF4444 !important;
+      border-color: rgba(239, 68, 68, 0.35) !important;
+      background: rgba(239, 68, 68, 0.08) !important;
+    }
+
+    /* Tooltips */
+    .tooltip {
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: var(--text);
+      color: var(--bg);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 7px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      letter-spacing: 0.2px;
+    }
+    .tooltip::after {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 0 4px 4px 4px;
+      border-style: solid;
+      border-color: transparent transparent var(--text) transparent;
+    }
+    .btn-circle-add:hover .tooltip,
+    .btn-circle-action:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
     }
 
     .btn-secondary {
@@ -177,58 +332,22 @@
 
     /* Main Container */
     main {
-      max-width: 1200px;
+      max-width: 1680px;
       width: 100%;
       margin: 0 auto;
-      padding: 24px 20px 60px;
+      padding: 22px 28px 60px;
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
-    /* Controls Bar */
+    /* Controls Bar - Dedicated Clean Category Tabs */
     .controls-bar {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-    }
-    .search-box {
-      flex: 1;
-      min-width: 260px;
-      max-width: 440px;
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .search-input {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 14px 10px 38px;
-      border-radius: 24px;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .search-input:focus {
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
-    }
-    .search-icon {
-      position: absolute;
-      left: 13px;
-      width: 16px;
-      height: 16px;
-      color: var(--text-muted);
-      pointer-events: none;
-      transition: color 0.15s ease;
-    }
-    .search-box:focus-within .search-icon {
-      color: var(--text);
+      justify-content: flex-start;
+      margin-bottom: 2px;
     }
 
     /* Category Chips - Native Scrollbars Permanently Hidden */
@@ -266,10 +385,10 @@
       font-weight: 600;
     }
 
-    /* Bookmarks Grid */
+    /* Bookmarks Grid - 4 Columns in PC Mode */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
     }
     .bookmark-card {
@@ -335,10 +454,28 @@
       overflow: hidden;
       line-height: 1.35;
     }
+    .card-domain-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
     .card-domain {
       font-size: 12px;
       color: var(--text-muted);
       word-break: break-all;
+    }
+    .card-arrow {
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translate(-3px, 3px);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-block;
+    }
+    .bookmark-card:hover .card-arrow {
+      opacity: 1;
+      transform: translate(0, 0);
+      color: var(--text);
     }
     .card-bottom {
       display: flex;
@@ -610,51 +747,65 @@
     }
 
     .empty-state {
-      text-align: center;
-      padding: 70px 20px;
-      color: var(--text-muted);
       grid-column: 1 / -1;
-      font-size: 14px;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .empty-state-icon {
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      opacity: 0.7;
+    }
+    .empty-state-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .empty-state-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      max-width: 320px;
+      line-height: 1.4;
     }
 
-    /* Tablet & Responsive Canvas */
-    @media (max-width: 1024px) {
-      .header-inner {
-        padding: 12px 18px;
-      }
-      main {
-        padding: 20px 18px 50px;
-        gap: 16px;
-      }
+    /* Breakpoints: 4 cards on desktop, 3 on small laptop/tablet landscape, 2 on tablet portrait, 1 on mobile */
+    @media (max-width: 1320px) {
       .grid {
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 14px;
       }
     }
 
-    /* Tablet Portrait & Small Tablets */
-    @media (max-width: 768px) {
-      .controls-bar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
+    @media (max-width: 1024px) {
+      .header-inner {
+        padding: 12px 20px;
       }
-      .search-box {
-        max-width: 100%;
-        width: 100%;
+      main {
+        padding: 18px 20px 50px;
+        gap: 16px;
       }
-      .category-pills {
-        width: 100%;
-        padding-bottom: 2px;
-      }
+    }
+
+    @media (max-width: 880px) {
       .grid {
-        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+      }
+      .search-nav.open .search-nav-expand {
+        width: min(280px, calc(100vw - 120px));
       }
     }
 
     /* Mobile Phones */
-    @media (max-width: 540px) {
+    @media (max-width: 560px) {
       .header-inner {
         padding: 10px 14px;
         gap: 8px;
@@ -668,9 +819,9 @@
       .bookmarks-count {
         display: none;
       }
-      .btn-secondary {
-        padding: 6px 10px;
-        font-size: 12px;
+      .search-nav.open .search-nav-expand {
+        width: calc(100vw - 28px);
+        right: -8px;
       }
       .grid {
         grid-template-columns: 1fr;
@@ -762,14 +913,48 @@
       </div>
 
       <div class="header-actions">
+        <!-- Smooth Animated Expanding Search in Nav Bar -->
+        <div class="search-nav" id="searchNav">
+          <button id="btnSearchToggle" class="btn-circle-action btn-search-toggle" aria-label="Search Bookmarks">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="tooltip">Search (/)</span>
+          </button>
+          <div class="search-nav-expand" id="searchNavExpand">
+            <svg class="search-nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" class="search-nav-input" placeholder="Search title, domain, tag..." autocomplete="off">
+            <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="Clear Search" title="Clear search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <span id="bookmarksCount" class="bookmarks-count">Loading...</span>
-        <button id="btnOpenAddModal" class="btn-circle-add" title="Add Bookmark (N)" aria-label="Add Bookmark">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <div class="header-divider"></div>
+
+        <button id="btnOpenAddModal" class="btn-circle-add" aria-label="Add Bookmark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
+          <span class="tooltip">Add Bookmark (N)</span>
         </button>
-        <button id="btnDisconnect" class="btn-secondary">Disconnect</button>
+        <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span class="tooltip">Disconnect</span>
+        </button>
       </div>
     </div>
   </header>
@@ -778,14 +963,6 @@
   <main>
     <!-- Controls Bar -->
     <section class="controls-bar">
-      <div class="search-box">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="searchInput" class="search-input" placeholder="Search bookmarks by title, domain, or tag...">
-      </div>
-
       <div class="category-pills" id="categoryPills">
         <button class="chip active" data-category="ALL">All</button>
       </div>
@@ -826,6 +1003,9 @@
 
     const bookmarksGrid = document.getElementById('bookmarksGrid');
     const categoryPills = document.getElementById('categoryPills');
+    const searchNav = document.getElementById('searchNav');
+    const btnSearchToggle = document.getElementById('btnSearchToggle');
+    const btnClearSearch = document.getElementById('btnClearSearch');
     const searchInput = document.getElementById('searchInput');
     const bookmarksCount = document.getElementById('bookmarksCount');
     const toast = document.getElementById('toast');
@@ -844,6 +1024,47 @@
     function setToken(token) {
       sessionStorage.setItem('webstack_token', token);
     }
+
+    // Search Nav Operations
+    function openSearch() {
+      searchNav.classList.add('open');
+      setTimeout(() => {
+        searchInput.focus();
+        searchInput.select();
+      }, 50);
+    }
+
+    function closeSearch() {
+      if (searchQuery) {
+        searchQuery = '';
+        searchInput.value = '';
+        renderBookmarks();
+      }
+      searchNav.classList.remove('open');
+    }
+
+    btnSearchToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSearch();
+    });
+
+    btnClearSearch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (searchInput.value) {
+        searchInput.value = '';
+        searchQuery = '';
+        renderBookmarks();
+        searchInput.focus();
+      } else {
+        closeSearch();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (searchNav && !searchNav.contains(e.target) && searchNav.classList.contains('open') && !searchInput.value) {
+        closeSearch();
+      }
+    });
 
     // Modal Operations
     function openAddModal() {
@@ -866,10 +1087,17 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        closeAddModal();
+        if (!addModal.classList.contains('hidden')) {
+          closeAddModal();
+        } else if (searchNav && searchNav.classList.contains('open')) {
+          closeSearch();
+        }
       } else if ((e.key === 'n' || e.key === 'N') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
         e.preventDefault();
         openAddModal();
+      } else if (e.key === '/' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        openSearch();
       }
     });
 
@@ -945,10 +1173,43 @@
       if (e.key === 'Enter') submitPin(pinInput.value);
     });
 
-    btnDisconnect.addEventListener('click', () => {
+    async function disconnect() {
+      const token = getToken();
+      if (token) {
+        try {
+          await fetch('/api/disconnect', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+        } catch (e) {
+          // ignore network failure on disconnect
+        }
+      }
       sessionStorage.removeItem('webstack_token');
+      allBookmarks = [];
+      renderBookmarks();
       showAuthModal();
-    });
+      showToast('Disconnected from WebStack');
+    }
+
+    btnDisconnect.addEventListener('click', disconnect);
+
+    // Heartbeat to keep session alive and client count accurate
+    setInterval(async () => {
+      const token = getToken();
+      if (!token || !authModal.classList.contains('hidden')) return;
+      try {
+        const res = await fetch('/api/status', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 401) {
+          sessionStorage.removeItem('webstack_token');
+          showAuthModal();
+        }
+      } catch (e) {
+        // network interruption, server might be restarting
+      }
+    }, 8000);
 
     async function loadData() {
       const token = getToken();
@@ -1042,7 +1303,16 @@
       bookmarksCount.textContent = filtered.length + ' of ' + allBookmarks.length + ' bookmarks';
 
       if (filtered.length === 0) {
-        bookmarksGrid.innerHTML = '<div class="empty-state">No bookmarks found in this category.</div>';
+        bookmarksGrid.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-state-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <div class="empty-state-title">No bookmarks found</div>
+            <div class="empty-state-sub">${searchQuery ? 'No bookmarks match your search or filter.' : 'Your stack is empty or synced bookmarks have not arrived yet.'}</div>
+          </div>
+        `;
         return;
       }
 
@@ -1060,7 +1330,10 @@
                 </div>
                 <div class="card-info">
                   <div class="card-title" title="${escapeHtml(b.title || b.url)}">${escapeHtml(b.title || domain)}</div>
-                  <div class="card-domain">${escapeHtml(domain)}</div>
+                  <div class="card-domain-row">
+                    <span class="card-domain">${escapeHtml(domain)}</span>
+                    <span class="card-arrow" aria-hidden="true">↗</span>
+                  </div>
                 </div>
               </div>
             </div>

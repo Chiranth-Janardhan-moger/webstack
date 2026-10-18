@@ -404,15 +404,17 @@ fun AppSubSheetHeader(
     title: String,
     onBack: (() -> Unit)? = null,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp),
+        contentAlignment = Alignment.Center
     ) {
         if (onBack != null) {
             val backInteractionSource = remember { MutableInteractionSource() }
@@ -433,6 +435,7 @@ fun AppSubSheetHeader(
                 },
                 interactionSource = backInteractionSource,
                 modifier = Modifier
+                    .align(Alignment.CenterStart)
                     .size(44.dp)
                     .graphicsLayer {
                         scaleX = backScale
@@ -446,43 +449,49 @@ fun AppSubSheetHeader(
                     modifier = Modifier.size(20.dp)
                 )
             }
-        } else {
-            Spacer(modifier = Modifier.size(44.dp))
         }
 
         Text(
             text = title,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
-            color = appColors.label
+            color = appColors.label,
+            modifier = Modifier.align(Alignment.Center)
         )
 
-        val closeInteractionSource = remember { MutableInteractionSource() }
-        val isClosePressed by closeInteractionSource.collectIsPressedAsState()
-        val closeScale by animateFloatAsState(
-            targetValue = if (isClosePressed) 0.90f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
-            label = "subsheet_close_bouncy"
-        )
-
-        IconButton(
-            onClick = onDismiss,
-            interactionSource = closeInteractionSource,
-            modifier = Modifier
-                .size(44.dp)
-                .graphicsLayer {
-                    scaleX = closeScale
-                    scaleY = closeScale
-                }
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = appColors.secondaryLabel
+            action?.invoke()
+
+            val closeInteractionSource = remember { MutableInteractionSource() }
+            val isClosePressed by closeInteractionSource.collectIsPressedAsState()
+            val closeScale by animateFloatAsState(
+                targetValue = if (isClosePressed) 0.90f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "subsheet_close_bouncy"
             )
+
+            IconButton(
+                onClick = onDismiss,
+                interactionSource = closeInteractionSource,
+                modifier = Modifier
+                    .size(44.dp)
+                    .graphicsLayer {
+                        scaleX = closeScale
+                        scaleY = closeScale
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = appColors.secondaryLabel
+                )
+            }
         }
     }
 }
