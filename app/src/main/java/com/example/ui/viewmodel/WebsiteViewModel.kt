@@ -61,11 +61,15 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _companionCustomPin = MutableStateFlow(prefs.getString(PREF_COMPANION_CUSTOM_PIN, "") ?: "")
     val companionCustomPin: StateFlow<String> = _companionCustomPin.asStateFlow()
 
+    private val _companionOfflineExpiryHours = MutableStateFlow(prefs.getInt(PREF_COMPANION_OFFLINE_EXPIRY_HOURS, DEFAULT_COMPANION_OFFLINE_EXPIRY_HOURS))
+    val companionOfflineExpiryHours: StateFlow<Int> = _companionOfflineExpiryHours.asStateFlow()
+
     private val localServer: com.example.server.LocalHttpServer by lazy {
         com.example.server.LocalHttpServer(
             context = application,
             repository = repository,
-            getCategories = { _categories.value }
+            getCategories = { _categories.value },
+            getOfflineExpiryHours = { _companionOfflineExpiryHours.value }
         )
     }
     val serverStatus: StateFlow<com.example.server.ServerStatus> get() = localServer.status
@@ -85,6 +89,12 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         val cleanPin = pin.trim()
         prefs.edit().putString(PREF_COMPANION_CUSTOM_PIN, cleanPin).apply()
         _companionCustomPin.value = cleanPin
+    }
+
+    fun setCompanionOfflineExpiryHours(hours: Int) {
+        val validHours = if (hours in listOf(24, 168, 720, 0)) hours else DEFAULT_COMPANION_OFFLINE_EXPIRY_HOURS
+        prefs.edit().putInt(PREF_COMPANION_OFFLINE_EXPIRY_HOURS, validHours).apply()
+        _companionOfflineExpiryHours.value = validHours
     }
 
     fun startLocalServer(
@@ -617,7 +627,9 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         const val PREF_COMPANION_PORT = "pc_companion_port"
         const val PREF_COMPANION_USE_FIXED_PIN = "pc_companion_use_fixed_pin"
         const val PREF_COMPANION_CUSTOM_PIN = "pc_companion_custom_pin"
+        const val PREF_COMPANION_OFFLINE_EXPIRY_HOURS = "pc_companion_offline_expiry_hours"
         const val DEFAULT_COMPANION_PORT = 8080
+        const val DEFAULT_COMPANION_OFFLINE_EXPIRY_HOURS = 24
     }
 }
 

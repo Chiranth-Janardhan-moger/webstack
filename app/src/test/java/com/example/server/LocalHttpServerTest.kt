@@ -231,4 +231,42 @@ class LocalHttpServerTest {
         assertNotNull(json.getString("token"))
         conn.disconnect()
     }
+
+    @Test
+    fun testOfflineExpiryHoursAndServiceWorkerRoute() = runBlocking {
+        val customPort = 18896
+        val customPin = "112233"
+        server.start(preferredPort = customPort, customPin = customPin)
+        delay(150)
+
+        // 1. Verify /api/status returns offlineExpiryHours
+        val statusUrl = URL("http://127.0.0.1:$customPort/api/status")
+        val statusConn = statusUrl.openConnection() as HttpURLConnection
+        assertEquals(200, statusConn.responseCode)
+        val statusBody = JSONObject(statusConn.inputStream.bufferedReader().use { it.readText() })
+        assertTrue(statusBody.has("offlineExpiryHours"))
+        assertEquals(24, statusBody.getInt("offlineExpiryHours"))
+        statusConn.disconnect()
+
+        // 2. Verify /api/auth returns offlineExpiryHours
+        val authUrl = URL("http://127.0.0.1:$customPort/api/auth")
+        val authConn = authUrl.openConnection() as HttpURLConnection
+        authConn.requestMethod = "POST"
+        authConn.doOutput = true
+        authConn.setRequestProperty("Content-Type", "application/json")
+        authConn.outputStream.bufferedWriter().use { it.write("""{"pin":"$customPin"}""") }
+        assertEquals(200, authConn.responseCode)
+        val authBody = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() })
+        assertEquals(24, authBody.getInt("offlineExpiryHours"))
+        authConn.disconnect()
+
+        // 3. Verify /sw.js serves javascript with 200 OK
+        val swUrl = URL("http://127.0.0.1:$customPort/sw.js")
+        val swConn = swUrl.openConnection() as HttpURLConnection
+        assertEquals(200, swConn.responseCode)
+        assertTrue(swConn.contentType.contains("javascript"))
+        val swContent = swConn.inputStream.bufferedReader().use { it.readText() }
+        assertTrue(swContent.contains("CACHE_NAME"))
+        swConn.disconnect()
+    }
 }

@@ -37,7 +37,8 @@ data class ServerStatus(
 class LocalHttpServer(
     private val context: Context,
     private val repository: WebsiteRepository,
-    private val getCategories: () -> List<String>
+    private val getCategories: () -> List<String>,
+    private val getOfflineExpiryHours: () -> Int = { 24 }
 ) {
     private var serverSocket: ServerSocket? = null
     private var serverJob: Job? = null
@@ -213,11 +214,15 @@ class LocalHttpServer(
                     uriPath == "/" || uriPath == "/index.html" -> {
                         serveWebCompanion(output)
                     }
+                    uriPath == "/sw.js" -> {
+                        serveServiceWorker(output)
+                    }
                     uriPath == "/api/status" -> {
                         val json = JSONObject().apply {
                             put("status", "online")
                             put("device", Build.MODEL ?: "Android Device")
                             put("bookmarksCount", repository.getAllWebsitesList().size)
+                            put("offlineExpiryHours", getOfflineExpiryHours())
                         }
                         sendJsonResponse(output, 200, json.toString())
                     }
@@ -282,6 +287,7 @@ class LocalHttpServer(
                 val resp = JSONObject().apply {
                     put("token", activeSessionToken)
                     put("success", true)
+                    put("offlineExpiryHours", getOfflineExpiryHours())
                 }
                 sendJsonResponse(output, 200, resp.toString())
             } else {
@@ -368,6 +374,33 @@ class LocalHttpServer(
             output.write(header.toByteArray(Charsets.UTF_8))
             output.write(errorBytes)
             output.flush()
+        }
+    }
+
+    private fun serveServiceWorker(output: OutputStream) {
+        try {
+            context.assets.open("web/sw.js").use { input ->
+                val buffer = ByteArray(8192)
+                val byteStream = ByteArrayOutputStream()
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    byteStream.write(buffer, 0, read)
+                }
+                val jsBytes = byteStream.toByteArray()
+
+                val header = "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: application/javascript; charset=utf-8\r\n" +
+                        "Content-Length: ${jsBytes.size}\r\n" +
+                        "Access-Control-Allow-Origin: *\r\n" +
+                        "Service-Worker-Allowed: /\r\n" +
+                        "Connection: close\r\n\r\n"
+
+                output.write(header.toByteArray(Charsets.UTF_8))
+                output.write(jsBytes)
+                output.flush()
+            }
+        } catch (_: Exception) {
+            sendJsonResponse(output, 404, """{"error":"sw.js not found"}""")
         }
     }
 

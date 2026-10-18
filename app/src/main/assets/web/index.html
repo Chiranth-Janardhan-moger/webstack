@@ -129,6 +129,34 @@
       border-radius: 50%;
       animation: pulseBeacon 2s infinite;
     }
+    .badge-live.offline {
+      background: rgba(245, 158, 11, 0.12);
+      color: #D97706;
+    }
+    .badge-live.offline::before {
+      background: #F59E0B;
+      animation: none;
+    }
+    .badge-live.syncing {
+      background: rgba(59, 130, 246, 0.12);
+      color: #2563EB;
+    }
+    .badge-live.syncing::before {
+      background: #3B82F6;
+      animation: pulseBeacon 1s infinite;
+    }
+    .tag-pending-sync {
+      background: rgba(245, 158, 11, 0.12);
+      color: #D97706;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
 
     .header-actions {
       display: flex;
@@ -1320,12 +1348,34 @@
 
     const bookmarksGrid = document.getElementById('bookmarksGrid');
     const categoryPills = document.getElementById('categoryPills');
+    const statusBadge = document.getElementById('statusBadge');
     const searchNav = document.getElementById('searchNav');
     const btnSearchToggle = document.getElementById('btnSearchToggle');
     const btnClearSearch = document.getElementById('btnClearSearch');
     const searchInput = document.getElementById('searchInput');
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
+
+    let isOffline = false;
+
+    function setStatusState(state) {
+      if (!statusBadge) return;
+      if (state === 'online') {
+        isOffline = false;
+        statusBadge.className = 'badge-live';
+        statusBadge.textContent = 'Live Sync';
+        statusBadge.title = 'Connected to phone. Real-time sync active.';
+      } else if (state === 'offline') {
+        isOffline = true;
+        statusBadge.className = 'badge-live offline';
+        statusBadge.textContent = 'Offline Mode';
+        statusBadge.title = 'Phone disconnected. Working offline; bookmarks will sync on reconnect.';
+      } else if (state === 'syncing') {
+        statusBadge.className = 'badge-live syncing';
+        statusBadge.textContent = 'Syncing...';
+        statusBadge.title = 'Syncing offline changes with phone...';
+      }
+    }
 
     function showToast(message) {
       toastMessage.textContent = message;
@@ -1334,11 +1384,115 @@
     }
 
     function getToken() {
-      return sessionStorage.getItem('webstack_token');
+      return localStorage.getItem('webstack_token') || sessionStorage.getItem('webstack_token');
     }
 
     function setToken(token) {
-      sessionStorage.setItem('webstack_token', token);
+      if (token) {
+        localStorage.setItem('webstack_token', token);
+        sessionStorage.setItem('webstack_token', token);
+      } else {
+        localStorage.removeItem('webstack_token');
+        sessionStorage.removeItem('webstack_token');
+      }
+    }
+
+    function getOfflineBookmarks() {
+      try {
+        const raw = localStorage.getItem('webstack_offline_bookmarks');
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveOfflineBookmarks(bms) {
+      try {
+        localStorage.setItem('webstack_offline_bookmarks', JSON.stringify(bms));
+      } catch (e) {}
+    }
+
+    function getOfflineCategories() {
+      try {
+        const raw = localStorage.getItem('webstack_offline_categories');
+        return raw ? JSON.parse(raw) : ['Personal', 'Work', 'Social', 'Reading'];
+      } catch (e) {
+        return ['Personal', 'Work', 'Social', 'Reading'];
+      }
+    }
+
+    function saveOfflineCategories(cats) {
+      try {
+        localStorage.setItem('webstack_offline_categories', JSON.stringify(cats));
+      } catch (e) {}
+    }
+
+    function getOfflineQueue() {
+      try {
+        const raw = localStorage.getItem('webstack_offline_queue');
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveOfflineQueue(q) {
+      try {
+        localStorage.setItem('webstack_offline_queue', JSON.stringify(q));
+      } catch (e) {}
+    }
+
+    function updateLastConnected(expiryHours) {
+      localStorage.setItem('webstack_last_connected', Date.now().toString());
+      if (expiryHours !== undefined && expiryHours !== null) {
+        localStorage.setItem('webstack_offline_expiry_hours', expiryHours.toString());
+      }
+    }
+
+    function isOfflineSessionValid() {
+      const lastConnected = parseInt(localStorage.getItem('webstack_last_connected') || '0', 10);
+      if (!lastConnected) return false;
+      const expiryHours = parseInt(localStorage.getItem('webstack_offline_expiry_hours') || '24', 10);
+      if (expiryHours === 0) return true; // Never expires
+      const elapsedMs = Date.now() - lastConnected;
+      return elapsedMs < (expiryHours * 3600 * 1000);
+    }
+
+    async function flushOfflineQueue() {
+      const queue = getOfflineQueue();
+      if (!queue || queue.length === 0) return;
+
+      const token = getToken();
+      if (!token) return;
+
+      setStatusState('syncing');
+      let syncedCount = 0;
+      const remaining = [];
+
+      for (const item of queue) {
+        try {
+          const res = await fetch('/api/bookmarks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ url: item.url, category: item.category })
+          });
+          if (res.ok) {
+            syncedCount++;
+          } else {
+            remaining.push(item);
+          }
+        } catch (e) {
+          remaining.push(item);
+        }
+      }
+
+      saveOfflineQueue(remaining);
+      if (syncedCount > 0) {
+        showToast(`Synced ${syncedCount} offline bookmark${syncedCount > 1 ? 's' : ''} to phone!`);
+      }
     }
 
     // Search Nav Operations
@@ -1585,14 +1739,58 @@
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (res.ok) {
+          const statusData = await res.json();
+          updateLastConnected(statusData.offlineExpiryHours);
+          setStatusState('online');
           authModal.classList.add('hidden');
-          loadData();
-        } else {
+          await flushOfflineQueue();
+          await loadData();
+        } else if (res.status === 401) {
+          setToken(null);
           showAuthModal();
+        } else {
+          handleOfflineFallback();
         }
       } catch (err) {
-        showAuthModal();
+        // Network error - phone is unreachable
+        handleOfflineFallback();
       }
+    }
+
+    function handleOfflineFallback() {
+      if (isOfflineSessionValid()) {
+        authModal.classList.add('hidden');
+        setStatusState('offline');
+        loadOfflineData();
+      } else {
+        showAuthModal();
+        authError.style.display = 'block';
+        authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
+      }
+    }
+
+    function loadOfflineData() {
+      allBookmarks = getOfflineBookmarks();
+      const categories = getOfflineCategories();
+
+      const queue = getOfflineQueue();
+      queue.forEach(qItem => {
+        if (!allBookmarks.some(b => b.url === qItem.url)) {
+          allBookmarks.unshift({
+            id: 'offline_' + qItem.createdAtMs,
+            title: qItem.url,
+            url: qItem.url,
+            domain: extractDomain(qItem.url),
+            category: qItem.category,
+            createdAtMs: qItem.createdAtMs,
+            isPendingSync: true
+          });
+        }
+      });
+
+      renderCategories(categories);
+      renderBookmarks();
+      updateCategoryOptions(categories);
     }
 
     function showAuthModal() {
@@ -1615,8 +1813,11 @@
         const data = await res.json();
         if (res.ok && data.token) {
           setToken(data.token);
+          updateLastConnected(data.offlineExpiryHours);
+          setStatusState('online');
           authModal.classList.add('hidden');
-          loadData();
+          await flushOfflineQueue();
+          await loadData();
           showToast('Connected to WebStack on Android');
         } else {
           authError.style.display = 'block';
@@ -1647,7 +1848,8 @@
           // ignore network failure on disconnect
         }
       }
-      sessionStorage.removeItem('webstack_token');
+      setToken(null);
+      localStorage.removeItem('webstack_last_connected');
       allBookmarks = [];
       renderBookmarks();
       showAuthModal();
@@ -1656,20 +1858,46 @@
 
     btnDisconnect.addEventListener('click', disconnect);
 
-    // Heartbeat to keep session alive and client count accurate
+    // Heartbeat to keep session alive, verify connection, and flush pending queue
     setInterval(async () => {
       const token = getToken();
       if (!token || !authModal.classList.contains('hidden')) return;
+
       try {
         const res = await fetch('/api/status', {
           headers: { 'Authorization': 'Bearer ' + token }
         });
-        if (res.status === 401) {
-          sessionStorage.removeItem('webstack_token');
+        if (res.ok) {
+          const statusData = await res.json();
+          updateLastConnected(statusData.offlineExpiryHours);
+          if (isOffline) {
+            setStatusState('online');
+            showToast('Reconnected to phone');
+            await flushOfflineQueue();
+            await loadData();
+          } else {
+            const queue = getOfflineQueue();
+            if (queue.length > 0) {
+              await flushOfflineQueue();
+            }
+          }
+        } else if (res.status === 401) {
+          setToken(null);
           showAuthModal();
+        } else {
+          if (!isOffline) {
+            setStatusState('offline');
+          }
         }
       } catch (e) {
-        // network interruption, server might be restarting
+        if (!isOffline) {
+          setStatusState('offline');
+        }
+        if (!isOfflineSessionValid()) {
+          showAuthModal();
+          authError.style.display = 'block';
+          authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
+        }
       }
     }, 8000);
 
@@ -1691,11 +1919,29 @@
         allBookmarks = await bookmarksRes.json();
         const categories = await categoriesRes.json();
 
+        saveOfflineBookmarks(allBookmarks);
+        saveOfflineCategories(categories);
+
+        const queue = getOfflineQueue();
+        queue.forEach(qItem => {
+          if (!allBookmarks.some(b => b.url === qItem.url)) {
+            allBookmarks.unshift({
+              id: 'offline_' + qItem.createdAtMs,
+              title: qItem.url,
+              url: qItem.url,
+              domain: extractDomain(qItem.url),
+              category: qItem.category,
+              createdAtMs: qItem.createdAtMs,
+              isPendingSync: true
+            });
+          }
+        });
+
         renderCategories(categories);
         renderBookmarks();
         updateCategoryOptions(categories);
       } catch (err) {
-        bookmarksGrid.innerHTML = '<div class="empty-state">Failed to load bookmarks from phone.</div>';
+        handleOfflineFallback();
       }
     }
 
@@ -1805,7 +2051,10 @@
             </div>
 
             <div class="card-bottom">
-              <span class="card-tag">${escapeHtml(b.category || 'Personal')}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="card-tag">${escapeHtml(b.category || 'Personal')}</span>
+                ${b.isPendingSync ? '<span class="tag-pending-sync" title="Saved locally, will sync when phone connects">Pending Sync</span>' : ''}
+              </div>
               <div class="card-actions">
                 <button class="action-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${escapeJs(b.url)}'); showToast('Copied link!');" title="Copy link">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1850,7 +2099,7 @@
       renderBookmarks();
     });
 
-    // Automatic Sync Save Bookmark
+    // Automatic Sync Save Bookmark with Offline Queue Fallback
     addBookmarkForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const rawUrl = addUrl.value.trim();
@@ -1859,7 +2108,14 @@
 
       const token = getToken();
       btnSaveBookmark.disabled = true;
-      btnSaveBookmark.innerHTML = '<span>Syncing...</span>';
+      btnSaveBookmark.innerHTML = '<span>Saving...</span>';
+
+      if (isOffline) {
+        saveBookmarkLocally(rawUrl, cat);
+        btnSaveBookmark.disabled = false;
+        btnSaveBookmark.innerHTML = '<span>Save Bookmark</span>';
+        return;
+      }
 
       try {
         const res = await fetch('/api/bookmarks', {
@@ -1879,12 +2135,44 @@
           showToast(data.error || 'Failed to sync bookmark.');
         }
       } catch (err) {
-        showToast('Network error syncing bookmark.');
+        // Network failure during submit: fallback to offline queue!
+        setStatusState('offline');
+        saveBookmarkLocally(rawUrl, cat);
       } finally {
         btnSaveBookmark.disabled = false;
         btnSaveBookmark.innerHTML = '<span>Save Bookmark</span>';
       }
     });
+
+    function saveBookmarkLocally(url, category) {
+      const offlineItem = {
+        id: 'offline_' + Date.now(),
+        title: url,
+        url: url,
+        domain: extractDomain(url),
+        category: category,
+        createdAtMs: Date.now(),
+        isPendingSync: true
+      };
+
+      allBookmarks.unshift(offlineItem);
+      saveOfflineBookmarks(allBookmarks);
+
+      const queue = getOfflineQueue();
+      queue.push({ url: url, category: category, createdAtMs: Date.now() });
+      saveOfflineQueue(queue);
+
+      closeAddModal();
+      renderBookmarks();
+      showToast('Saved offline. Will sync when phone connects.');
+    }
+
+    // Service Worker Registration for Offline Shell
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
 
     // Initial load
     checkAuth();

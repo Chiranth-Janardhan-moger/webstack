@@ -104,6 +104,7 @@ fun PcCompanionSubSheetContent(
     val currentPort by (viewModel?.companionPort?.collectAsState() ?: remember { mutableStateOf(8080) })
     val currentUseFixedPin by (viewModel?.companionUseFixedPin?.collectAsState() ?: remember { mutableStateOf(false) })
     val currentCustomPin by (viewModel?.companionCustomPin?.collectAsState() ?: remember { mutableStateOf("") })
+    val currentOfflineExpiryHours by (viewModel?.companionOfflineExpiryHours?.collectAsState() ?: remember { mutableStateOf(24) })
 
     var showSettingsDialog by remember { mutableStateOf(false) }
 
@@ -117,11 +118,13 @@ fun PcCompanionSubSheetContent(
             initialPort = currentPort,
             initialUseFixedPin = currentUseFixedPin,
             initialCustomPin = currentCustomPin,
+            initialOfflineExpiryHours = currentOfflineExpiryHours,
             isRunning = isRunning,
-            onSave = { port, useFixed, customPin ->
+            onSave = { port, useFixed, customPin, expiryHours ->
                 viewModel?.setCompanionPort(port)
                 viewModel?.setCompanionUseFixedPin(useFixed)
                 viewModel?.setCompanionCustomPin(customPin)
+                viewModel?.setCompanionOfflineExpiryHours(expiryHours)
                 if (isRunning) {
                     viewModel?.restartLocalServer()
                     Toast.makeText(context, "Server restarted on port $port", Toast.LENGTH_SHORT).show()
@@ -652,8 +655,9 @@ fun PcCompanionSettingsDialog(
     initialPort: Int,
     initialUseFixedPin: Boolean,
     initialCustomPin: String,
+    initialOfflineExpiryHours: Int = 24,
     isRunning: Boolean,
-    onSave: (port: Int, useFixedPin: Boolean, customPin: String) -> Unit,
+    onSave: (port: Int, useFixedPin: Boolean, customPin: String, offlineExpiryHours: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val appColors = LocalAppColors.current
@@ -667,6 +671,7 @@ fun PcCompanionSettingsDialog(
             else (100000..999999).random().toString()
         )
     }
+    var selectedExpiryHours by remember { mutableStateOf(initialOfflineExpiryHours) }
 
     val parsedPort = portText.trim().toIntOrNull()
     val isPortValid = parsedPort != null && parsedPort in 1024..65535
@@ -883,6 +888,68 @@ fun PcCompanionSettingsDialog(
                     }
                 }
 
+                // Offline Session Access Section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column {
+                        Text(
+                            text = "OFFLINE SESSION ACCESS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = appColors.secondaryLabel,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Duration PC can view & queue bookmarks without connecting to phone",
+                            fontSize = 11.sp,
+                            color = appColors.tertiaryLabel
+                        )
+                    }
+
+                    val expiryOptions = listOf(
+                        24 to "24 Hours",
+                        168 to "7 Days",
+                        720 to "30 Days",
+                        0 to "Never"
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        expiryOptions.forEach { (hours, label) ->
+                            val isSelected = selectedExpiryHours == hours
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedExpiryHours = hours
+                                    },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) appColors.label else appColors.fill,
+                                border = BorderStroke(
+                                    0.5.dp,
+                                    if (isSelected) appColors.label else appColors.separator
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) appColors.systemBackground else appColors.label,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (isRunning) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -904,10 +971,10 @@ fun PcCompanionSettingsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val port = parsedPort
-                    if (canSave && port != null) {
+                    val port = parsedPort ?: return@Button
+                    if (canSave) {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onSave(port, useFixedPin, cleanPin)
+                        onSave(port, useFixedPin, cleanPin, selectedExpiryHours)
                     }
                 },
                 enabled = canSave,

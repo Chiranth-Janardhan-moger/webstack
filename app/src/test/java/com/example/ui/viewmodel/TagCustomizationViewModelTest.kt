@@ -189,6 +189,7 @@ class TagCustomizationViewModelTest {
         assertEquals(1, beforeList.size)
 
         vm.deleteCategory("Work")
+        kotlinx.coroutines.delay(50)
         org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
         val workList = dao.byCategory("Work")
