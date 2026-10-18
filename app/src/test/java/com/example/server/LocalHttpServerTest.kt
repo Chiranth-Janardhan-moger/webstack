@@ -318,21 +318,26 @@ class LocalHttpServerTest {
         val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
         authConn.disconnect()
 
-        // Create bookmark
+        // Create bookmark pointing to local server endpoint so test is 100% offline-deterministic
+        val testUrl = "http://127.0.0.1:$customPort/"
         val createConn = URL("http://127.0.0.1:$customPort/api/bookmarks").openConnection() as HttpURLConnection
         createConn.requestMethod = "POST"
         createConn.doOutput = true
         createConn.setRequestProperty("Authorization", "Bearer $token")
         createConn.setRequestProperty("Content-Type", "application/json")
-        createConn.outputStream.use { it.write("""{"url":"https://github.com","category":"Tech"}""".toByteArray()) }
+        createConn.outputStream.use { it.write("""{"url":"$testUrl","category":"Tech"}""".toByteArray()) }
         assertEquals(201, createConn.responseCode)
         val createdBody = JSONObject(createConn.inputStream.bufferedReader().use { it.readText() })
         val bookmarkId = createdBody.getLong("id")
         createConn.disconnect()
 
-        // Wait briefly for async title fetcher to run and update Room
-        delay(600)
-        val site = dao.getAllWebsitesList().firstOrNull { it.id == bookmarkId }
+        // Wait with polling for async title fetcher to run and update Room
+        var site: com.example.data.Website? = null
+        for (i in 0 until 30) {
+            delay(100)
+            site = dao.getAllWebsitesList().firstOrNull { it.id == bookmarkId }
+            if (site?.title?.isNotBlank() == true) break
+        }
         assertNotNull(site)
         assertTrue("Title should be populated and not blank", site!!.title.isNotBlank())
     }

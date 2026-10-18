@@ -403,8 +403,9 @@ fun AppNavigationHeader(
 fun AppSubSheetHeader(
     title: String,
     onBack: (() -> Unit)? = null,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
+    showClose: Boolean = true,
     action: (@Composable () -> Unit)? = null
 ) {
     val appColors = LocalAppColors.current
@@ -465,32 +466,34 @@ fun AppSubSheetHeader(
         ) {
             action?.invoke()
 
-            val closeInteractionSource = remember { MutableInteractionSource() }
-            val isClosePressed by closeInteractionSource.collectIsPressedAsState()
-            val closeScale by animateFloatAsState(
-                targetValue = if (isClosePressed) 0.90f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                ),
-                label = "subsheet_close_bouncy"
-            )
-
-            IconButton(
-                onClick = onDismiss,
-                interactionSource = closeInteractionSource,
-                modifier = Modifier
-                    .size(44.dp)
-                    .graphicsLayer {
-                        scaleX = closeScale
-                        scaleY = closeScale
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = appColors.secondaryLabel
+            if (showClose) {
+                val closeInteractionSource = remember { MutableInteractionSource() }
+                val isClosePressed by closeInteractionSource.collectIsPressedAsState()
+                val closeScale by animateFloatAsState(
+                    targetValue = if (isClosePressed) 0.90f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "subsheet_close_bouncy"
                 )
+
+                IconButton(
+                    onClick = onDismiss,
+                    interactionSource = closeInteractionSource,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .graphicsLayer {
+                            scaleX = closeScale
+                            scaleY = closeScale
+                        }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = appColors.secondaryLabel
+                    )
+                }
             }
         }
     }
