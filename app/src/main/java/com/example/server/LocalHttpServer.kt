@@ -224,6 +224,9 @@ class LocalHttpServer(
                     uriPath == "/sw.js" -> {
                         serveServiceWorker(output)
                     }
+                    uriPath == "/manifest.json" -> {
+                        serveManifest(output)
+                    }
                     uriPath == "/api/status" -> {
                         val json = JSONObject().apply {
                             put("status", "online")
@@ -412,6 +415,27 @@ class LocalHttpServer(
         } catch (_: Exception) {
             sendJsonResponse(output, 404, """{"error":"sw.js not found"}""")
         }
+    }
+
+    private fun serveManifest(output: OutputStream) {
+        val json = JSONObject().apply {
+            put("name", "WebStack PC Companion")
+            put("short_name", "WebStack")
+            put("description", "Local-first bookmark companion")
+            put("start_url", "/")
+            put("display", "standalone")
+            put("background_color", "#121214")
+            put("theme_color", "#121214")
+        }
+        val bytes = json.toString().toByteArray(Charsets.UTF_8)
+        val header = "HTTP/1.1 200 OK\r\n" +
+                "Content-Type: application/manifest+json; charset=utf-8\r\n" +
+                "Content-Length: ${bytes.size}\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Connection: close\r\n\r\n"
+        output.write(header.toByteArray(Charsets.UTF_8))
+        output.write(bytes)
+        output.flush()
     }
 
     private fun sendJsonResponse(output: OutputStream, statusCode: Int, json: String) {

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebStack • PC Companion</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000'%3E%3Cpath d='M12 2L3 21L12 14.5L21 21Z'/%3E%3C/svg%3E">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#121214">
   <style>
     :root {
       --bg: #F8F9FA;
@@ -962,6 +964,73 @@
       color: var(--text-muted);
     }
 
+    /* Offline & Desktop Modal */
+    .modal-offline-card {
+      max-width: 520px;
+      padding: 24px;
+    }
+    .offline-sections-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 18px;
+      max-height: 58vh;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .offline-card {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .offline-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .offline-card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .offline-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+    }
+    .offline-card-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .code-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
     /* Toast Notification */
     .toast {
       position: fixed;
@@ -1218,6 +1287,107 @@
     </div>
   </div>
 
+  <!-- Desktop & Offline Access Modal -->
+  <div id="offlineModal" class="modal-overlay hidden">
+    <div class="modal-card modal-offline-card">
+      <div class="modal-header">
+        <div class="modal-header-text">
+          <h3 class="modal-header-title">Desktop & Offline Access</h3>
+          <p class="modal-header-sub">Keep WebStack running on PC anytime, even when your phone is turned off</p>
+        </div>
+        <button id="btnCloseOfflineModal" class="btn-modal-close" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="offline-sections-list">
+        <!-- Option 1: Standalone HTML App -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>1. Standalone Single-File App</span>
+            </div>
+            <span class="offline-badge">Recommended</span>
+          </div>
+          <div class="offline-card-desc">
+            Download a zero-install HTML app directly to your PC Desktop. Double-click to open 100% offline anytime with zero connection timeouts. All cached bookmarks are encrypted with AES-256-GCM.
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);" for="offlineServerUrlInput">Phone Server Address</label>
+            <input type="text" id="offlineServerUrlInput" class="input-field-modal" style="font-family: monospace; font-size: 12px; padding: 7px 10px;" placeholder="http://192.168.x.x:8080" autocomplete="off">
+          </div>
+          <button type="button" id="btnDownloadStandalone" class="btn-primary" style="justify-content: center; padding: 10px 16px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download Standalone App (.html)</span>
+          </button>
+        </div>
+
+        <!-- Option 2: Native PWA Desktop App -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span>2. Install as Desktop App (PWA)</span>
+            </div>
+          </div>
+          <div class="offline-card-desc">
+            Install WebStack into your Windows or Linux Start Menu and Taskbar. Opens in a clean, dedicated window without browser address bars.
+          </div>
+          <button type="button" id="btnTriggerPwaInstall" class="btn-secondary" style="justify-content: center; padding: 10px 16px;">
+            <span>Install Desktop App</span>
+          </button>
+        </div>
+
+        <!-- Option 3: Chrome Offline Tab Reopening (Flag Guide) -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>3. Chrome Offline Tab Reopening</span>
+            </div>
+          </div>
+          <div class="offline-card-desc">
+            Browsers block Service Workers on plain local Wi-Fi IPs by default. If you close this tab while offline, Chrome won't reopen it until you reconnect—unless you enable this one-time Chrome flag:
+          </div>
+          <div class="code-box">
+            <span id="chromeFlagText">chrome://flags/#unsafely-treat-insecure-origin-as-secure</span>
+            <button type="button" id="btnCopyChromeFlag" class="action-btn" title="Copy flag URL">Copy</button>
+          </div>
+          <div class="offline-card-desc" style="font-size: 11.5px;">
+            1. Paste into Chrome address bar.<br>
+            2. Add your phone's address (<span id="chromeFlagHostDisplay">http://...</span>) into the box.<br>
+            3. Set dropdown to <b>Enabled</b> and click <b>Relaunch</b>.
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        <span>WebStack Companion • AES-256 Offline Sync</span>
+        <button type="button" id="btnGotItOffline" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header Navigation -->
   <header>
     <div class="header-inner">
@@ -1284,6 +1454,15 @@
           <span class="tooltip">Shortcuts (?)</span>
         </button>
 
+        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Desktop & Offline App">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="tooltip">Desktop & Offline</span>
+        </button>
+
         <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -1323,6 +1502,23 @@
     let currentCategory = 'ALL';
     let searchQuery = '';
 
+    function getApiBase() {
+      if (window.DEFAULT_PHONE_ORIGIN) {
+        return window.DEFAULT_PHONE_ORIGIN;
+      }
+      const saved = localStorage.getItem('webstack_server_url');
+      if (saved && saved.trim()) return saved.trim();
+      if (window.location.protocol.startsWith('http')) {
+        return window.location.origin;
+      }
+      return 'http://192.168.1.100:8080';
+    }
+
+    function apiUrl(path) {
+      const base = getApiBase().replace(/\/+$/, '');
+      return base + path;
+    }
+
     const authModal = document.getElementById('authModal');
     const pinInput = document.getElementById('pinInput');
     const btnConnect = document.getElementById('btnConnect');
@@ -1347,6 +1543,16 @@
     const tagGridContainer = document.getElementById('tagGridContainer');
     let availableCategories = ['Personal', 'Work', 'Social', 'Reading'];
 
+    const offlineModal = document.getElementById('offlineModal');
+    const btnOpenOfflineModal = document.getElementById('btnOpenOfflineModal');
+    const btnCloseOfflineModal = document.getElementById('btnCloseOfflineModal');
+    const btnGotItOffline = document.getElementById('btnGotItOffline');
+    const btnDownloadStandalone = document.getElementById('btnDownloadStandalone');
+    const btnTriggerPwaInstall = document.getElementById('btnTriggerPwaInstall');
+    const btnCopyChromeFlag = document.getElementById('btnCopyChromeFlag');
+    const offlineServerUrlInput = document.getElementById('offlineServerUrlInput');
+    const chromeFlagHostDisplay = document.getElementById('chromeFlagHostDisplay');
+
     const bookmarksGrid = document.getElementById('bookmarksGrid');
     const categoryPills = document.getElementById('categoryPills');
     const statusBadge = document.getElementById('statusBadge');
@@ -1358,6 +1564,109 @@
     const toastMessage = document.getElementById('toastMessage');
 
     let isOffline = false;
+
+    // Web Crypto AES-256-GCM Encryption with 6-digit PIN
+    let activePin = sessionStorage.getItem('webstack_pin') || '';
+    let cachedOfflineBookmarks = null;
+    let cachedOfflineQueue = null;
+
+    async function deriveKey(pin, saltBytes) {
+      const enc = new TextEncoder();
+      const baseKey = await window.crypto.subtle.importKey(
+        'raw',
+        enc.encode(pin),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+      return window.crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: saltBytes,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    function getOrCreateSalt() {
+      let saltStr = localStorage.getItem('webstack_vault_salt');
+      if (!saltStr) {
+        const arr = new Uint8Array(16);
+        if (window.crypto && window.crypto.getRandomValues) {
+          window.crypto.getRandomValues(arr);
+        } else {
+          for (let i = 0; i < 16; i++) arr[i] = Math.floor(Math.random() * 256);
+        }
+        saltStr = btoa(String.fromCharCode.apply(null, arr));
+        localStorage.setItem('webstack_vault_salt', saltStr);
+      }
+      const binary = atob(saltStr);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    async function encryptPayload(dataObj, pin) {
+      if (!pin || !window.crypto || !window.crypto.subtle) {
+        return JSON.stringify(dataObj);
+      }
+      try {
+        const salt = getOrCreateSalt();
+        const key = await deriveKey(pin, salt);
+        const iv = new Uint8Array(12);
+        window.crypto.getRandomValues(iv);
+        const enc = new TextEncoder();
+        const plaintext = enc.encode(JSON.stringify(dataObj));
+        const ciphertext = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          plaintext
+        );
+        return JSON.stringify({
+          __encrypted: true,
+          iv: Array.from(iv),
+          data: Array.from(new Uint8Array(ciphertext))
+        });
+      } catch (e) {
+        return JSON.stringify(dataObj);
+      }
+    }
+
+    async function decryptPayload(rawString, pin) {
+      if (!rawString) return null;
+      let parsed;
+      try {
+        parsed = JSON.parse(rawString);
+      } catch (e) {
+        return null;
+      }
+      if (!parsed || !parsed.__encrypted) {
+        return parsed;
+      }
+      if (!pin || !window.crypto || !window.crypto.subtle) {
+        return null;
+      }
+      try {
+        const salt = getOrCreateSalt();
+        const key = await deriveKey(pin, salt);
+        const iv = new Uint8Array(parsed.iv);
+        const ciphertext = new Uint8Array(parsed.data);
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          ciphertext
+        );
+        const dec = new TextDecoder();
+        return JSON.parse(dec.decode(decrypted));
+      } catch (e) {
+        throw new Error('DECRYPT_FAILED');
+      }
+    }
 
     function setStatusState(state) {
       if (!statusBadge) return;
@@ -1396,69 +1705,6 @@
         localStorage.removeItem('webstack_token');
         sessionStorage.removeItem('webstack_token');
       }
-    }
-
-    function getOfflineBookmarks() {
-      try {
-        const raw = localStorage.getItem('webstack_offline_bookmarks');
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveOfflineBookmarks(bms) {
-      try {
-        localStorage.setItem('webstack_offline_bookmarks', JSON.stringify(bms));
-      } catch (e) {}
-    }
-
-    function getOfflineCategories() {
-      try {
-        const raw = localStorage.getItem('webstack_offline_categories');
-        return raw ? JSON.parse(raw) : ['Personal', 'Work', 'Social', 'Reading'];
-      } catch (e) {
-        return ['Personal', 'Work', 'Social', 'Reading'];
-      }
-    }
-
-    function saveOfflineCategories(cats) {
-      try {
-        localStorage.setItem('webstack_offline_categories', JSON.stringify(cats));
-      } catch (e) {}
-    }
-
-    function getOfflineQueue() {
-      try {
-        const raw = localStorage.getItem('webstack_offline_queue');
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveOfflineQueue(q) {
-      try {
-        localStorage.setItem('webstack_offline_queue', JSON.stringify(q));
-      } catch (e) {}
-    }
-
-    function updateLastConnected(expiryHours) {
-      localStorage.setItem('webstack_last_connected', Date.now().toString());
-      if (expiryHours !== undefined && expiryHours !== null) {
-        localStorage.setItem('webstack_offline_expiry_hours', expiryHours.toString());
-      }
-    }
-
-    function isOfflineSessionValid() {
-      const lastConnected = parseInt(localStorage.getItem('webstack_last_connected') || '0', 10);
-      if (!lastConnected) return false;
-      const expiryHours = parseInt(localStorage.getItem('webstack_offline_expiry_hours') || '24', 10);
-      if (expiryHours === 0) return true; // Never expires
-      const elapsedMs = Date.now() - lastConnected;
-      return elapsedMs < (expiryHours * 3600 * 1000);
-    }
-
     async function flushOfflineQueue() {
       const queue = getOfflineQueue();
       if (!queue || queue.length === 0) return;
@@ -1472,7 +1718,7 @@
 
       for (const item of queue) {
         try {
-          const res = await fetch('/api/bookmarks', {
+          const res = await fetch(apiUrl('/api/bookmarks'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1685,6 +1931,8 @@
           closeTagDropdown();
         } else if (!shortcutsModal.classList.contains('hidden')) {
           closeShortcutsModal();
+        } else if (!offlineModal.classList.contains('hidden')) {
+          closeOfflineModal();
         } else if (!addModal.classList.contains('hidden')) {
           closeAddModal();
         } else if (searchNav && searchNav.classList.contains('open')) {
@@ -1729,6 +1977,22 @@
         return;
       }
 
+      // If activePin is stored in session, attempt to unlock cached encrypted storage
+      if (activePin) {
+        try {
+          const rawBms = localStorage.getItem('webstack_offline_bookmarks');
+          if (rawBms) {
+            const dec = await decryptPayload(rawBms, activePin);
+            if (dec) cachedOfflineBookmarks = dec;
+          }
+          const rawQ = localStorage.getItem('webstack_offline_queue');
+          if (rawQ) {
+            const decQ = await decryptPayload(rawQ, activePin);
+            if (decQ) cachedOfflineQueue = decQ;
+          }
+        } catch (e) {}
+      }
+
       const token = getToken();
       if (!token) {
         showAuthModal();
@@ -1736,7 +2000,7 @@
       }
 
       try {
-        const res = await fetch('/api/status', {
+        const res = await fetch(apiUrl('/api/status'), {
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (res.ok) {
@@ -1807,13 +2071,15 @@
       authError.style.display = 'none';
 
       try {
-        const res = await fetch('/api/auth', {
+        const res = await fetch(apiUrl('/api/auth'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: pin.trim() })
+          body: JSON.stringify({ pin: clean })
         });
         const data = await res.json();
         if (res.ok && data.token) {
+          activePin = clean;
+          sessionStorage.setItem('webstack_pin', clean);
           setToken(data.token);
           updateLastConnected(data.offlineExpiryHours);
           setStatusState('online');
@@ -1821,13 +2087,41 @@
           await flushOfflineQueue();
           await loadData();
           showToast('Connected to WebStack on Android');
+          return;
         } else {
           authError.style.display = 'block';
           authError.textContent = data.error || 'Invalid PIN. Check your phone screen.';
+          return;
         }
       } catch (err) {
-        authError.style.display = 'block';
-        authError.textContent = 'Failed to connect to phone.';
+        // Phone is offline: verify PIN against AES-256 encrypted offline bookmarks
+        const rawBms = localStorage.getItem('webstack_offline_bookmarks');
+        if (rawBms) {
+          try {
+            const decrypted = await decryptPayload(rawBms, clean);
+            if (decrypted) {
+              cachedOfflineBookmarks = decrypted;
+            }
+          } catch (decryptErr) {
+            if (decryptErr && decryptErr.message === 'DECRYPT_FAILED') {
+              authError.style.display = 'block';
+              authError.textContent = 'Incorrect PIN. Unable to decrypt offline bookmarks.';
+              return;
+            }
+          }
+        }
+
+        if (isOfflineSessionValid()) {
+          activePin = clean;
+          sessionStorage.setItem('webstack_pin', clean);
+          authModal.classList.add('hidden');
+          setStatusState('offline');
+          loadOfflineData();
+          showToast('Unlocked offline vault');
+        } else {
+          authError.style.display = 'block';
+          authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
+        }
       } finally {
         btnConnect.textContent = 'Connect to Phone';
       }
@@ -1842,7 +2136,7 @@
       const token = getToken();
       if (token) {
         try {
-          await fetch('/api/disconnect', {
+          await fetch(apiUrl('/api/disconnect'), {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token }
           });
@@ -1851,6 +2145,10 @@
         }
       }
       setToken(null);
+      activePin = '';
+      sessionStorage.removeItem('webstack_pin');
+      cachedOfflineBookmarks = null;
+      cachedOfflineQueue = null;
       localStorage.removeItem('webstack_last_connected');
       allBookmarks = [];
       renderBookmarks();
@@ -1866,7 +2164,7 @@
       if (!token || !authModal.classList.contains('hidden')) return;
 
       try {
-        const res = await fetch('/api/status', {
+        const res = await fetch(apiUrl('/api/status'), {
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (res.ok) {
@@ -1909,8 +2207,8 @@
 
       try {
         const [bookmarksRes, categoriesRes] = await Promise.all([
-          fetch('/api/bookmarks', { headers: { 'Authorization': 'Bearer ' + token } }),
-          fetch('/api/categories', { headers: { 'Authorization': 'Bearer ' + token } })
+          fetch(apiUrl('/api/bookmarks'), { headers: { 'Authorization': 'Bearer ' + token } }),
+          fetch(apiUrl('/api/categories'), { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
         if (bookmarksRes.status === 401) {
@@ -2120,7 +2418,7 @@
       }
 
       try {
-        const res = await fetch('/api/bookmarks', {
+        const res = await fetch(apiUrl('/api/bookmarks'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2168,6 +2466,113 @@
       renderBookmarks();
       showToast('Saved offline. Will sync when phone connects.');
     }
+
+    // Desktop & Offline Access Modal Operations
+    function openOfflineModal() {
+      offlineModal.classList.remove('hidden');
+      const base = getApiBase();
+      if (offlineServerUrlInput) offlineServerUrlInput.value = base;
+      if (chromeFlagHostDisplay) chromeFlagHostDisplay.textContent = base;
+    }
+
+    function closeOfflineModal() {
+      offlineModal.classList.add('hidden');
+    }
+
+    btnOpenOfflineModal.addEventListener('click', openOfflineModal);
+    btnCloseOfflineModal.addEventListener('click', closeOfflineModal);
+    btnGotItOffline.addEventListener('click', closeOfflineModal);
+    offlineModal.addEventListener('click', (e) => {
+      if (e.target === offlineModal) closeOfflineModal();
+    });
+
+    if (offlineServerUrlInput) {
+      offlineServerUrlInput.addEventListener('change', () => {
+        const val = offlineServerUrlInput.value.trim();
+        if (val) {
+          localStorage.setItem('webstack_server_url', val);
+          if (chromeFlagHostDisplay) chromeFlagHostDisplay.textContent = val;
+          showToast('Updated phone server address');
+        }
+      });
+    }
+
+    if (btnCopyChromeFlag) {
+      btnCopyChromeFlag.addEventListener('click', () => {
+        navigator.clipboard.writeText('chrome://flags/#unsafely-treat-insecure-origin-as-secure');
+        showToast('Copied Chrome Flag URL');
+      });
+    }
+
+    // 1-Click Standalone Desktop App Export (.html)
+    function downloadStandaloneApp() {
+      const currentOrigin = (window.location.protocol.startsWith('http')) ? window.location.origin : getApiBase();
+      const targetHost = (offlineServerUrlInput && offlineServerUrlInput.value.trim()) ? offlineServerUrlInput.value.trim() : currentOrigin;
+
+      let html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const targetHostEscaped = targetHost.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+      if (html.includes('window.DEFAULT_PHONE_ORIGIN =')) {
+        html = html.replace(/window\.DEFAULT_PHONE_ORIGIN\s*=\s*['"][^'"]*['"];/, `window.DEFAULT_PHONE_ORIGIN = '${targetHostEscaped}';`);
+      } else {
+        html = html.replace('<script>', `<script>\n    window.DEFAULT_PHONE_ORIGIN = '${targetHostEscaped}';\n`);
+      }
+
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'WebStack-Companion.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showToast('Downloaded WebStack-Companion.html to PC');
+    }
+
+    if (btnDownloadStandalone) {
+      btnDownloadStandalone.addEventListener('click', downloadStandaloneApp);
+    }
+
+    // PWA Desktop App Installation
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (btnTriggerPwaInstall) {
+        btnTriggerPwaInstall.disabled = false;
+        btnTriggerPwaInstall.classList.remove('btn-secondary');
+        btnTriggerPwaInstall.classList.add('btn-primary');
+        btnTriggerPwaInstall.textContent = 'Install Desktop App';
+      }
+    });
+
+    async function triggerPwaInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          showToast('WebStack installed to Desktop!');
+          closeOfflineModal();
+        }
+        deferredPrompt = null;
+      } else {
+        showToast('Use browser menu (⋮) -> "Install WebStack" or download standalone app.');
+      }
+    }
+
+    if (btnTriggerPwaInstall) {
+      btnTriggerPwaInstall.addEventListener('click', triggerPwaInstall);
+    }
+
+    // Accidental Tab Close Guard
+    window.addEventListener('beforeunload', (e) => {
+      const queue = getOfflineQueue();
+      if (isOffline || (queue && queue.length > 0)) {
+        e.preventDefault();
+        e.returnValue = 'You are in offline mode or have unsynced bookmarks. Leaving will require reconnecting to your phone.';
+        return e.returnValue;
+      }
+    });
 
     // Service Worker Registration for Offline Shell
     if ('serviceWorker' in navigator) {

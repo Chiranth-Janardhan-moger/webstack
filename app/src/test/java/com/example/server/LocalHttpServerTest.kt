@@ -336,4 +336,20 @@ class LocalHttpServerTest {
         assertNotNull(site)
         assertTrue("Title should be populated and not blank", site!!.title.isNotBlank())
     }
+
+    @Test
+    fun testManifestEndpoint_returnsValidJson() = runBlocking {
+        val customPort = 18900
+        server.start(preferredPort = customPort)
+        delay(150)
+
+        val manifestUrl = URL("http://127.0.0.1:$customPort/manifest.json")
+        val conn = manifestUrl.openConnection() as HttpURLConnection
+        assertEquals(200, conn.responseCode)
+        assertTrue(conn.contentType.contains("manifest+json") || conn.contentType.contains("json"))
+        val body = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+        assertEquals("WebStack PC Companion", body.getString("name"))
+        assertEquals("standalone", body.getString("display"))
+        conn.disconnect()
+    }
 }

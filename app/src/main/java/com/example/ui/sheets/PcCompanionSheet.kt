@@ -107,11 +107,23 @@ fun PcCompanionSubSheetContent(
     val currentOfflineExpiryHours by (viewModel?.companionOfflineExpiryHours?.collectAsState() ?: remember { mutableStateOf(24) })
 
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showOfflineInfoDialog by remember { mutableStateOf(false) }
 
     var copiedUrl by remember { mutableStateOf(false) }
     var copiedPin by remember { mutableStateOf(false) }
 
     BackHandler { onBack() }
+
+    val effectiveIp = serverStatus.ipAddress ?: com.example.server.WifiUtils.getLocalIpAddress() ?: "192.168.x.x"
+    val companionHostUrl = if (fullUrl.isNotBlank()) fullUrl else "http://$effectiveIp:$currentPort"
+
+    if (showOfflineInfoDialog) {
+        PcCompanionOfflineInfoDialog(
+            hostUrl = companionHostUrl,
+            port = currentPort,
+            onDismiss = { showOfflineInfoDialog = false }
+        )
+    }
 
     if (showSettingsDialog) {
         PcCompanionSettingsDialog(
@@ -149,19 +161,35 @@ fun PcCompanionSubSheetContent(
             onBack = onBack,
             onDismiss = onDismiss,
             action = {
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        showSettingsDialog = true
-                    },
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = "PC Companion Settings",
-                        tint = appColors.label,
-                        modifier = Modifier.size(20.dp)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showOfflineInfoDialog = true
+                        },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = "Offline Support Info",
+                            tint = appColors.label,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showSettingsDialog = true
+                        },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "PC Companion Settings",
+                            tint = appColors.label,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         )
@@ -995,6 +1023,229 @@ fun PcCompanionSettingsDialog(
                 colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
             ) {
                 Text("Cancel", fontWeight = FontWeight.Medium)
+            }
+        }
+    )
+}
+
+@Composable
+fun PcCompanionOfflineInfoDialog(
+    hostUrl: String,
+    port: Int,
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = appColors.secondaryGroupedBackground,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(24.dp)),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = appColors.fill,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = appColors.label,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "Offline & Desktop Guide",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appColors.label
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Everything you need to know about using WebStack on your PC when your phone is disconnected.",
+                    fontSize = 13.sp,
+                    color = appColors.secondaryLabel,
+                    lineHeight = 18.sp
+                )
+
+                // Feature 1: Local-First Auto-Sync
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.5.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "1. Local-First Offline & Auto-Sync",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "All bookmarks and categories are cached locally in your browser storage. You can search, browse, and add bookmarks completely offline. New bookmarks are queued with a 'Pending Sync' tag and auto-sync to your phone as soon as you reconnect.",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                // Feature 2: Standalone Downloadable App
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.5.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "2. 1-Click Desktop App (Windows & Linux)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "In the Web Companion on your PC, click 'Offline App' -> 'Download WebStack-Companion.html'. Keep this single file on your desktop. Double-clicking it opens WebStack offline anytime—even when your phone is powered off! Offline storage is AES-256 encrypted with your 6-digit PIN.",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                // Feature 3: Chrome Flag for Tab Reopening
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.5.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "3. Chrome Flag (Reopening Closed Tabs)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Browsers disable Service Workers on plain local IP addresses by default. If you accidentally close your tab while offline, Chrome won't reopen it until you reconnect—unless you enable this flag:",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            lineHeight = 16.sp
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = appColors.fill,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "chrome://flags/#unsafely-treat-insecure-origin-as-secure",
+                                fontSize = 11.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = appColors.label,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+
+                        Text(
+                            text = "Add your phone's address ($hostUrl), set to Enabled, and Relaunch. You can then reopen tabs offline and click 'Install WebStack' as a standalone desktop app on Windows and Linux!",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            lineHeight = 16.sp
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = {
+                                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    cm.setPrimaryClip(ClipData.newPlainText("Chrome Flag", "chrome://flags/#unsafely-treat-insecure-origin-as-secure"))
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    Toast.makeText(context, "Copied Chrome Flag URL", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = appColors.fill, contentColor = appColors.label),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Copy Flag URL", fontSize = 11.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    cm.setPrimaryClip(ClipData.newPlainText("Companion URL", hostUrl))
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    Toast.makeText(context, "Copied Server URL", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = appColors.fill, contentColor = appColors.label),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Copy Server URL", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Feature 4: USB Reverse Tethering
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.5.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "4. USB Reverse Tethering (Zero-Config PWA)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Connect via USB and run 'adb reverse tcp:$port tcp:$port', then open http://localhost:$port. Because localhost is considered secure, PWA installation and offline caching work automatically with zero flags.",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground
+                )
+            ) {
+                Text("Got it", fontWeight = FontWeight.Bold)
             }
         }
     )
