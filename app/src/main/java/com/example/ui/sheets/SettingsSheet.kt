@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
@@ -86,7 +87,8 @@ enum class SettingsSubScreen {
     CUSTOMIZE_TAGS,
     FAB_SHAPE,
     CARD_DETAILS,
-    APP_INFO
+    APP_INFO,
+    PC_SHARE
 }
 
 private data class SettingsExplainer(
@@ -472,6 +474,14 @@ fun SettingsBottomSheetContent(
                 onOpenWhatsNew = onOpenWhatsNew
             )
         }
+        SettingsSubScreen.PC_SHARE -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
+            PcCompanionSubSheetContent(
+                viewModel = viewModel,
+                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
+                onDismiss = handleDismiss
+            )
+        }
         SettingsSubScreen.MAIN -> {
             Column(
                 modifier = Modifier
@@ -679,6 +689,95 @@ fun SettingsBottomSheetContent(
                             icon = Icons.Outlined.Info
                         )
                     }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Standalone High-Prominence Card: PC Companion
+        val serverStatus = viewModel?.serverStatus?.collectAsState()?.value
+        val isServerLive = serverStatus?.isRunning == true
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = appColors.surface,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                navigateToSubScreen(SettingsSubScreen.PC_SHARE)
+            }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        color = if (isServerLive) appColors.label else appColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.DesktopWindows,
+                                contentDescription = null,
+                                tint = if (isServerLive) appColors.systemBackground else appColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "PC Companion",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appColors.label
+                            )
+                            if (isServerLive) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color(0xFF34C759).copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "LIVE",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF34C759),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            text = if (isServerLive) "Online on local Wi-Fi" else "Browse & send links from desktop browser",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }

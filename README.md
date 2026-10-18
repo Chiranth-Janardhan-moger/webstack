@@ -26,6 +26,7 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 ## Key Features
 
+- **PC Companion & Wi-Fi Sharing**: Browse bookmarks and push links from any desktop computer on your local Wi-Fi with zero PC software installation.
 - **Visual Website Cards**: Captures and renders high-resolution page previews and favicons for fast visual scanning.
 - **Dual Display Modes**: Seamlessly toggle between full visual screenshot cards and dense compact row listings.
 - **Multi-Select & Bulk Delete**: Long-press bookmarks to enter multi-selection mode with visual index badges and bulk deletion.

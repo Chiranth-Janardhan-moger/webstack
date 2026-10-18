@@ -104,6 +104,12 @@ fun WhatsNewBottomSheetContent(
 
         // Feature items
         WhatsNewFeatureItem(
+            icon = Icons.Outlined.Devices,
+            title = "PC Companion & Wi-Fi Share",
+            description = "Browse bookmarks and push links directly from desktop browsers over local Wi-Fi."
+        )
+
+        WhatsNewFeatureItem(
             icon = Icons.Outlined.AutoAwesome,
             title = "Expressive FAB Shapes",
             description = "Style your action button with dynamic Material 3 shapes."

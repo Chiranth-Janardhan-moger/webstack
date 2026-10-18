@@ -17,8 +17,8 @@ android {
     applicationId = "com.chiranth7.webstack"
     minSdk = 24
     targetSdk = 36
-    versionCode = 7
-    versionName = "1.2.0"
+    versionCode = 8
+    versionName = "2.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -108,6 +108,7 @@ dependencies {
   implementation(libs.jsoup)
   implementation("androidx.compose.material3:material3:1.5.0-alpha08")
   implementation("androidx.graphics:graphics-shapes:1.0.1")
+  implementation("com.google.zxing:core:3.5.3")
 
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

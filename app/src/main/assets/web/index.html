@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebStack • PC Companion</title>
+  <style>
+    :root {
+      --bg: #F8F9FA;
+      --surface: #FFFFFF;
+      --surface-hover: #F3F4F6;
+      --border: #E5E7EB;
+      --text: #111827;
+      --text-muted: #6B7280;
+      --accent: #000000;
+      --accent-text: #FFFFFF;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090B;
+        --surface: #141416;
+        --surface-hover: #1E1E22;
+        --border: #27272A;
+        --text: #F4F4F5;
+        --text-muted: #9CA3AF;
+        --accent: #FFFFFF;
+        --accent-text: #000000;
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+    .badge-live {
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+      padding: 3px 8px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge-live::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: #10B981;
+      border-radius: 50%;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn-secondary {
+      background: var(--surface-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    /* Main Container */
+    main {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Push Link Card */
+    .push-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+    }
+    .push-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .push-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .input-field {
+      flex: 1;
+      min-width: 240px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-field:focus { border-color: var(--text); }
+    .select-field {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-text);
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+
+    /* Filter & Search Bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 260px;
+      max-width: 450px;
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px 10px 36px;
+      border-radius: 24px;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--text); }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    /* Category Chips */
+    .category-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .chip:hover { color: var(--text); background: var(--surface-hover); }
+    .chip.active {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+
+    /* Bookmarks Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 16px;
+    }
+    .bookmark-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .bookmark-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .favicon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--surface-hover);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .favicon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.35;
+    }
+    .card-domain {
+      font-size: 12px;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+    .card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      margin-top: 6px;
+    }
+    .card-tag {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--surface-hover);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .action-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .action-btn:hover { background: var(--surface-hover); }
+
+    /* Modal for PIN */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      max-width: 380px;
+      width: 100%;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    .modal-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .modal-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+      line-height: 1.45;
+    }
+    .pin-input {
+      width: 100%;
+      text-align: center;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      padding: 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      margin-bottom: 16px;
+      outline: none;
+    }
+    .pin-input:focus { border-color: var(--text); }
+    .modal-error {
+      color: #EF4444;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all 0.25s ease;
+      z-index: 999;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .hidden { display: none !important; }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Authentication Modal -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-icon">W</div>
+      <h2 class="modal-title">WebStack Companion</h2>
+      <p class="modal-sub">Enter the 6-digit PIN displayed on your Android device to connect.</p>
+      
+      <div id="authError" class="modal-error">Invalid PIN. Please try again.</div>
+      <input type="text" id="pinInput" class="pin-input" maxlength="6" placeholder="000000" autofocus inputmode="numeric">
+      <button id="btnConnect" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Connect to Phone</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">W</div>
+      <div>
+        <div class="brand-title">WebStack</div>
+      </div>
+      <span class="badge-live" id="statusBadge">Live Sync</span>
+    </div>
+
+    <div class="header-actions">
+      <span id="bookmarksCount" style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Loading...</span>
+      <button id="btnDisconnect" class="btn-secondary">Disconnect</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Push URL to Android Card -->
+    <section class="push-card">
+      <div class="push-title">
+        <span>🔗</span>
+        <span>Send Link to Android WebStack</span>
+      </div>
+      <form id="pushForm" class="push-form">
+        <input type="url" id="pushUrl" class="input-field" placeholder="https://example.com/article..." required autocomplete="off">
+        <select id="pushCategory" class="select-field">
+          <option value="Personal">Personal</option>
+          <option value="Work">Work</option>
+          <option value="Social">Social</option>
+          <option value="Reading">Reading</option>
+        </select>
+        <button type="submit" class="btn-primary">
+          <span>Push to Phone</span>
+          <span>→</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Controls Bar -->
+    <section class="controls-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search bookmarks by title, domain, or tag...">
+      </div>
+
+      <div class="category-pills" id="categoryPills">
+        <button class="chip active" data-category="ALL">All</button>
+      </div>
+    </section>
+
+    <!-- Bookmarks Grid -->
+    <section class="grid" id="bookmarksGrid">
+      <div class="empty-state">Loading your bookmarks...</div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">Link pushed to phone!</div>
+
+  <script>
+    let allBookmarks = [];
+    let currentCategory = 'ALL';
+    let searchQuery = '';
+
+    const authModal = document.getElementById('authModal');
+    const pinInput = document.getElementById('pinInput');
+    const btnConnect = document.getElementById('btnConnect');
+    const authError = document.getElementById('authError');
+    const btnDisconnect = document.getElementById('btnDisconnect');
+    const bookmarksGrid = document.getElementById('bookmarksGrid');
+    const categoryPills = document.getElementById('categoryPills');
+    const searchInput = document.getElementById('searchInput');
+    const pushForm = document.getElementById('pushForm');
+    const pushUrl = document.getElementById('pushUrl');
+    const pushCategory = document.getElementById('pushCategory');
+    const bookmarksCount = document.getElementById('bookmarksCount');
+    const toast = document.getElementById('toast');
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    function getToken() {
+      return sessionStorage.getItem('webstack_token');
+    }
+
+    function setToken(token) {
+      sessionStorage.setItem('webstack_token', token);
+    }
+
+    async function checkAuth() {
+      // Auto-extract PIN from URL if scanned from QR code
+      const params = new URLSearchParams(window.location.search);
+      const urlPin = params.get('pin');
+      if (urlPin && urlPin.length === 6) {
+        pinInput.value = urlPin;
+        await submitPin(urlPin);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      const token = getToken();
+      if (!token) {
+        showAuthModal();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/status', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          authModal.classList.add('hidden');
+          loadData();
+        } else {
+          showAuthModal();
+        }
+      } catch (err) {
+        showAuthModal();
+      }
+    }
+
+    function showAuthModal() {
+      authModal.classList.remove('hidden');
+      pinInput.value = '';
+      pinInput.focus();
+    }
+
+    async function submitPin(pin) {
+      if (!pin || pin.length < 4) return;
+      btnConnect.textContent = 'Verifying...';
+      authError.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: pin.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+          setToken(data.token);
+          authModal.classList.add('hidden');
+          loadData();
+          showToast('Connected to WebStack on Android!');
+        } else {
+          authError.style.display = 'block';
+          authError.textContent = data.error || 'Invalid PIN. Check your phone screen.';
+        }
+      } catch (err) {
+        authError.style.display = 'block';
+        authError.textContent = 'Failed to connect to phone.';
+      } finally {
+        btnConnect.textContent = 'Connect to Phone';
+      }
+    }
+
+    btnConnect.addEventListener('click', () => submitPin(pinInput.value));
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitPin(pinInput.value);
+    });
+
+    btnDisconnect.addEventListener('click', () => {
+      sessionStorage.removeItem('webstack_token');
+      showAuthModal();
+    });
+
+    async function loadData() {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const [bookmarksRes, categoriesRes] = await Promise.all([
+          fetch('/api/bookmarks', { headers: { 'Authorization': 'Bearer ' + token } }),
+          fetch('/api/categories', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+
+        if (bookmarksRes.status === 401) {
+          showAuthModal();
+          return;
+        }
+
+        allBookmarks = await bookmarksRes.json();
+        const categories = await categoriesRes.json();
+
+        renderCategories(categories);
+        renderBookmarks();
+        updateCategoryOptions(categories);
+      } catch (err) {
+        bookmarksGrid.innerHTML = '<div class="empty-state">Failed to load bookmarks from phone.</div>';
+      }
+    }
+
+    function updateCategoryOptions(categories) {
+      pushCategory.innerHTML = '';
+      const cats = (categories && categories.length > 0) ? categories : ['Personal', 'Work', 'Social', 'Reading'];
+      cats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        pushCategory.appendChild(opt);
+      });
+    }
+
+    function renderCategories(categories) {
+      categoryPills.innerHTML = '';
+      const allBtn = document.createElement('button');
+      allBtn.className = 'chip ' + (currentCategory === 'ALL' ? 'active' : '');
+      allBtn.textContent = 'All (' + allBookmarks.length + ')';
+      allBtn.addEventListener('click', () => {
+        currentCategory = 'ALL';
+        updatePills();
+        renderBookmarks();
+      });
+      categoryPills.appendChild(allBtn);
+
+      const uniqueCats = categories && categories.length > 0 ? categories : [];
+      uniqueCats.forEach(cat => {
+        const count = allBookmarks.filter(b => b.category === cat).length;
+        const btn = document.createElement('button');
+        btn.className = 'chip ' + (currentCategory === cat ? 'active' : '');
+        btn.textContent = cat + ' (' + count + ')';
+        btn.addEventListener('click', () => {
+          currentCategory = cat;
+          updatePills();
+          renderBookmarks();
+        });
+        categoryPills.appendChild(btn);
+      });
+    }
+
+    function updatePills() {
+      const pills = categoryPills.querySelectorAll('.chip');
+      pills.forEach(pill => {
+        if (currentCategory === 'ALL' && pill.textContent.startsWith('All')) {
+          pill.classList.add('active');
+        } else if (pill.textContent.startsWith(currentCategory + ' (')) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+    }
+
+    function renderBookmarks() {
+      const filtered = allBookmarks.filter(item => {
+        const matchesCategory = (currentCategory === 'ALL') || (item.category === currentCategory);
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch = !q ||
+          (item.title && item.title.toLowerCase().includes(q)) ||
+          (item.url && item.url.toLowerCase().includes(q)) ||
+          (item.domain && item.domain.toLowerCase().includes(q)) ||
+          (item.category && item.category.toLowerCase().includes(q));
+        return matchesCategory && matchesSearch;
+      });
+
+      bookmarksCount.textContent = filtered.length + ' of ' + allBookmarks.length + ' bookmarks';
+
+      if (filtered.length === 0) {
+        bookmarksGrid.innerHTML = '<div class="empty-state">No bookmarks found.</div>';
+        return;
+      }
+
+      bookmarksGrid.innerHTML = filtered.map(b => {
+        const domain = b.domain || extractDomain(b.url);
+        const faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
+        const initial = (b.title || domain || 'W').charAt(0).toUpperCase();
+
+        return `
+          <div class="bookmark-card">
+            <div>
+              <div class="card-top">
+                <div class="favicon">
+                  <img src="${faviconUrl}" alt="${initial}" onerror="this.onerror=null;this.parentElement.textContent='${initial}'">
+                </div>
+                <div class="card-info">
+                  <div class="card-title" title="${escapeHtml(b.title || b.url)}">${escapeHtml(b.title || domain)}</div>
+                  <div class="card-domain">${escapeHtml(domain)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-bottom">
+              <span class="card-tag">${escapeHtml(b.category || 'Personal')}</span>
+              <div class="card-actions">
+                <button class="action-btn" onclick="navigator.clipboard.writeText('${escapeJs(b.url)}'); showToast('Copied link!');">Copy</button>
+                <a href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="action-btn">Open ↗</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function extractDomain(url) {
+      try {
+        const u = new URL(url.startsWith('http') ? url : 'https://' + url);
+        return u.hostname.replace(/^www\./, '');
+      } catch (e) {
+        return url;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeJs(str) {
+      if (!str) return '';
+      return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderBookmarks();
+    });
+
+    pushForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawUrl = pushUrl.value.trim();
+      const cat = pushCategory.value;
+      if (!rawUrl) return;
+
+      const token = getToken();
+      try {
+        const res = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ url: rawUrl, category: cat })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          pushUrl.value = '';
+          showToast('Bookmark saved to phone!');
+          loadData();
+        } else {
+          showToast(data.error || 'Failed to save bookmark.');
+        }
+      } catch (err) {
+        showToast('Network error saving bookmark.');
+      }
+    });
+
+    // Initial load
+    checkAuth();
+  </script>
+</body>
+</html>

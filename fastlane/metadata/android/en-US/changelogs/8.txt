@@ -1,0 +1,5 @@
+- PC Companion Mode: Share and browse bookmarks on desktop browsers over local Wi-Fi
+- Zero PC Setup: Self-contained web app with instant PIN and QR code authentication
+- Push Links from PC: Send links from computer browser directly to phone Room database
+- Real-Time Local Sync: Instant search and category filtering directly in desktop browser
+- Dedicated Companion Page: Dedicated settings page with live connection QR and IP credentials

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Share
@@ -85,6 +86,13 @@ fun WebStackFeaturesSubSheetContent(
 
     val features = remember {
         listOf(
+            FeatureGuideItem(
+                id = "pc_companion",
+                title = "PC Companion & Wi-Fi Sharing",
+                tagline = "Browse and push links from your computer browser",
+                icon = Icons.Outlined.DesktopWindows,
+                breadcrumbs = listOf("Settings", "PC Companion", "Turn On Wi-Fi Sharing")
+            ),
             FeatureGuideItem(
                 id = "multi_select",
                 title = "Multi-Select & Bulk Delete",

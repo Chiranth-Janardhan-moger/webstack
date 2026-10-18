@@ -52,6 +52,23 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _importProgress = MutableStateFlow<Pair<Int, Int>?>(null)
     val importProgress: StateFlow<Pair<Int, Int>?> = _importProgress.asStateFlow()
 
+    private val localServer: com.example.server.LocalHttpServer by lazy {
+        com.example.server.LocalHttpServer(
+            context = application,
+            repository = repository,
+            getCategories = { _categories.value }
+        )
+    }
+    val serverStatus: StateFlow<com.example.server.ServerStatus> get() = localServer.status
+
+    fun startLocalServer(port: Int = 8080) {
+        localServer.start(port)
+    }
+
+    fun stopLocalServer() {
+        localServer.stop()
+    }
+
     fun setSettingsSubScreen(subScreen: com.example.ui.sheets.SettingsSubScreen) {
         _settingsSubScreen.value = subScreen
     }
@@ -555,6 +572,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         } finally {
             _importProgress.value = null
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        localServer.stop()
     }
 }
 

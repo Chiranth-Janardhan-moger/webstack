@@ -127,8 +127,8 @@ fun RoadmapSubSheetContent(
 
         RoadmapFeatureCard(
             number = 1,
-            title = "PC Companion Mode",
-            description = "Access and manage your stack from any computer over local Wi-Fi without cloud accounts.",
+            title = "Desktop Browser Extension",
+            description = "1-click browser extension to push links directly into your local WebStack PC Companion.",
             icon = Icons.Outlined.Devices
         )
 

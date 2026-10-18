@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.HorizontalDivider
@@ -104,19 +105,12 @@ fun VersionUpdateScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Version Odometer (1.1.0 -> 1.2.0)
+                // Version Odometer (1.0.0 -> 2.0.0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.padding(bottom = 24.dp)
                 ) {
-                    Text(
-                        text = "1.",
-                        fontSize = 58.sp,
-                        fontWeight = FontWeight.Black,
-                        color = appColors.label,
-                        letterSpacing = (-1.5).sp
-                    )
                     AnimatedContent(
                         targetState = targetDigit,
                         transitionSpec = {
@@ -144,7 +138,7 @@ fun VersionUpdateScreen(
                         )
                     }
                     Text(
-                        text = ".0",
+                        text = ".0.0",
                         fontSize = 58.sp,
                         fontWeight = FontWeight.Black,
                         color = appColors.label,
@@ -166,7 +160,25 @@ fun VersionUpdateScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Feature 1: Expressive FAB Shapes
+                        // Feature 1: PC Companion & Wi-Fi Share
+                        VersionFeatureTile(
+                            title = "PC Companion & Wi-Fi Share",
+                            description = "Browse bookmarks and push links directly from desktop browser."
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.DesktopWindows,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator.copy(alpha = 0.5f)
+                        )
+
+                        // Feature 2: Expressive FAB Shapes
                         VersionFeatureTile(
                             title = "Expressive FAB Shapes",
                             description = "Style your action button with dynamic Material 3 shapes."
@@ -184,31 +196,13 @@ fun VersionUpdateScreen(
                             color = appColors.separator.copy(alpha = 0.5f)
                         )
 
-                        // Feature 2: Bulk Selection & Triage
+                        // Feature 3: Bulk Selection & Triage
                         VersionFeatureTile(
                             title = "Bulk Selection & Triage",
                             description = "Select, tag, and clean up multiple bookmarks effortlessly."
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Checklist,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = appColors.separator.copy(alpha = 0.5f)
-                        )
-
-                        // Feature 3: Rearrange the Tags
-                        VersionFeatureTile(
-                            title = "Rearrange the Tags",
-                            description = "Reorder tags easily and toggle card details on or off."
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Tune,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)
