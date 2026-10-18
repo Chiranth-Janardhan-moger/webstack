@@ -20,3 +20,5 @@ testdata/real/
 __pycache__/
 *.pyc
 scratch/
+webcompanion/node_modules/
+webcompanion/dist/

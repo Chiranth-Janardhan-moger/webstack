@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WebStack Companion</title>
+  <meta name="theme-color" content="#121214">
+  <meta name="description" content="Local-first bookmark companion for WebStack Android">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+</head>
+<body>
+
+  <!-- Authentication Modal -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal-card modal-auth-center">
+      <div class="modal-auth-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L3 21L12 14.5L21 21Z" />
+        </svg>
+      </div>
+      <h2 class="modal-auth-title">WebStack Companion</h2>
+      <p class="modal-auth-sub">Enter the 6-digit PIN displayed on your Android device to connect.</p>
+      
+      <div id="authError" class="modal-error">Invalid PIN. Please try again.</div>
+      <input type="text" id="pinInput" class="pin-input" maxlength="6" placeholder="000000" autofocus inputmode="numeric">
+      <button id="btnConnect" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Connect to Phone</button>
+    </div>
+  </div>
+
+  <!-- Add Bookmark Modal -->
+  <div id="addModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-text">
+          <h3 class="modal-header-title">Add Bookmark</h3>
+          <p class="modal-header-sub">Automatically syncs with your phone stack</p>
+        </div>
+        <button id="btnCloseAddModal" class="btn-modal-close" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="addBookmarkForm" class="add-form">
+        <div class="form-group">
+          <label class="form-label" for="addUrl">Website URL</label>
+          <input type="url" id="addUrl" class="input-field-modal" placeholder="https://example.com/article..." required autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category Tag</label>
+          <div class="custom-select-wrapper" id="customCategoryWrapper">
+            <button type="button" class="custom-select-trigger" id="tagDropdownTrigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="trigger-tag-preview">
+                <span class="trigger-dot"></span>
+                <span id="selectedCategoryLabel">Personal</span>
+              </span>
+              <svg class="trigger-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="custom-dropdown-menu" id="tagDropdownMenu" role="listbox">
+              <div class="dropdown-search-wrapper" id="tagSearchWrapper">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="tagSearchInput" class="dropdown-search-input" placeholder="Search tags..." autocomplete="off">
+              </div>
+              <div class="tag-grid-container" id="tagGridContainer"></div>
+            </div>
+            <input type="hidden" id="addCategory" value="Personal">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnCancelAdd" class="btn-secondary" style="padding: 11px 18px;">Cancel</button>
+          <button type="submit" id="btnSaveBookmark" class="btn-primary" style="flex: 1; justify-content: center; padding: 11px 18px;">
+            <span>Save Bookmark</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-overlay hidden">
+    <div class="modal-card modal-shortcuts-card">
+      <div class="modal-header">
+        <div class="modal-header-text">
+          <h3 class="modal-header-title">Keyboard Shortcuts</h3>
+          <p class="modal-header-sub">Speed up your workflow in WebStack Companion</p>
+        </div>
+        <button id="btnCloseShortcutsModal" class="btn-modal-close" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="shortcuts-list">
+        <div class="shortcut-group-title">Navigation & Actions</div>
+        
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Focus & expand search bar</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">/</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open Add Bookmark modal</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">N</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open / close shortcuts guide</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">?</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Close open modal / collapse search</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">Esc</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Disconnect session</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">Shift</kbd> + <kbd class="kbd-key">D</kbd></div>
+        </div>
+
+        <div class="shortcut-group-title">Category Switching</div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Switch to "All" bookmarks</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">1</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Switch to specific category</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">2</kbd> – <kbd class="kbd-key">9</kbd></div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        <span>Press <kbd class="kbd-key-sm">?</kbd> anytime to open this guide</span>
+        <button type="button" id="btnGotItShortcuts" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop & Offline Access Modal -->
+  <div id="offlineModal" class="modal-overlay hidden">
+    <div class="modal-card modal-offline-card">
+      <div class="modal-header">
+        <div class="modal-header-text">
+          <h3 class="modal-header-title">Desktop & Offline Access</h3>
+          <p class="modal-header-sub">Keep WebStack running on PC anytime, even when your phone is turned off</p>
+        </div>
+        <button id="btnCloseOfflineModal" class="btn-modal-close" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="offline-sections-list">
+        <!-- Option 1: Standalone HTML App -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>1. Standalone Single-File App</span>
+            </div>
+            <span class="offline-badge">Recommended</span>
+          </div>
+          <div class="offline-card-desc">
+            Download a zero-install HTML app directly to your PC Desktop. Double-click to open 100% offline anytime with zero connection timeouts. All cached bookmarks are encrypted with AES-256-GCM.
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);" for="offlineServerUrlInput">Phone Server Address</label>
+            <input type="text" id="offlineServerUrlInput" class="input-field-modal" style="font-family: monospace; font-size: 12px; padding: 7px 10px;" placeholder="http://192.168.x.x:8080" autocomplete="off">
+          </div>
+          <button type="button" id="btnDownloadStandalone" class="btn-primary" style="justify-content: center; padding: 10px 16px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download Standalone App (.html)</span>
+          </button>
+        </div>
+
+        <!-- Option 2: Native PWA Desktop App -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span>2. Install as Desktop App (PWA)</span>
+            </div>
+          </div>
+          <div class="offline-card-desc">
+            Install WebStack into your Windows or Linux Start Menu and Taskbar. Opens in a clean, dedicated window without browser address bars.
+          </div>
+          <button type="button" id="btnTriggerPwaInstall" class="btn-secondary" style="justify-content: center; padding: 10px 16px;">
+            <span>Install Desktop App</span>
+          </button>
+        </div>
+
+        <!-- Option 3: Chrome Offline Tab Reopening (Flag Guide) -->
+        <div class="offline-card">
+          <div class="offline-card-header">
+            <div class="offline-card-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>3. Chrome Offline Tab Reopening</span>
+            </div>
+          </div>
+          <div class="offline-card-desc">
+            Browsers block Service Workers on plain local Wi-Fi IPs by default. If you close this tab while offline, Chrome won't reopen it until you reconnect—unless you enable this one-time Chrome flag:
+          </div>
+          <div class="code-box">
+            <span id="chromeFlagText">chrome://flags/#unsafely-treat-insecure-origin-as-secure</span>
+            <button type="button" id="btnCopyChromeFlag" class="action-btn" title="Copy flag URL">Copy</button>
+          </div>
+          <div class="offline-card-desc" style="font-size: 11.5px;">
+            1. Paste into Chrome address bar.<br>
+            2. Add your phone's address (<span id="chromeFlagHostDisplay">http://...</span>) into the box.<br>
+            3. Set dropdown to <b>Enabled</b> and click <b>Relaunch</b>.
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        <span>WebStack Companion • AES-256 Offline Sync</span>
+        <button type="button" id="btnGotItOffline" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L3 21L12 14.5L21 21Z" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">WebStack</div>
+        </div>
+        <span class="badge-live" id="statusBadge">Live Sync</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Smooth Animated Expanding Search in Nav Bar -->
+        <div class="search-nav" id="searchNav">
+          <button id="btnSearchToggle" class="btn-circle-action btn-search-toggle" aria-label="Search Bookmarks">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="tooltip">Search (/)</span>
+          </button>
+          <div class="search-nav-expand" id="searchNavExpand">
+            <svg class="search-nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" class="search-nav-input" placeholder="Search title, domain, tag..." autocomplete="off">
+            <button type="button" id="btnClearSearch" class="btn-clear-search" aria-label="Clear Search" title="Clear search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button id="btnOpenAddModal" class="btn-circle-add" aria-label="Add Bookmark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span class="tooltip">Add Bookmark (N)</span>
+        </button>
+
+        <div class="header-divider"></div>
+
+        <button id="btnOpenShortcutsModal" class="btn-circle-action" aria-label="Keyboard Shortcuts">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <path d="M6 8h.001"></path>
+            <path d="M10 8h.001"></path>
+            <path d="M14 8h.001"></path>
+            <path d="M18 8h.001"></path>
+            <path d="M6 12h.001"></path>
+            <path d="M10 12h.001"></path>
+            <path d="M14 12h.001"></path>
+            <path d="M18 12h.001"></path>
+            <path d="M7 16h10"></path>
+          </svg>
+          <span class="tooltip">Shortcuts (?)</span>
+        </button>
+
+        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Desktop & Offline App">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="tooltip">Desktop & Offline</span>
+        </button>
+
+        <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span class="tooltip">Disconnect</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Controls Bar -->
+    <section class="controls-bar">
+      <div class="category-pills" id="categoryPills">
+        <button class="chip active" data-category="ALL">All</button>
+      </div>
+    </section>
+
+    <!-- Bookmarks Grid -->
+    <section class="grid" id="bookmarksGrid">
+      <div class="empty-state">Loading your bookmarks...</div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toastMessage">Synced to WebStack!</span>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
