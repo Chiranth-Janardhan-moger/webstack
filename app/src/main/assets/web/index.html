@@ -135,12 +135,6 @@
       align-items: center;
       gap: 10px;
     }
-    .bookmarks-count {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 500;
-      white-space: nowrap;
-    }
 
     /* Animated Nav Bar Search */
     .search-nav {
@@ -676,7 +670,12 @@
     .input-field-modal:focus {
       border-color: var(--border-focus);
     }
-    .select-field-modal {
+    /* Premium 2-Column Custom Tag Dropdown */
+    .custom-select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .custom-select-trigger {
       width: 100%;
       background: var(--bg);
       border: 1px solid var(--border);
@@ -684,12 +683,142 @@
       padding: 11px 14px;
       border-radius: var(--radius-sm);
       font-size: 14px;
-      outline: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       cursor: pointer;
-      transition: border-color 0.15s ease;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      font-family: inherit;
     }
-    .select-field-modal:focus {
+    .custom-select-trigger:focus,
+    .custom-select-wrapper.open .custom-select-trigger {
       border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+    .trigger-tag-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    .trigger-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text);
+    }
+    .trigger-chevron {
+      color: var(--text-muted);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .custom-select-wrapper.open .trigger-chevron {
+      transform: rotate(180deg);
+    }
+
+    .custom-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+      z-index: 150;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px) scale(0.98);
+      transform-origin: top center;
+      transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s ease;
+      overflow: hidden;
+      padding: 8px;
+    }
+    .custom-select-wrapper.open .custom-dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Quick Filter in Dropdown if > 8 tags */
+    .dropdown-search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 0 4px;
+    }
+    .dropdown-search-wrapper svg {
+      position: absolute;
+      left: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .dropdown-search-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px 7px 30px;
+      font-size: 12.5px;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+    }
+    .dropdown-search-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* 2 Columns: 3 and 3 for 6 tags, scrollable for 20+ */
+    .tag-grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 2px;
+      scrollbar-width: thin;
+    }
+    .tag-option-btn {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      transition: all 0.14s ease;
+      font-family: inherit;
+      text-align: left;
+    }
+    .tag-option-btn:hover {
+      background: var(--border);
+      border-color: var(--border-focus);
+    }
+    .tag-option-btn.selected {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+      font-weight: 600;
+    }
+    .tag-option-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .tag-check {
+      font-size: 11px;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+    .tag-option-btn.selected .tag-check {
+      opacity: 1;
     }
     .modal-actions {
       display: flex;
@@ -715,9 +844,94 @@
     .btn-primary:active {
       transform: scale(0.98);
     }
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    /* Keyboard Shortcuts Modal */
+    .modal-shortcuts-card {
+      max-width: 460px;
+      padding: 24px;
+    }
+    .shortcuts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+      max-height: 55vh;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .shortcut-group-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 10px 0 4px 2px;
+    }
+    .shortcut-group-title:first-child {
+      margin-top: 0;
+    }
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      font-size: 13px;
+    }
+    .shortcut-desc {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .shortcut-keys {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .kbd-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-bottom: 2px solid var(--border-focus);
+      border-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .kbd-key-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+    .shortcuts-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
     /* Toast Notification */
@@ -816,9 +1030,6 @@
       .badge-live {
         display: none;
       }
-      .bookmarks-count {
-        display: none;
-      }
       .search-nav.open .search-nav-expand {
         width: calc(100vw - 28px);
         right: -8px;
@@ -878,13 +1089,31 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="addCategory">Category Tag</label>
-          <select id="addCategory" class="select-field-modal">
-            <option value="Personal">Personal</option>
-            <option value="Work">Work</option>
-            <option value="Social">Social</option>
-            <option value="Reading">Reading</option>
-          </select>
+          <label class="form-label">Category Tag</label>
+          <div class="custom-select-wrapper" id="customCategoryWrapper">
+            <button type="button" class="custom-select-trigger" id="tagDropdownTrigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="trigger-tag-preview">
+                <span class="trigger-dot"></span>
+                <span id="selectedCategoryLabel">Personal</span>
+              </span>
+              <svg class="trigger-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="custom-dropdown-menu" id="tagDropdownMenu" role="listbox">
+              <div class="dropdown-search-wrapper" id="tagSearchWrapper">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="tagSearchInput" class="dropdown-search-input" placeholder="Search tags..." autocomplete="off">
+              </div>
+              <div class="tag-grid-container" id="tagGridContainer">
+                <!-- Dynamically populated in 2 columns: 6 tags -> 2 cols of 3, 3; 20+ tags -> 2 cols with smooth scroll -->
+              </div>
+            </div>
+            <input type="hidden" id="addCategory" value="Personal">
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -894,6 +1123,70 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-overlay hidden">
+    <div class="modal-card modal-shortcuts-card">
+      <div class="modal-header">
+        <div class="modal-header-text">
+          <h3 class="modal-header-title">Keyboard Shortcuts</h3>
+          <p class="modal-header-sub">Speed up your workflow in WebStack Companion</p>
+        </div>
+        <button id="btnCloseShortcutsModal" class="btn-modal-close" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="shortcuts-list">
+        <div class="shortcut-group-title">Navigation & Actions</div>
+        
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Focus & expand search bar</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">/</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open Add Bookmark modal</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">N</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open / close shortcuts guide</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">?</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Close open modal / collapse search</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">Esc</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Disconnect session</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">Shift</kbd> + <kbd class="kbd-key">D</kbd></div>
+        </div>
+
+        <div class="shortcut-group-title">Category Switching</div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Switch to "All" bookmarks</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">1</kbd></div>
+        </div>
+
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Switch to specific category</span>
+          <div class="shortcut-keys"><kbd class="kbd-key">2</kbd> – <kbd class="kbd-key">9</kbd></div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        <span>Press <kbd class="kbd-key-sm">?</kbd> anytime to open this guide</span>
+        <button type="button" id="btnGotItShortcuts" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
+      </div>
     </div>
   </div>
 
@@ -937,7 +1230,22 @@
           </div>
         </div>
 
-        <span id="bookmarksCount" class="bookmarks-count">Loading...</span>
+        <button id="btnOpenShortcutsModal" class="btn-circle-action" aria-label="Keyboard Shortcuts">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <path d="M6 8h.001"></path>
+            <path d="M10 8h.001"></path>
+            <path d="M14 8h.001"></path>
+            <path d="M18 8h.001"></path>
+            <path d="M6 12h.001"></path>
+            <path d="M10 12h.001"></path>
+            <path d="M14 12h.001"></path>
+            <path d="M18 12h.001"></path>
+            <path d="M7 16h10"></path>
+          </svg>
+          <span class="tooltip">Shortcuts (?)</span>
+        </button>
+
         <div class="header-divider"></div>
 
         <button id="btnOpenAddModal" class="btn-circle-add" aria-label="Add Bookmark">
@@ -1001,13 +1309,21 @@
     const addCategory = document.getElementById('addCategory');
     const btnSaveBookmark = document.getElementById('btnSaveBookmark');
 
+    const customCategoryWrapper = document.getElementById('customCategoryWrapper');
+    const tagDropdownTrigger = document.getElementById('tagDropdownTrigger');
+    const selectedCategoryLabel = document.getElementById('selectedCategoryLabel');
+    const tagDropdownMenu = document.getElementById('tagDropdownMenu');
+    const tagSearchWrapper = document.getElementById('tagSearchWrapper');
+    const tagSearchInput = document.getElementById('tagSearchInput');
+    const tagGridContainer = document.getElementById('tagGridContainer');
+    let availableCategories = ['Personal', 'Work', 'Social', 'Reading'];
+
     const bookmarksGrid = document.getElementById('bookmarksGrid');
     const categoryPills = document.getElementById('categoryPills');
     const searchNav = document.getElementById('searchNav');
     const btnSearchToggle = document.getElementById('btnSearchToggle');
     const btnClearSearch = document.getElementById('btnClearSearch');
     const searchInput = document.getElementById('searchInput');
-    const bookmarksCount = document.getElementById('bookmarksCount');
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
 
@@ -1064,17 +1380,139 @@
       if (searchNav && !searchNav.contains(e.target) && searchNav.classList.contains('open') && !searchInput.value) {
         closeSearch();
       }
+      if (customCategoryWrapper && !customCategoryWrapper.contains(e.target) && customCategoryWrapper.classList.contains('open')) {
+        closeTagDropdown();
+      }
+    });
+
+    // Shortcuts Modal Operations
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const btnOpenShortcutsModal = document.getElementById('btnOpenShortcutsModal');
+    const btnCloseShortcutsModal = document.getElementById('btnCloseShortcutsModal');
+    const btnGotItShortcuts = document.getElementById('btnGotItShortcuts');
+
+    function openShortcutsModal() {
+      shortcutsModal.classList.remove('hidden');
+    }
+
+    function closeShortcutsModal() {
+      shortcutsModal.classList.add('hidden');
+    }
+
+    btnOpenShortcutsModal.addEventListener('click', openShortcutsModal);
+    btnCloseShortcutsModal.addEventListener('click', closeShortcutsModal);
+    btnGotItShortcuts.addEventListener('click', closeShortcutsModal);
+
+    shortcutsModal.addEventListener('click', (e) => {
+      if (e.target === shortcutsModal) closeShortcutsModal();
+    });
+
+    // Custom 2-Column Tag Dropdown Operations
+    function toggleTagDropdown() {
+      const isOpen = customCategoryWrapper.classList.contains('open');
+      if (isOpen) {
+        closeTagDropdown();
+      } else {
+        openTagDropdown();
+      }
+    }
+
+    function openTagDropdown() {
+      customCategoryWrapper.classList.add('open');
+      tagDropdownTrigger.setAttribute('aria-expanded', 'true');
+      if (availableCategories.length > 6) {
+        tagSearchWrapper.style.display = 'flex';
+        setTimeout(() => tagSearchInput.focus(), 60);
+      } else {
+        tagSearchWrapper.style.display = 'none';
+      }
+    }
+
+    function closeTagDropdown() {
+      customCategoryWrapper.classList.remove('open');
+      tagDropdownTrigger.setAttribute('aria-expanded', 'false');
+      if (tagSearchInput && tagSearchInput.value) {
+        tagSearchInput.value = '';
+        renderTagGrid(availableCategories);
+      }
+    }
+
+    function selectCategory(cat) {
+      addCategory.value = cat;
+      selectedCategoryLabel.textContent = cat;
+      const buttons = tagGridContainer.querySelectorAll('.tag-option-btn');
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-cat') === cat) {
+          btn.classList.add('selected');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          btn.classList.remove('selected');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+      closeTagDropdown();
+    }
+
+    function renderTagGrid(cats) {
+      tagGridContainer.innerHTML = '';
+      if (!cats || cats.length === 0) {
+        tagGridContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 12px; padding: 12px 0;">No matching tags</div>';
+        return;
+      }
+      cats.forEach(cat => {
+        const isSelected = (addCategory.value === cat);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tag-option-btn' + (isSelected ? ' selected' : '');
+        btn.setAttribute('data-cat', cat);
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        btn.title = cat;
+        btn.innerHTML = `
+          <span class="tag-option-name">${escapeHtml(cat)}</span>
+          <span class="tag-check" aria-hidden="true">✓</span>
+        `;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectCategory(cat);
+        });
+        tagGridContainer.appendChild(btn);
+      });
+    }
+
+    tagDropdownTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTagDropdown();
+    });
+
+    tagSearchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = availableCategories.filter(c => c.toLowerCase().includes(q));
+      renderTagGrid(filtered);
+    });
+
+    tagSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeTagDropdown();
+      }
+    });
+
+    tagDropdownMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     // Modal Operations
     function openAddModal() {
       addModal.classList.remove('hidden');
+      closeTagDropdown();
       setTimeout(() => addUrl.focus(), 80);
     }
 
     function closeAddModal() {
       addModal.classList.add('hidden');
       addUrl.value = '';
+      closeTagDropdown();
     }
 
     btnOpenAddModal.addEventListener('click', openAddModal);
@@ -1086,18 +1524,42 @@
     });
 
     document.addEventListener('keydown', (e) => {
+      const isInputActive = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
       if (e.key === 'Escape') {
-        if (!addModal.classList.contains('hidden')) {
+        if (customCategoryWrapper && customCategoryWrapper.classList.contains('open')) {
+          closeTagDropdown();
+        } else if (!shortcutsModal.classList.contains('hidden')) {
+          closeShortcutsModal();
+        } else if (!addModal.classList.contains('hidden')) {
           closeAddModal();
         } else if (searchNav && searchNav.classList.contains('open')) {
           closeSearch();
         }
-      } else if ((e.key === 'n' || e.key === 'N') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        e.preventDefault();
-        openAddModal();
-      } else if (e.key === '/' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        e.preventDefault();
-        openSearch();
+      } else if (!isInputActive) {
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+          e.preventDefault();
+          if (shortcutsModal.classList.contains('hidden')) {
+            openShortcutsModal();
+          } else {
+            closeShortcutsModal();
+          }
+        } else if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault();
+          openAddModal();
+        } else if (e.key === '/') {
+          e.preventDefault();
+          openSearch();
+        } else if (e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+          e.preventDefault();
+          disconnect();
+        } else if (e.key >= '1' && e.key <= '9') {
+          const index = parseInt(e.key, 10) - 1;
+          const pills = categoryPills.querySelectorAll('.chip');
+          if (pills[index]) {
+            e.preventDefault();
+            pills[index].click();
+          }
+        }
       }
     });
 
@@ -1238,15 +1700,21 @@
     }
 
     function updateCategoryOptions(categories) {
-      addCategory.innerHTML = '';
-      const cats = (categories && categories.length > 0) ? categories : ['Personal', 'Work', 'Social', 'Reading'];
-      cats.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        addCategory.appendChild(opt);
-      });
+      availableCategories = (categories && categories.length > 0) ? categories : ['Personal', 'Work', 'Social', 'Reading'];
+      if (!availableCategories.includes(addCategory.value)) {
+        addCategory.value = availableCategories[0];
+        selectedCategoryLabel.textContent = availableCategories[0];
+      }
+      if (availableCategories.length > 6) {
+        tagSearchWrapper.style.display = 'flex';
+      } else {
+        tagSearchWrapper.style.display = 'none';
+      }
+      renderTagGrid(availableCategories);
     }
+
+    // Initialize default tag dropdown options immediately
+    updateCategoryOptions(availableCategories);
 
     function renderCategories(categories) {
       categoryPills.innerHTML = '';
@@ -1299,8 +1767,6 @@
           (item.category && item.category.toLowerCase().includes(q));
         return matchesCategory && matchesSearch;
       });
-
-      bookmarksCount.textContent = filtered.length + ' of ' + allBookmarks.length + ' bookmarks';
 
       if (filtered.length === 0) {
         bookmarksGrid.innerHTML = `
