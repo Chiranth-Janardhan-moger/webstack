@@ -28,20 +28,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for HTML shell, fallback to cached shell when offline
+  // Fast network-first with 2s timeout for HTML shell, fallback to cached shell when offline
   if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const response = await fetch(event.request, { signal: controller.signal });
+          clearTimeout(timeoutId);
           if (response && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
-        })
-        .catch(() => {
-          return caches.match('/index.html').then((cached) => cached || caches.match('/'));
-        })
+        } catch (_) {
+          const cached = await caches.match('/index.html') || await caches.match('/');
+          if (cached) return cached;
+          return fetch(event.request);
+        }
+      })()
     );
   }
 });

@@ -410,7 +410,7 @@ fun PcCompanionSubSheetContent(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Desktop Browser URL",
+                                        text = "Browser URL",
                                         fontSize = 12.sp,
                                         color = appColors.secondaryLabel
                                     )
@@ -425,32 +425,23 @@ fun PcCompanionSubSheetContent(
                             }
 
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(10.dp),
                                 color = appColors.fill,
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("WebStack URL", fullUrl))
                                     copiedUrl = true
-                                    Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
-                                }
+                                    Toast.makeText(context, "URL copied", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (copiedUrl) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-                                        contentDescription = null,
+                                        contentDescription = "Copy URL",
                                         tint = appColors.label,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = if (copiedUrl) "Copied" else "Copy",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = appColors.label
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
@@ -496,7 +487,7 @@ fun PcCompanionSubSheetContent(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Text(
-                                            text = "Security PIN",
+                                            text = "PIN",
                                             fontSize = 12.sp,
                                             color = appColors.secondaryLabel
                                         )
@@ -527,7 +518,7 @@ fun PcCompanionSubSheetContent(
                             }
 
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(10.dp),
                                 color = appColors.fill,
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -535,24 +526,15 @@ fun PcCompanionSubSheetContent(
                                     clipboard.setPrimaryClip(ClipData.newPlainText("WebStack PIN", serverStatus.pin))
                                     copiedPin = true
                                     Toast.makeText(context, "PIN copied", Toast.LENGTH_SHORT).show()
-                                }
+                                },
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (copiedPin) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-                                        contentDescription = null,
+                                        contentDescription = "Copy PIN",
                                         tint = appColors.label,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = if (copiedPin) "Copied" else "Copy",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = appColors.label
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }

@@ -1503,14 +1503,15 @@
     let searchQuery = '';
 
     function getApiBase() {
+      if (window.location.protocol.startsWith('http')) {
+        localStorage.setItem('webstack_server_url', window.location.origin);
+        return window.location.origin;
+      }
       if (window.DEFAULT_PHONE_ORIGIN) {
         return window.DEFAULT_PHONE_ORIGIN;
       }
       const saved = localStorage.getItem('webstack_server_url');
       if (saved && saved.trim()) return saved.trim();
-      if (window.location.protocol.startsWith('http')) {
-        return window.location.origin;
-      }
       return 'http://192.168.1.100:8080';
     }
 
@@ -1705,6 +1706,8 @@
         localStorage.removeItem('webstack_token');
         sessionStorage.removeItem('webstack_token');
       }
+    }
+
     async function flushOfflineQueue() {
       const queue = getOfflineQueue();
       if (!queue || queue.length === 0) return;
