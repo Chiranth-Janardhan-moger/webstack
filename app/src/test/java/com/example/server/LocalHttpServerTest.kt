@@ -14,6 +14,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -268,5 +269,71 @@ class LocalHttpServerTest {
         val swContent = swConn.inputStream.bufferedReader().use { it.readText() }
         assertTrue(swContent.contains("CACHE_NAME"))
         swConn.disconnect()
+    }
+
+    @Test
+    fun testServerWithInvalidCustomPin_fallsBackToGeneratedSixDigitPin() = runBlocking {
+        val customPort = 18897
+        val invalidPin = "1234a"
+        server.start(preferredPort = customPort, customPin = invalidPin)
+        delay(150)
+
+        val status = server.status.value
+        assertTrue("Server should be running", status.isRunning)
+        assertEquals(customPort, status.port)
+        assertNotEquals(invalidPin, status.pin)
+        assertEquals(6, status.pin.length)
+        assertTrue(status.pin.all { it.isDigit() })
+    }
+
+    @Test
+    fun testServerRestart_bindsSamePortImmediatelyWithoutFailure() = runBlocking {
+        val customPort = 18898
+        server.start(preferredPort = customPort)
+        delay(150)
+        assertTrue(server.status.value.isRunning)
+        assertEquals(customPort, server.status.value.port)
+
+        // Stop and immediately restart on the exact same port
+        server.stop()
+        server.start(preferredPort = customPort)
+        delay(150)
+        assertTrue("Server should be running after immediate restart", server.status.value.isRunning)
+        assertEquals(customPort, server.status.value.port)
+    }
+
+    @Test
+    fun testCreateBookmark_triggersAsyncTitleFetch() = runBlocking {
+        val customPort = 18899
+        server.start(preferredPort = customPort)
+        delay(150)
+        val pin = server.status.value.pin
+
+        // Authenticate
+        val authConn = URL("http://127.0.0.1:$customPort/api/auth").openConnection() as HttpURLConnection
+        authConn.requestMethod = "POST"
+        authConn.doOutput = true
+        authConn.setRequestProperty("Content-Type", "application/json")
+        authConn.outputStream.use { it.write("""{"pin":"$pin"}""".toByteArray()) }
+        val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+        authConn.disconnect()
+
+        // Create bookmark
+        val createConn = URL("http://127.0.0.1:$customPort/api/bookmarks").openConnection() as HttpURLConnection
+        createConn.requestMethod = "POST"
+        createConn.doOutput = true
+        createConn.setRequestProperty("Authorization", "Bearer $token")
+        createConn.setRequestProperty("Content-Type", "application/json")
+        createConn.outputStream.use { it.write("""{"url":"https://github.com","category":"Tech"}""".toByteArray()) }
+        assertEquals(201, createConn.responseCode)
+        val createdBody = JSONObject(createConn.inputStream.bufferedReader().use { it.readText() })
+        val bookmarkId = createdBody.getLong("id")
+        createConn.disconnect()
+
+        // Wait briefly for async title fetcher to run and update Room
+        delay(600)
+        val site = dao.getAllWebsitesList().firstOrNull { it.id == bookmarkId }
+        assertNotNull(site)
+        assertTrue("Title should be populated and not blank", site!!.title.isNotBlank())
     }
 }

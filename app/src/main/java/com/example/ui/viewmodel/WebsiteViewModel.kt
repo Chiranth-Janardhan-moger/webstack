@@ -58,7 +58,9 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _companionUseFixedPin = MutableStateFlow(prefs.getBoolean(PREF_COMPANION_USE_FIXED_PIN, false))
     val companionUseFixedPin: StateFlow<Boolean> = _companionUseFixedPin.asStateFlow()
 
-    private val _companionCustomPin = MutableStateFlow(prefs.getString(PREF_COMPANION_CUSTOM_PIN, "") ?: "")
+    private val _companionCustomPin = MutableStateFlow(
+        prefs.getString(PREF_COMPANION_CUSTOM_PIN, "")?.filter { it.isDigit() }?.take(6) ?: ""
+    )
     val companionCustomPin: StateFlow<String> = _companionCustomPin.asStateFlow()
 
     private val _companionOfflineExpiryHours = MutableStateFlow(prefs.getInt(PREF_COMPANION_OFFLINE_EXPIRY_HOURS, DEFAULT_COMPANION_OFFLINE_EXPIRY_HOURS))
@@ -86,7 +88,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setCompanionCustomPin(pin: String) {
-        val cleanPin = pin.trim()
+        val cleanPin = pin.filter { it.isDigit() }.take(6)
         prefs.edit().putString(PREF_COMPANION_CUSTOM_PIN, cleanPin).apply()
         _companionCustomPin.value = cleanPin
     }
@@ -99,7 +101,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
     fun startLocalServer(
         port: Int = _companionPort.value,
-        customPin: String? = if (_companionUseFixedPin.value && _companionCustomPin.value.isNotBlank()) _companionCustomPin.value else null
+        customPin: String? = if (_companionUseFixedPin.value && _companionCustomPin.value.length == 6 && _companionCustomPin.value.all { it.isDigit() }) _companionCustomPin.value else null
     ) {
         localServer.start(port, customPin)
     }

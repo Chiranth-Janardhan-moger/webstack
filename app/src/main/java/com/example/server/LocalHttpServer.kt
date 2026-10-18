@@ -65,7 +65,7 @@ class LocalHttpServer(
             return
         }
 
-        activePin = if (!customPin.isNullOrBlank()) customPin.trim() else generatePin()
+        activePin = if (!customPin.isNullOrBlank() && customPin.trim().length == 6 && customPin.trim().all { it.isDigit() }) customPin.trim() else generatePin()
         activeSessionToken = generateToken()
 
         serverJob = scope.launch {
@@ -74,7 +74,10 @@ class LocalHttpServer(
             val maxPort = (preferredPort + 10).coerceAtMost(65535)
             for (p in preferredPort..maxPort) {
                 try {
-                    boundSocket = ServerSocket(p)
+                    val s = ServerSocket()
+                    s.reuseAddress = true
+                    s.bind(InetSocketAddress(p))
+                    boundSocket = s
                     boundPort = p
                     break
                 } catch (_: Exception) {}
@@ -117,7 +120,11 @@ class LocalHttpServer(
                     }
                 }
             } finally {
-                stop()
+                synchronized(this@LocalHttpServer) {
+                    if (serverSocket == boundSocket) {
+                        stop()
+                    }
+                }
             }
         }
     }
@@ -319,6 +326,9 @@ class LocalHttpServer(
                     put("category", site.category)
                 }
                 sendJsonResponse(output, 201, resp.toString())
+                scope.launch {
+                    repository.fetchTitleAsync(site.id, site.url, site.domain)
+                }
             }.onFailure { err ->
                 val errorMsg = err.localizedMessage ?: "Failed to save bookmark"
                 sendJsonResponse(output, 422, """{"error":${JSONObject.quote(errorMsg)}}""")

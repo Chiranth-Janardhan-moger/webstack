@@ -137,5 +137,23 @@ class ThemeAndSettingsTest {
         assertEquals("Oldest Item", oldestSorted.first().title)
         assertEquals("Newest Item", oldestSorted.last().title)
     }
+
+    @Test
+    fun testCompanionCustomPin_enforcesSixDigitsAndPersistence() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+        // Valid 6 digits
+        vm.setCompanionCustomPin("654321")
+        assertEquals("654321", vm.companionCustomPin.value)
+
+        // Strips non-digits and truncates to 6 digits
+        vm.setCompanionCustomPin("99abc-88#77@66")
+        assertEquals("998877", vm.companionCustomPin.value)
+
+        // Over 6 digits truncated to 6
+        vm.setCompanionCustomPin("123456789")
+        assertEquals("123456", vm.companionCustomPin.value)
+    }
 }
 

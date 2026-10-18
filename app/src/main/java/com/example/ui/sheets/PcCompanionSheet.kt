@@ -667,7 +667,7 @@ fun PcCompanionSettingsDialog(
     var useFixedPin by remember { mutableStateOf(initialUseFixedPin) }
     var pinText by remember {
         mutableStateOf(
-            if (initialCustomPin.isNotBlank()) initialCustomPin
+            if (initialCustomPin.isNotBlank() && initialCustomPin.length == 6 && initialCustomPin.all { it.isDigit() }) initialCustomPin
             else (100000..999999).random().toString()
         )
     }
@@ -675,8 +675,8 @@ fun PcCompanionSettingsDialog(
 
     val parsedPort = portText.trim().toIntOrNull()
     val isPortValid = parsedPort != null && parsedPort in 1024..65535
-    val cleanPin = pinText.trim()
-    val isPinValid = !useFixedPin || cleanPin.length in 4..12
+    val cleanPin = pinText.filter { it.isDigit() }.take(6)
+    val isPinValid = !useFixedPin || cleanPin.length == 6
     val canSave = isPortValid && isPinValid
 
     AlertDialog(
@@ -845,7 +845,7 @@ fun PcCompanionSettingsDialog(
                                 ) {
                                     BasicTextField(
                                         value = pinText,
-                                        onValueChange = { pinText = it.take(12) },
+                                        onValueChange = { pinText = it.filter { ch -> ch.isDigit() }.take(6) },
                                         singleLine = true,
                                         textStyle = androidx.compose.ui.text.TextStyle(
                                             color = appColors.label,
@@ -880,7 +880,7 @@ fun PcCompanionSettingsDialog(
                             }
 
                             Text(
-                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be 4 to 12 characters" else "Saved PIN will be used every time you connect",
+                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be exactly 6 digits" else "Saved PIN will be used every time you connect",
                                 fontSize = 11.sp,
                                 color = if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30) else appColors.tertiaryLabel
                             )

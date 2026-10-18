@@ -1258,6 +1258,16 @@
           </div>
         </div>
 
+        <button id="btnOpenAddModal" class="btn-circle-add" aria-label="Add Bookmark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span class="tooltip">Add Bookmark (N)</span>
+        </button>
+
+        <div class="header-divider"></div>
+
         <button id="btnOpenShortcutsModal" class="btn-circle-action" aria-label="Keyboard Shortcuts">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
@@ -1274,15 +1284,6 @@
           <span class="tooltip">Shortcuts (?)</span>
         </button>
 
-        <div class="header-divider"></div>
-
-        <button id="btnOpenAddModal" class="btn-circle-add" aria-label="Add Bookmark">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span class="tooltip">Add Bookmark (N)</span>
-        </button>
         <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -1800,7 +1801,8 @@
     }
 
     async function submitPin(pin) {
-      if (!pin || pin.length < 4) return;
+      const clean = (pin || '').trim();
+      if (clean.length !== 6 || !/^\d{6}$/.test(clean)) return;
       btnConnect.textContent = 'Verifying...';
       authError.style.display = 'none';
 
