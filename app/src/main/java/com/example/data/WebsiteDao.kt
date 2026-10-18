@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.bookmarks.ExportDao
 import kotlinx.coroutines.flow.Flow
 
@@ -26,6 +27,17 @@ interface WebsiteDao : ExportDao {
 
     @Query("DELETE FROM websites WHERE id = :id")
     suspend fun deleteWebsite(id: Long)
+
+    @Query("DELETE FROM websites WHERE id IN (:ids)")
+    suspend fun deleteWebsitesChunk(ids: List<Long>): Int
+
+    @Transaction
+    suspend fun deleteWebsites(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        ids.chunked(500).forEach { chunk ->
+            deleteWebsitesChunk(chunk)
+        }
+    }
 
     @Query("UPDATE websites SET title = :title WHERE id = :id")
     suspend fun updateTitle(id: Long, title: String)

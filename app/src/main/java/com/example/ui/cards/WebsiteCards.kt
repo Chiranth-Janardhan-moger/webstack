@@ -355,6 +355,8 @@ private fun CardContainer(
     cardShape: RoundedCornerShape,
     pressedScale: Float = 0.985f,
     testTag: String,
+    selectionIndex: Int? = null,
+    isInSelectionMode: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     border: BorderStroke? = null,
@@ -365,10 +367,22 @@ private fun CardContainer(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val isSelected = selectionIndex != null
+    var lastValidSelectionIndex by remember { mutableStateOf(selectionIndex ?: 1) }
+    if (selectionIndex != null) {
+        lastValidSelectionIndex = selectionIndex
+    }
+
+    val targetScale = when {
+        isPressed -> 0.94f
+        isSelected -> 0.96f
+        else -> 1f
+    }
+
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressedScale else 1f,
+        targetValue = targetScale,
         animationSpec = spring(
-            dampingRatio = 0.82f,
+            dampingRatio = 0.78f,
             stiffness = Spring.StiffnessMediumLow
         ),
         label = "card_scale"
@@ -392,9 +406,57 @@ private fun CardContainer(
         colors = CardDefaults.cardColors(containerColor = appColors.surface),
         shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = border
+        border = if (isSelected) BorderStroke(1.dp, Color(0xFF007AFF).copy(alpha = 0.55f)) else border
     ) {
-        content()
+        Box(modifier = Modifier.fillMaxWidth()) {
+            content()
+
+            // Subtle Apple-style scrim when selected (keeps snapshot & typography completely clear)
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(if (appColors.isDark) Color(0x22000000) else Color(0x0C000000))
+                )
+            }
+
+            // Apple iOS Corner Selection Indicator (Clean - only shows badge when selected)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 9.dp, end = 9.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isInSelectionMode && isSelected,
+                    enter = androidx.compose.animation.scaleIn(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut()
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF007AFF), // Apple System Blue
+                        shadowElevation = 3.dp,
+                        border = BorderStroke(1.75.dp, Color.White),
+                        modifier = Modifier.size(26.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = (selectionIndex ?: lastValidSelectionIndex).toString(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                letterSpacing = (-0.3).sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -404,8 +466,12 @@ fun WebsiteCard(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    showDomain: Boolean = true,
+    showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
     onImageSaved: () -> Unit = {},
+    selectionIndex: Int? = null,
+    isInSelectionMode: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -417,6 +483,8 @@ fun WebsiteCard(
         pressedScale = 0.985f,
         border = BorderStroke(0.5.dp, appColors.separator),
         testTag = "website_card_${website.id}",
+        selectionIndex = selectionIndex,
+        isInSelectionMode = isInSelectionMode,
         onClick = onClick,
         onLongClick = onLongClick
     ) {
@@ -430,6 +498,7 @@ fun WebsiteCard(
                 fetchWebPreviews = fetchWebPreviews,
                 height = 185.dp,
                 topCornerRadius = 22.dp,
+                showRefreshButton = !isInSelectionMode,
                 hasCachedImage = hasCachedImage,
                 onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
@@ -464,32 +533,36 @@ fun WebsiteCard(
                             letterSpacing = (-0.2).sp
                         )
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = website.url,
-                        fontSize = 12.sp,
-                        color = appColors.secondaryLabel,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (showDomain) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = website.url,
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel,
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                if (showCategory) {
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                // Semantic Category Badge
-                val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
-                Surface(
-                    color = catAccent.copy(alpha = if (appColors.isDark) 0.2f else 0.12f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = website.category,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = catAccent,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    // Semantic Category Badge
+                    val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
+                    Surface(
+                        color = catAccent.copy(alpha = if (appColors.isDark) 0.2f else 0.12f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = website.category,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = catAccent,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -502,8 +575,12 @@ fun GridWebsiteCard(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    showDomain: Boolean = true,
+    showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
     onImageSaved: () -> Unit = {},
+    selectionIndex: Int? = null,
+    isInSelectionMode: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -515,6 +592,8 @@ fun GridWebsiteCard(
         pressedScale = 0.96f,
         border = BorderStroke(0.5.dp, appColors.separator),
         testTag = "website_grid_card_${website.id}",
+        selectionIndex = selectionIndex,
+        isInSelectionMode = isInSelectionMode,
         onClick = onClick,
         onLongClick = onLongClick
     ) {
@@ -529,6 +608,7 @@ fun GridWebsiteCard(
                 height = 105.dp,
                 topCornerRadius = 18.dp,
                 isGrid = true,
+                showRefreshButton = !isInSelectionMode,
                 hasCachedImage = hasCachedImage,
                 onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
@@ -557,25 +637,31 @@ fun GridWebsiteCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .background(catAccent, CircleShape)
-                    )
-                    Text(
-                        text = website.domain,
-                        fontSize = 11.sp,
-                        color = appColors.secondaryLabel,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                if (showDomain || showCategory) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        if (showCategory) {
+                            val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(catAccent, CircleShape)
+                            )
+                        }
+                        if (showDomain) {
+                            Text(
+                                text = website.domain,
+                                fontSize = 11.sp,
+                                color = appColors.secondaryLabel,
+                                fontWeight = FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -588,8 +674,12 @@ fun CompactWebsiteRow(
     website: Website,
     refreshToken: Long,
     fetchWebPreviews: Boolean = false,
+    showDomain: Boolean = true,
+    showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
     onImageSaved: () -> Unit = {},
+    selectionIndex: Int? = null,
+    isInSelectionMode: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRefreshScreenshot: () -> Unit
@@ -600,6 +690,8 @@ fun CompactWebsiteRow(
         pressedScale = 0.985f,
         border = BorderStroke(0.5.dp, appColors.separator),
         testTag = "compact_website_row_${website.id}",
+        selectionIndex = selectionIndex,
+        isInSelectionMode = isInSelectionMode,
         onClick = onClick,
         onLongClick = onLongClick
     ) {
@@ -646,45 +738,57 @@ fun CompactWebsiteRow(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = website.domain,
-                        modifier = Modifier.weight(1f, fill = false),
-                        fontSize = 12.sp,
-                        color = appColors.secondaryLabel,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "•",
-                        fontSize = 10.sp,
-                        color = appColors.tertiaryLabel
-                    )
-                    val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
-                    Text(
-                        text = website.category,
-                        fontSize = 11.sp,
-                        color = catAccent,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                if (showDomain || showCategory) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (showDomain) {
+                            Text(
+                                text = website.domain,
+                                modifier = Modifier.weight(1f, fill = false),
+                                fontSize = 12.sp,
+                                color = appColors.secondaryLabel,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (showDomain && showCategory) {
+                            Text(
+                                text = "•",
+                                fontSize = 10.sp,
+                                color = appColors.tertiaryLabel
+                            )
+                        }
+                        if (showCategory) {
+                            val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
+                            Text(
+                                text = website.category,
+                                fontSize = 11.sp,
+                                color = catAccent,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
 
-            // Quick Refresh Button with 44dp Touch Target
-            IconButton(
-                onClick = onRefreshScreenshot,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Refresh Screenshot",
-                    tint = appColors.secondaryLabel,
-                    modifier = Modifier.size(18.dp)
-                )
+            if (!isInSelectionMode) {
+                // Quick Refresh Button with 44dp Touch Target
+                IconButton(
+                    onClick = onRefreshScreenshot,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = "Refresh Screenshot",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.width(28.dp))
             }
         }
     }

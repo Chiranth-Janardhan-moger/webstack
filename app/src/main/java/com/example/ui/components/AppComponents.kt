@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -864,24 +865,45 @@ fun AppSwitch(
 /**
  * Shared bottom sheet wrapper with consistent container color, scrim, shape, and drag handle.
  * Eliminates the 4-property boilerplate repeated across every ModalBottomSheet in MainActivity.
+ *
+ * @param enableSwipeToDismiss When false, consumes downward nested scroll and fling so vigorous scrolling
+ *                             never accidentally closes the sheet. Relies on the close button, scrim tap,
+ *                             and system back for intentional dismissal.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppBottomSheet(
     onDismissRequest: () -> Unit,
+    enableSwipeToDismiss: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val appColors = LocalAppColors.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
+        sheetGesturesEnabled = enableSwipeToDismiss,
         sheetMaxWidth = 560.dp,
         containerColor = appColors.secondaryGroupedBackground,
         scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = { AppSheetDragHandle() },
-        content = content
+        dragHandle = {
+            if (enableSwipeToDismiss) {
+                AppSheetDragHandle()
+            } else {
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+        },
+        content = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                content()
+            }
+        }
     )
 }
 

@@ -64,4 +64,22 @@ class DuplicateLinkDetectionTest {
         assertNotEquals(anchor1, anchor2)
         assertEquals(anchor1, anchor1Repeat)
     }
+
+    @Test
+    fun testResolveDedupeKey_matchesAnchorsToBaseUrlToPreventOverwrites() {
+        val base = com.example.ui.util.resolveDedupeKey("https://example.com/doc")
+        val withAnchor1 = com.example.ui.util.resolveDedupeKey("https://example.com/doc#part1")
+        val withAnchor2 = com.example.ui.util.resolveDedupeKey("https://example.com/doc#part2")
+
+        assertEquals(base, withAnchor1)
+        assertEquals(base, withAnchor2)
+    }
+
+    @Test
+    fun testResolveDedupeKey_schemelessInputMatchesFullUrl() {
+        val plain = com.example.ui.util.resolveDedupeKey("example.com/doc")
+        val full = com.example.ui.util.resolveDedupeKey("https://www.example.com/doc/")
+
+        assertEquals(full, plain)
+    }
 }

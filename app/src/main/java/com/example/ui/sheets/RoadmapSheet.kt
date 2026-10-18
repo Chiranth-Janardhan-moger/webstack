@@ -12,8 +12,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -24,17 +27,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Feedback
-import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -75,7 +76,7 @@ fun RoadmapSubSheetContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Navigation Header: Back, Title, Sponsor Pill + Close Button
+        // Navigation Header: Back, Title, Close Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -102,113 +103,17 @@ fun RoadmapSubSheetContent(
                 color = appColors.label
             )
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Top-right corner Sponsor pill with heart icon and Sponsor text
-                Surface(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPONSOR_URL))
-                        context.startActivity(intent)
-                    },
-                    shape = RoundedCornerShape(100.dp),
-                    color = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
-                    border = BorderStroke(0.75.dp, Color(0xFFFF2D55).copy(alpha = 0.35f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite,
-                            contentDescription = "Sponsor",
-                            tint = Color(0xFFFF2D55),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "Sponsor",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFF2D55)
-                        )
-                    }
-                }
-
-                BouncyIconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = appColors.secondaryLabel,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Hero Intro Card
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        color = appColors.fill,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Lightbulb,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-
-                    Column {
-                        Text(
-                            text = "Future Developments",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            color = appColors.label,
-                            letterSpacing = (-0.4).sp
-                        )
-                        Text(
-                            text = "Features currently under consideration",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Upcoming features in planning. Your feedback shapes what gets built.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = appColors.secondaryLabel
+            BouncyIconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "IN THINKING",
@@ -227,156 +132,155 @@ fun RoadmapSubSheetContent(
             icon = Icons.Outlined.Devices
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        RoadmapFeatureCard(
-            number = 2,
-            title = "Bulk Selection & Triage",
-            description = "Multi-select bookmarks to tag, export, or delete in batches.",
-            icon = Icons.Outlined.Checklist
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Feedback & Community Request Card
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(18.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        color = appColors.fill,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Feedback,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = "Have Feature Requests or Ideas?",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = appColors.label
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Would you use backup encryption or PC companion mode? Do you need other features? Let us know on GitHub by opening an issue or replying saying yes!",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = appColors.secondaryLabel
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Button(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_ISSUES_URL))
-                        context.startActivity(intent)
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = appColors.label,
-                        contentColor = appColors.systemBackground
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(44.dp)
-                ) {
-                    Text("Give Feedback on GitHub", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Sponsor Card
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            text = "COMMUNITY & SUPPORT",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
+            // Left Bento Card: Feature Requests
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(18.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        color = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Filled.Favorite,
-                                contentDescription = null,
-                                tint = Color(0xFFFF2D55),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = "Sponsor Development",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = appColors.label
-                    )
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_ISSUES_URL))
+                    context.startActivity(intent)
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "WebStack is built with dedication to privacy and clean design. Supporting through GitHub Sponsors helps speed up future feature releases.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = appColors.secondaryLabel
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPONSOR_URL))
-                        context.startActivity(intent)
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFF2D55).copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF2D55)
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(44.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = Color(0xFFFF2D55),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text("Sponsor on GitHub", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = appColors.fill,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Feedback,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Feature Requests",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Have an idea? Share it",
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
+                }
+            }
+
+            // Right Bento Card: Sponsor Project
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPONSOR_URL))
+                    context.startActivity(intent)
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.Favorite,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF2D55),
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Sponsor Project",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Support ongoing development",
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
                 }
             }
         }

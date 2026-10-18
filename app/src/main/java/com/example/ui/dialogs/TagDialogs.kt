@@ -260,6 +260,7 @@ fun AddTagDialog(
         placeholder = "e.g., AI, Finance, Inspo",
         confirmText = "Create",
         suggestedTags = listOf("Inspiration", "Finance", "Social", "AI Tools", "Dev", "Articles", "Design", "Research"),
+        canConfirm = { it.isNotBlank() && !it.equals("All", ignoreCase = true) && !it.equals("Personal", ignoreCase = true) },
         onConfirm = onAdd,
         onDismiss = onDismiss
     )
@@ -280,7 +281,7 @@ fun EditTagDialog(
         initialValue = currentName,
         placeholder = "Enter tag name",
         confirmText = "Save",
-        canConfirm = { it.isNotBlank() && !it.equals(currentName, ignoreCase = false) },
+        canConfirm = { it.isNotBlank() && !it.equals(currentName, ignoreCase = false) && !it.equals("Personal", ignoreCase = true) && !it.equals("All", ignoreCase = true) },
         onConfirm = onSave,
         onDismiss = onDismiss
     )
@@ -289,6 +290,7 @@ fun EditTagDialog(
 @Composable
 fun DeleteTagConfirmDialog(
     tagName: String,
+    fallbackCategory: String = "Personal",
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -320,8 +322,9 @@ fun DeleteTagConfirmDialog(
             }
         },
         text = {
+            val target = if (tagName.equals(fallbackCategory, ignoreCase = true)) "Personal" else fallbackCategory
             Text(
-                text = "Delete tag \"$tagName\"? Existing links will move to Personal.",
+                text = "Delete tag \"$tagName\"? Existing links will move to $target.",
                 fontSize = 14.sp,
                 color = appColors.secondaryLabel,
                 lineHeight = 20.sp

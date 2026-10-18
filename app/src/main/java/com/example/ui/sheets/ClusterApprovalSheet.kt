@@ -572,7 +572,8 @@ private fun ClusterRow(
                                 isDropdownOpen = true
                             },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                            color = if (appColors.isDark) Color(0xFF2C2C2E) else Color.White,
+                            border = BorderStroke(0.75.dp, appColors.separator),
                             modifier = Modifier.testTag("cluster_dropdown_${cluster.id}")
                         ) {
                             Row(
@@ -605,14 +606,14 @@ private fun ClusterRow(
                             shape = RoundedCornerShape(16.dp),
                             containerColor = if (appColors.isDark) Color(0xFF1C1C1E) else Color.White,
                             tonalElevation = 0.dp,
-                            shadowElevation = 8.dp,
+                            shadowElevation = 4.dp,
                             border = BorderStroke(
-                                width = 0.5.dp,
+                                width = 0.75.dp,
                                 color = if (appColors.isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
                             ),
                             modifier = Modifier
                                 .widthIn(min = 165.dp, max = 230.dp)
-                                .heightIn(max = 280.dp)
+                                .heightIn(max = 320.dp)
                         ) {
                             DropdownMenuItem(
                                 leadingIcon = {
@@ -668,6 +669,7 @@ private fun ClusterRow(
                                     }
                                 )
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
 

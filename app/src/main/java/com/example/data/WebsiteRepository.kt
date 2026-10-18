@@ -1,7 +1,7 @@
 package com.example.data
 
 import com.example.ui.util.extractDomain
-import com.example.ui.util.normalizeUrlForComparison
+import com.example.ui.util.resolveDedupeKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -21,10 +21,10 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
     suspend fun insertWebsites(websites: List<Website>): List<Long> = websiteDao.insertWebsites(websites)
 
     suspend fun findDuplicate(inputUrl: String, excludeId: Long? = null): Website? {
-        val target = normalizeUrlForComparison(inputUrl)
-        if (target.isBlank()) return null
+        val targetKey = resolveDedupeKey(inputUrl)
+        if (targetKey.isBlank()) return null
         return getAllWebsitesList().firstOrNull {
-            it.id != excludeId && normalizeUrlForComparison(it.url) == target
+            it.id != excludeId && it.dedupeKey == targetKey
         }
     }
 
@@ -36,12 +36,17 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
         websiteDao.deleteWebsite(id)
     }
 
+    suspend fun deleteWebsites(ids: List<Long>) = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext
+        websiteDao.deleteWebsites(ids)
+    }
+
     suspend fun renameCategory(oldCategory: String, newCategory: String) {
         websiteDao.renameCategory(oldCategory, newCategory)
     }
 
-    suspend fun resetCategory(category: String) {
-        websiteDao.resetCategoryToDefault(category)
+    suspend fun resetCategory(category: String, fallbackCategory: String = "Personal") {
+        websiteDao.renameCategory(category, fallbackCategory)
     }
 
     suspend fun updateTitle(id: Long, title: String) {

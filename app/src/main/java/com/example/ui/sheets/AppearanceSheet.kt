@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,46 +38,82 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.R
+import com.example.ui.components.AppExplainerDialog
+import com.example.ui.components.AppSwitch
 import com.example.ui.components.AppSubSheetHeader
+import com.example.ui.model.AppFabShape
 import com.example.ui.model.AppThemeMode
 import com.example.ui.model.WebStackLayoutMode
 import com.example.ui.theme.LocalAppColors
 
+private data class AppearanceExplainer(
+    val title: String,
+    val description: String,
+    val icon: ImageVector
+)
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppearanceSubSheetContent(
     themeMode: AppThemeMode,
     onSetThemeMode: (AppThemeMode) -> Unit,
     layoutMode: WebStackLayoutMode,
     onSetLayoutMode: (WebStackLayoutMode) -> Unit,
+    fabShape: AppFabShape = AppFabShape.CIRCLE,
+    onOpenFabShapePicker: () -> Unit = {},
+    showCardDomain: Boolean = true,
+    onToggleShowCardDomain: (Boolean) -> Unit = {},
+    showCardCategory: Boolean = true,
+    onToggleShowCardCategory: (Boolean) -> Unit = {},
+    onOpenCardDetails: () -> Unit = {},
+    onOpenCustomizeTags: () -> Unit = {},
     onBack: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     val appColors = LocalAppColors.current
+    val scrollState = rememberScrollState()
+    var activeExplainer by remember { mutableStateOf<AppearanceExplainer?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         AppSubSheetHeader(
@@ -84,7 +122,7 @@ fun AppearanceSubSheetContent(
             onDismiss = onDismiss
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Section: THEME
         Text(
@@ -289,6 +327,259 @@ fun AppearanceSubSheetContent(
             }
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section: INTERFACE
+        Text(
+            text = "INTERFACE",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = appColors.secondaryGroupedBackground,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 1. Button Shape
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onOpenFabShapePicker()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = AppearanceExplainer(
+                                    title = "Button Shape",
+                                    description = "Choose from 12 expressive shapes for your quick-add floating action button on the home screen.",
+                                    icon = Icons.Default.Add
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val currentShape = fabShape.toComposeShape()
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .background(color = appColors.label, shape = currentShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = appColors.systemBackground,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Button Shape",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = fabShape.displayName,
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Change button shape",
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 2. Card Details
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onOpenCardDetails()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = AppearanceExplainer(
+                                    title = "Card Details",
+                                    description = "Configure bookmark card display options, including hiding domain URLs and category tags.",
+                                    icon = Icons.Outlined.DashboardCustomize
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                color = appColors.label,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.DashboardCustomize,
+                                        contentDescription = null,
+                                        tint = appColors.systemBackground,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Card Details",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = "Domain, tags, and display options",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Customize card details",
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 3. Tags & Categories
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onOpenCustomizeTags()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = AppearanceExplainer(
+                                    title = "Tags & Categories",
+                                    description = "Reorder active tags, park tags safely, and manage category organization.",
+                                    icon = Icons.AutoMirrored.Outlined.Label
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                color = appColors.label,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.Label,
+                                        contentDescription = null,
+                                        tint = appColors.systemBackground,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Tags & Categories",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = "Reorder, park, and manage tags",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Customize tags",
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(28.dp))
 
         val doneInteractionSource = remember { MutableInteractionSource() }
@@ -326,4 +617,14 @@ fun AppearanceSubSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+
+    activeExplainer?.let { exp ->
+        AppExplainerDialog(
+            title = exp.title,
+            description = exp.description,
+            icon = exp.icon,
+            onDismiss = { activeExplainer = null }
+        )
+    }
 }
+

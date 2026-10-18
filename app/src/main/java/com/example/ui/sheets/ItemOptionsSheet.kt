@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -131,6 +132,7 @@ fun ItemOptionsBottomSheetContent(
     onCopy: () -> Unit = {},
     onShare: () -> Unit,
     onRefresh: () -> Unit = {},
+    onSelect: () -> Unit = {},
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -270,17 +272,17 @@ fun ItemOptionsBottomSheetContent(
                 )
             }
 
-            // Row 3: Maintenance (Refresh & Delete)
+            // Row 3: Selection & Destructive (Select & Delete)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ActionTile(
-                    label = "Refresh",
-                    icon = Icons.Outlined.Refresh,
-                    onClick = onRefresh,
+                    label = "Select",
+                    icon = Icons.Outlined.Checklist,
+                    onClick = onSelect,
                     modifier = Modifier.weight(1f),
-                    testTag = "action_refresh_website"
+                    testTag = "action_select_website"
                 )
                 ActionTile(
                     label = "Delete",

@@ -27,11 +27,14 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.LocalAppColors
 import com.example.ui.util.getCategoryAccentColor
 
+import androidx.compose.material.icons.outlined.Tune
+
 @Composable
 fun TagOptionsBottomSheetContent(
     tagName: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onCustomizeAll: (() -> Unit)? = null,
     onDismiss: () -> Unit = {}
 ) {
     val appColors = LocalAppColors.current
@@ -72,25 +75,53 @@ fun TagOptionsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Single Row, 2 Columns: Edit and Delete
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        val isDefault = tagName.equals("Personal", ignoreCase = true)
+
+        if (!isDefault) {
+            // Single Row, 2 Columns: Edit and Delete
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ActionTile(
+                    label = "Edit",
+                    icon = Icons.Outlined.Edit,
+                    onClick = onEdit,
+                    modifier = Modifier.weight(1f),
+                    testTag = "action_edit_tag"
+                )
+                ActionTile(
+                    label = "Delete",
+                    icon = Icons.Outlined.Delete,
+                    onClick = onDelete,
+                    isDestructive = true,
+                    modifier = Modifier.weight(1f),
+                    testTag = "action_delete_tag"
+                )
+            }
+        } else {
+            Surface(
+                color = appColors.secondaryGroupedBackground,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Personal is the default category and cannot be edited, deleted, or parked.",
+                    fontSize = 13.sp,
+                    color = appColors.secondaryLabel,
+                    modifier = Modifier.padding(14.dp)
+                )
+            }
+        }
+
+        if (onCustomizeAll != null) {
+            Spacer(modifier = Modifier.height(10.dp))
             ActionTile(
-                label = "Edit",
-                icon = Icons.Outlined.Edit,
-                onClick = onEdit,
-                modifier = Modifier.weight(1f),
-                testTag = "action_edit_tag"
-            )
-            ActionTile(
-                label = "Delete",
-                icon = Icons.Outlined.Delete,
-                onClick = onDelete,
-                isDestructive = true,
-                modifier = Modifier.weight(1f),
-                testTag = "action_delete_tag"
+                label = "Customize & Organize All Tags",
+                icon = Icons.Outlined.Tune,
+                onClick = onCustomizeAll,
+                modifier = Modifier.fillMaxWidth(),
+                testTag = "action_customize_all_tags"
             )
         }
 

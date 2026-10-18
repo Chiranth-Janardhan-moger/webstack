@@ -9,8 +9,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -18,19 +20,27 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.ui.model.AppThemeMode
+import com.example.ui.model.BookmarkSortOrder
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -39,13 +49,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,10 +68,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -79,13 +95,15 @@ import com.example.ui.cards.WebsiteCard
 import com.example.ui.components.AppBottomSheet
 import com.example.ui.components.AppCategoryCapsuleBar
 import com.example.ui.components.AppEmptyState
+import com.example.ui.components.AppFloatingActionButton
 import com.example.ui.components.AppNavigationHeader
 import com.example.ui.dialogs.AddTagDialog
 import com.example.ui.dialogs.DeleteTagConfirmDialog
 import com.example.ui.dialogs.EditTagDialog
+import com.example.ui.model.AppFabShape
 import com.example.ui.model.WebStackLayoutMode
 import com.example.ui.sheets.AddWebsiteSheetContent
-import com.example.ui.sheets.AppInfoBottomSheetContent
+import com.example.ui.sheets.CustomizeTagsSheetContent
 import com.example.ui.sheets.EditWebsiteSheetContent
 import com.example.ui.sheets.ItemOptionsBottomSheetContent
 import com.example.ui.sheets.SettingsBottomSheetContent
@@ -99,6 +117,7 @@ import com.example.ui.util.extractUrlFromText
 import com.example.ui.util.openWebsiteInBrowser
 import com.example.ui.util.shareWebsiteLink
 import com.example.ui.viewmodel.WebsiteViewModel
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
@@ -107,6 +126,7 @@ class MainActivity : ComponentActivity() {
     private val shortcutActionState = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
         enableEdgeToEdge()
@@ -201,13 +221,12 @@ fun WebStackScreen(
     var initialAddUrl by remember { mutableStateOf("") }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showWhatsNewSheet by remember { mutableStateOf(false) }
-    var showAppInfoSheet by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 6) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 7) }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -216,19 +235,40 @@ fun WebStackScreen(
                 }
         )
     }
+    var fabShape by remember {
+        mutableStateOf(
+            prefs.getString("fab_shape", null)?.let { saved ->
+                runCatching { AppFabShape.valueOf(saved) }.getOrNull() ?: AppFabShape.fromId(saved)
+            } ?: AppFabShape.CIRCLE
+        )
+    }
     var fetchWebPreviews by remember { mutableStateOf(prefs.getBoolean("fetch_web_previews", false)) }
+    var showCardDomain by remember { mutableStateOf(prefs.getBoolean("show_card_domain", true)) }
+    var showCardCategory by remember { mutableStateOf(prefs.getBoolean("show_card_category", true)) }
+    var bookmarkSortOrder by remember {
+        val saved = prefs.getString("bookmark_sort_order", BookmarkSortOrder.NEWEST.name) ?: BookmarkSortOrder.NEWEST.name
+        mutableStateOf(runCatching { BookmarkSortOrder.valueOf(saved) }.getOrDefault(BookmarkSortOrder.NEWEST))
+    }
     var websiteForOptions by remember { mutableStateOf<Website?>(null) }
     var websiteToEdit by remember { mutableStateOf<Website?>(null) }
     var websiteToDelete by remember { mutableStateOf<Website?>(null) }
+    val selectedWebsiteIds = remember { mutableStateListOf<Long>() }
+    var showBulkDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    // Intercept system back press when bulk selection is active
+    BackHandler(enabled = selectedWebsiteIds.isNotEmpty()) {
+        selectedWebsiteIds.clear()
+    }
 
     // Intercept system back press when search is expanded to collapse search first
-    BackHandler(enabled = isSearchExpanded) {
+    BackHandler(enabled = isSearchExpanded && selectedWebsiteIds.isEmpty()) {
         searchQuery = ""
         isSearchExpanded = false
     }
 
     // Tag management states
     var showAddTagDialog by remember { mutableStateOf(false) }
+    var showCustomizeTagsSheet by remember { mutableStateOf(false) }
     var categoryForOptions by remember { mutableStateOf<String?>(null) }
     var categoryToEdit by remember { mutableStateOf<String?>(null) }
     var categoryToDelete by remember { mutableStateOf<String?>(null) }
@@ -315,13 +355,17 @@ fun WebStackScreen(
         }
     }
 
-    // Filter websites according to selected category and search query
-    val filteredWebsites = remember(websitesState, selectedCategory, searchQuery) {
+    // Filter websites according to selected category, search query, and sort order
+    val filteredWebsites = remember(websitesState, selectedCategory, searchQuery, bookmarkSortOrder) {
         val current = websitesState ?: return@remember emptyList()
+        val sorted = when (bookmarkSortOrder) {
+            BookmarkSortOrder.NEWEST -> current
+            BookmarkSortOrder.OLDEST -> current.asReversed()
+        }
         val categoryFiltered = if (selectedCategory == "All") {
-            current
+            sorted
         } else {
-            current.filter {
+            sorted.filter {
                 it.category.equals(selectedCategory, ignoreCase = true)
             }
         }
@@ -343,46 +387,21 @@ fun WebStackScreen(
         containerColor = appColors.groupedBackground,
         floatingActionButton = {
             if (!showVersion110Screen) {
-                // Liquid Glass Floating Action Button
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-                val fabScale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.92f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    label = "fab_scale_anim"
-                )
-
-                FloatingActionButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                AppFloatingActionButton(
+                    fabShape = fabShape,
+                    isSelectionMode = selectedWebsiteIds.isNotEmpty(),
+                    selectedCount = selectedWebsiteIds.size,
+                    onAddClick = {
                         initialAddUrl = ""
                         showAddSheet = true
                     },
-                    containerColor = appColors.label,
-                    contentColor = appColors.systemBackground,
-                    shape = CircleShape,
-                    interactionSource = interactionSource,
-                    modifier = Modifier
-                        .padding(bottom = 12.dp, end = 8.dp)
-                        .size(58.dp)
-                        .graphicsLayer {
-                            scaleX = fabScale
-                            scaleY = fabScale
-                        }
-                        .shadow(
-                            elevation = 10.dp,
-                            shape = CircleShape,
-                            ambientColor = appColors.label.copy(alpha = 0.12f),
-                            spotColor = appColors.label.copy(alpha = 0.22f)
-                        )
-                        .testTag("add_website_fab")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add Website Link",
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
+                    onCancelSelection = {
+                        selectedWebsiteIds.clear()
+                    },
+                    onDeleteSelected = {
+                        showBulkDeleteConfirmDialog = true
+                    }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.End
@@ -504,16 +523,40 @@ fun WebStackScreen(
                                     fadeOutSpec = tween(durationMillis = 100)
                                 )
                             ) {
-                                val onCardClick = remember(website.url) {
+                                val isSelectionMode = selectedWebsiteIds.isNotEmpty()
+                                val selIndex = if (isSelectionMode) {
+                                    val idx = selectedWebsiteIds.indexOf(website.id)
+                                    if (idx != -1) idx + 1 else null
+                                } else null
+
+                                val onCardClick: () -> Unit = remember(isSelectionMode, website.url, website.id, selectedWebsiteIds.size) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        openWebsiteInBrowser(context, website.url)
+                                        if (isSelectionMode) {
+                                            if (selectedWebsiteIds.contains(website.id)) {
+                                                selectedWebsiteIds.remove(website.id)
+                                            } else {
+                                                selectedWebsiteIds.add(website.id)
+                                            }
+                                        } else {
+                                            openWebsiteInBrowser(context, website.url)
+                                        }
+                                        Unit
                                     }
                                 }
-                                val onCardLongClick = remember(website) {
+                                val onCardLongClick: () -> Unit = remember(isSelectionMode, website, selectedWebsiteIds.size) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        websiteForOptions = website
+                                        if (isSelectionMode) {
+                                            if (selectedWebsiteIds.contains(website.id)) {
+                                                selectedWebsiteIds.remove(website.id)
+                                            } else {
+                                                selectedWebsiteIds.add(website.id)
+                                            }
+                                        } else {
+                                            websiteForOptions = website
+                                        }
+                                        Unit
                                     }
                                 }
                                 val onCardRefresh = remember(website.id, website.title, fetchWebPreviews) {
@@ -536,8 +579,12 @@ fun WebStackScreen(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        showDomain = showCardDomain,
+                                        showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         onImageSaved = onImageSaved,
+                                        selectionIndex = selIndex,
+                                        isInSelectionMode = isSelectionMode,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
@@ -546,8 +593,12 @@ fun WebStackScreen(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        showDomain = showCardDomain,
+                                        showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         onImageSaved = onImageSaved,
+                                        selectionIndex = selIndex,
+                                        isInSelectionMode = isSelectionMode,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
@@ -556,8 +607,12 @@ fun WebStackScreen(
                                         website = website,
                                         refreshToken = refreshToken,
                                         fetchWebPreviews = fetchWebPreviews,
+                                        showDomain = showCardDomain,
+                                        showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         onImageSaved = onImageSaved,
+                                        selectionIndex = selIndex,
+                                        isInSelectionMode = isSelectionMode,
                                         onClick = onCardClick,
                                         onLongClick = onCardLongClick,
                                         onRefreshScreenshot = onCardRefresh
@@ -583,6 +638,10 @@ fun WebStackScreen(
                     onDelete = {
                         categoryToDelete = targetTag
                         categoryForOptions = null
+                    },
+                    onCustomizeAll = {
+                        categoryForOptions = null
+                        showCustomizeTagsSheet = true
                     },
                     onDismiss = { categoryForOptions = null }
                 )
@@ -631,27 +690,37 @@ fun WebStackScreen(
         // Delete Tag Confirmation Alert
         if (categoryToDelete != null) {
             val tagToDelete = categoryToDelete!!
-            DeleteTagConfirmDialog(
-                tagName = tagToDelete,
-                onConfirm = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.deleteCategory(tagToDelete)
-                    if (selectedCategory.equals(tagToDelete, ignoreCase = true)) {
-                        selectedCategory = "All"
-                    }
-                    Toast.makeText(context, "Tag \"$tagToDelete\" deleted", Toast.LENGTH_SHORT).show()
-                    categoryToDelete = null
-                },
-                onDismiss = { categoryToDelete = null }
-            )
+            if (tagToDelete.equals("Personal", ignoreCase = true)) {
+                categoryToDelete = null
+                Toast.makeText(context, "Personal is the default category and cannot be deleted", Toast.LENGTH_SHORT).show()
+            } else {
+                val fallbackCategory by viewModel.fallbackCategory.collectAsState()
+                DeleteTagConfirmDialog(
+                    tagName = tagToDelete,
+                    fallbackCategory = fallbackCategory,
+                    onConfirm = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.deleteCategory(tagToDelete)
+                        if (selectedCategory.equals(tagToDelete, ignoreCase = true)) {
+                            selectedCategory = "All"
+                        }
+                        Toast.makeText(context, "Tag \"$tagToDelete\" deleted", Toast.LENGTH_SHORT).show()
+                        categoryToDelete = null
+                    },
+                    onDismiss = { categoryToDelete = null }
+                )
+            }
         }
 
         // Settings Bottom Sheet
         if (showSettingsSheet) {
-            AppBottomSheet(onDismissRequest = {
-                viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
-                showSettingsSheet = false
-            }) {
+            AppBottomSheet(
+                onDismissRequest = {
+                    viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
+                    showSettingsSheet = false
+                },
+                enableSwipeToDismiss = false
+            ) {
                 SettingsBottomSheetContent(
                     themeMode = themeMode,
                     onSetThemeMode = onSetThemeMode,
@@ -664,23 +733,44 @@ fun WebStackScreen(
                             .putBoolean("is_compact_list", mode == WebStackLayoutMode.COMPACT_LIST)
                             .apply()
                     },
+                    fabShape = fabShape,
+                    onSetFabShape = { shape ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        fabShape = shape
+                        prefs.edit().putString("fab_shape", shape.name).apply()
+                    },
                     fetchWebPreviews = fetchWebPreviews,
                     onToggleFetchWebPreviews = { enabled ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         fetchWebPreviews = enabled
                         prefs.edit().putBoolean("fetch_web_previews", enabled).apply()
                     },
+                    showCardDomain = showCardDomain,
+                    onToggleShowCardDomain = { enabled ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showCardDomain = enabled
+                        prefs.edit().putBoolean("show_card_domain", enabled).apply()
+                    },
+                    showCardCategory = showCardCategory,
+                    onToggleShowCardCategory = { enabled ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showCardCategory = enabled
+                        prefs.edit().putBoolean("show_card_category", enabled).apply()
+                    },
+                    sortOrder = bookmarkSortOrder,
+                    onSetSortOrder = { order ->
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        bookmarkSortOrder = order
+                        prefs.edit().putString("bookmark_sort_order", order.name).apply()
+                    },
+                    onOpenAddTagDialog = {
+                        showAddTagDialog = true
+                    },
                     onOpenWhatsNew = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         showSettingsSheet = false
                         viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
                         showVersion110Screen = true
-                    },
-                    onOpenAppInfo = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        showSettingsSheet = false
-                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
-                        showAppInfoSheet = true
                     },
                     onDismiss = {
                         viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
@@ -691,29 +781,30 @@ fun WebStackScreen(
             }
         }
 
-        // "What's New" Sheet
-        if (showWhatsNewSheet) {
-            AppBottomSheet(onDismissRequest = { showWhatsNewSheet = false }) {
-                WhatsNewBottomSheetContent(
-                    onDismiss = { showWhatsNewSheet = false }
+        // Customize Tags Sheet (Live Preview + 2-Column Drag & Drop)
+        if (showCustomizeTagsSheet) {
+            AppBottomSheet(
+                onDismissRequest = { showCustomizeTagsSheet = false },
+                enableSwipeToDismiss = false
+            ) {
+                CustomizeTagsSheetContent(
+                    viewModel = viewModel,
+                    onOpenAddTagDialog = {
+                        showAddTagDialog = true
+                    },
+                    onDismiss = { showCustomizeTagsSheet = false }
                 )
             }
         }
 
-        // "App Info" Sheet
-        if (showAppInfoSheet) {
-            AppBottomSheet(onDismissRequest = { showAppInfoSheet = false }) {
-                AppInfoBottomSheetContent(
-                    onDismiss = { showAppInfoSheet = false },
-                    onBack = {
-                        showAppInfoSheet = false
-                        viewModel.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.MAIN)
-                        showSettingsSheet = true
-                    },
-                    onOpenWhatsNew = {
-                        showAppInfoSheet = false
-                        showVersion110Screen = true
-                    }
+        // "What's New" Sheet
+        if (showWhatsNewSheet) {
+            AppBottomSheet(
+                onDismissRequest = { showWhatsNewSheet = false },
+                enableSwipeToDismiss = false
+            ) {
+                WhatsNewBottomSheetContent(
+                    onDismiss = { showWhatsNewSheet = false }
                 )
             }
         }
@@ -786,6 +877,13 @@ fun WebStackScreen(
                     onShare = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         shareWebsiteLink(context, targetWebsite)
+                        websiteForOptions = null
+                    },
+                    onSelect = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (!selectedWebsiteIds.contains(targetWebsite.id)) {
+                            selectedWebsiteIds.add(targetWebsite.id)
+                        }
                         websiteForOptions = null
                     },
                     onDelete = {
@@ -878,6 +976,59 @@ fun WebStackScreen(
             )
         }
 
+        // Bulk Delete Confirmation Alert
+        if (showBulkDeleteConfirmDialog) {
+            val count = selectedWebsiteIds.size
+            AlertDialog(
+                onDismissRequest = { showBulkDeleteConfirmDialog = false },
+                containerColor = appColors.secondaryGroupedBackground,
+                tonalElevation = 0.dp,
+                title = {
+                    Text(
+                        text = "Delete $count Bookmarks?",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = appColors.label
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete these $count bookmarks from your stack? This action cannot be undone.",
+                        fontSize = 14.sp,
+                        color = appColors.secondaryLabel,
+                        lineHeight = 20.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val toDelete = selectedWebsiteIds.toList()
+                            viewModel.deleteWebsites(toDelete)
+                            selectedWebsiteIds.clear()
+                            showBulkDeleteConfirmDialog = false
+                            Toast.makeText(context, "Deleted $count bookmarks", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = appColors.destructive,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Delete", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showBulkDeleteConfirmDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
+                    ) {
+                        Text("Cancel", fontWeight = FontWeight.Medium)
+                    }
+                }
+            )
+        }
+
         // Version Update Screen
         AnimatedVisibility(
             visible = showVersion110Screen,
@@ -886,7 +1037,7 @@ fun WebStackScreen(
         ) {
             VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 6).apply()
+                    prefs.edit().putInt("last_seen_version_code", 7).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {

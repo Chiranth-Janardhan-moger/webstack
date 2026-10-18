@@ -28,24 +28,33 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 - **Visual Website Cards**: Captures and renders high-resolution page previews and favicons for fast visual scanning.
 - **Dual Display Modes**: Seamlessly toggle between full visual screenshot cards and dense compact row listings.
+- **Multi-Select & Bulk Delete**: Long-press bookmarks to enter multi-selection mode with visual index badges and bulk deletion.
+- **Customizable Action Button**: Personalize the floating action button with 12 distinct Material 3 Expressive shapes.
+- **Tag Organization & Reordering**: Reorder and organize category tags with fluid drag-and-drop and safe parking zones.
+- **Sort Order Preferences**: Sort bookmarks by newest or oldest saved with animated segmented controls.
 - **Hardware-Accelerated Search**: Zero-lag filtering across website titles, domains, and custom tags with 60/120 FPS transitions.
 - **Dynamic Category Management**: Create, rename, delete, and filter custom category tags with interactive bottom sheets.
 - **Offline Snapshot Caching**: Previews and metadata are persisted locally on-device for instant loading without mobile data consumption.
 - **Native Android Share Sheet**: Receive and save links directly from Google Chrome, Firefox, or any application in one tap.
 - **Smart Clipboard Detection**: Automatically suggests saving valid URLs detected on the system clipboard.
+- **Native Cold-Start Splash Screen**: Instant startup experience adhering to official Android 12+ Splash Screen standards.
 - **Zero Trackers & Privacy First**: Fully open source with no telemetry, advertising SDKs, or third-party tracking libraries.
 
 ---
 
 ## Screenshots
 
-| Visual Bookmark Stack | Save Link Sheet | Settings |
+| Home Screen | Settings Sheet | Appearance & Themes |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" width="260" alt="Visual Bookmarks" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" width="260" alt="Save Link Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" width="260" alt="Settings" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" width="260" alt="Home Screen" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" width="260" alt="Settings Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" width="260" alt="Appearance and Themes" /> |
 
-| Appearance & Layout | Backup & Restore | App Info |
+| Button Shape Picker | Card Details & Sort Order | Customize Tags |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" width="260" alt="Appearance and Layout" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpeg" width="260" alt="Backup and Restore" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpeg" width="260" alt="App Info" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" width="260" alt="Button Shape Picker" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpeg" width="260" alt="Card Details and Sort Order" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpeg" width="260" alt="Customize Tags" /> |
+
+| Backup & Restore | App Info & Features | Multi-Select & Bulk Delete |
+| :---: | :---: | :---: |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.jpeg" width="260" alt="Backup and Restore" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.jpeg" width="260" alt="App Info and Features" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.jpeg" width="260" alt="Multi-Select and Bulk Delete" /> |
 
 ---
 

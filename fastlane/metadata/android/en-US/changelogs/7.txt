@@ -1,0 +1,5 @@
+- Multi-Select Mode: Long-press to select multiple bookmarks and delete them in bulk
+- Action Button Customization: Personalize the floating button with 12 distinct shapes
+- Visual Tag Reordering: Drag and drop active and parked tags with insertion slot markers
+- Redesigned Import Review: Expandable bookmark inspection with batch category assignment
+- Compact Grouped Settings: Clean card layouts with hairline dividers across Settings and App Info

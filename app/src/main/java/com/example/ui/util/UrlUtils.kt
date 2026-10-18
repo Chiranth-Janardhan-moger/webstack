@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import com.example.bookmarks.BookmarkNormalizer
 import com.example.data.Website
 
 fun extractUrlFromText(rawText: String): String? {
@@ -172,4 +173,21 @@ fun normalizeUrlForComparison(raw: String): String {
     } catch (_: Exception) {
         withScheme.removePrefix("https://").removePrefix("http://").removePrefix("www.").trimEnd('/')
     }
+}
+
+/**
+ * Resolves the canonical deduplication key for an input URL matching the database index.
+ * Ensures consistent duplicate detection across UI and persistence layers.
+ */
+fun resolveDedupeKey(raw: String): String {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return ""
+    val withScheme = if (!trimmed.startsWith("http://", ignoreCase = true) &&
+        !trimmed.startsWith("https://", ignoreCase = true)
+    ) {
+        "https://$trimmed"
+    } else {
+        trimmed
+    }
+    return BookmarkNormalizer.dedupeKey(withScheme) ?: withScheme
 }

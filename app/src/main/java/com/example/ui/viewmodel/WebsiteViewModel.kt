@@ -9,7 +9,7 @@ import com.example.data.WebsiteRepository
 import com.example.ui.util.DEFAULT_CATEGORIES
 import android.content.Context
 import com.example.data.BackupManager
-import com.example.ui.util.normalizeUrlForComparison
+import com.example.ui.util.resolveDedupeKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -32,6 +33,12 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
     private val _categories = MutableStateFlow<List<String>>(emptyList())
     val categories: StateFlow<List<String>> = _categories.asStateFlow()
+
+    private val _parkedCategories = MutableStateFlow<List<String>>(emptyList())
+    val parkedCategories: StateFlow<List<String>> = _parkedCategories.asStateFlow()
+
+    private val _fallbackCategory = MutableStateFlow<String>("Personal")
+    val fallbackCategory: StateFlow<String> = _fallbackCategory.asStateFlow()
 
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
@@ -81,16 +88,42 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private fun loadCategories() {
         val list = prefs.getString("saved_categories_csv", null)
             ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
-        if (list.isNullOrEmpty()) {
-            _categories.value = DEFAULT_CATEGORIES
-            saveCategoriesToPrefs(DEFAULT_CATEGORIES)
+        val ensuredList = if (list.isNullOrEmpty()) {
+            DEFAULT_CATEGORIES
+        } else if (!list.any { it.equals("Personal", ignoreCase = true) }) {
+            listOf("Personal") + list
         } else {
-            _categories.value = list
+            list
+        }
+        _categories.value = ensuredList
+        saveCategoriesToPrefs(ensuredList)
+
+        val parkedList = prefs.getString("parked_categories_csv", null)
+            ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+            ?.filterNot { it.equals("Personal", ignoreCase = true) } ?: emptyList()
+        _parkedCategories.value = parkedList
+        if (parkedList.size != (prefs.getString("parked_categories_csv", null)?.split(",")?.size ?: 0)) {
+            saveParkedCategoriesToPrefs(parkedList)
+        }
+
+        val fallback = prefs.getString("fallback_deleted_category", "Personal")?.trim()?.takeIf { it.isNotBlank() } ?: "Personal"
+        _fallbackCategory.value = fallback
+    }
+
+    fun setFallbackCategory(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank()) {
+            _fallbackCategory.value = trimmed
+            prefs.edit().putString("fallback_deleted_category", trimmed).apply()
         }
     }
 
     private fun saveCategoriesToPrefs(list: List<String>) {
         prefs.edit().putString("saved_categories_csv", list.joinToString(",")).apply()
+    }
+
+    private fun saveParkedCategoriesToPrefs(list: List<String>) {
+        prefs.edit().putString("parked_categories_csv", list.joinToString(",")).apply()
     }
 
     private fun loadCachedWebsites(): List<Website>? {
@@ -151,7 +184,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         val trimmed = name.trim()
         if (trimmed.isBlank() || trimmed.equals("All", ignoreCase = true)) return false
         val current = _categories.value.toMutableList()
-        if (current.any { it.equals(trimmed, ignoreCase = true) }) return false
+        val parked = _parkedCategories.value.toMutableList()
+        if (current.any { it.equals(trimmed, ignoreCase = true) } || parked.any { it.equals(trimmed, ignoreCase = true) }) {
+            return false
+        }
         current.add(trimmed)
         _categories.value = current
         saveCategoriesToPrefs(current)
@@ -159,17 +195,32 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun renameCategory(oldName: String, newName: String): Boolean {
+        if (oldName.equals("Personal", ignoreCase = true)) return false
         val trimmedNew = newName.trim()
-        if (trimmedNew.isBlank() || trimmedNew.equals("All", ignoreCase = true)) return false
+        if (trimmedNew.isBlank() || trimmedNew.equals("All", ignoreCase = true) || trimmedNew.equals("Personal", ignoreCase = true)) return false
         val current = _categories.value.toMutableList()
-        val index = current.indexOfFirst { it.equals(oldName, ignoreCase = true) }
-        if (index == -1) return false
-        if (current.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) }) {
+        val parked = _parkedCategories.value.toMutableList()
+        val indexActive = current.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+        val indexParked = parked.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+        if (indexActive == -1 && indexParked == -1) return false
+        if (current.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) } ||
+            parked.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) }) {
             return false
         }
-        current[index] = trimmedNew
-        _categories.value = current
-        saveCategoriesToPrefs(current)
+        if (indexActive != -1) {
+            current[indexActive] = trimmedNew
+            _categories.value = current
+            saveCategoriesToPrefs(current)
+        }
+        if (indexParked != -1) {
+            parked[indexParked] = trimmedNew
+            _parkedCategories.value = parked
+            saveParkedCategoriesToPrefs(parked)
+        }
+
+        if (oldName.equals(_fallbackCategory.value, ignoreCase = true)) {
+            setFallbackCategory(trimmedNew)
+        }
 
         viewModelScope.launch {
             repository.renameCategory(oldName, trimmedNew)
@@ -177,18 +228,100 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         return true
     }
 
-    fun deleteCategory(name: String): Boolean {
+    fun deleteCategory(name: String, fallbackOverride: String? = null): Boolean {
+        if (name.equals("Personal", ignoreCase = true)) {
+            return false
+        }
         val current = _categories.value.toMutableList()
-        val removed = current.removeAll { it.equals(name, ignoreCase = true) }
-        if (removed) {
-            _categories.value = current
-            saveCategoriesToPrefs(current)
+        val parked = _parkedCategories.value.toMutableList()
+        val removedActive = current.removeAll { it.equals(name, ignoreCase = true) }
+        val removedParked = parked.removeAll { it.equals(name, ignoreCase = true) }
+        if (removedActive || removedParked) {
+            if (removedActive) {
+                _categories.value = current
+                saveCategoriesToPrefs(current)
+            }
+            if (removedParked) {
+                _parkedCategories.value = parked
+                saveParkedCategoriesToPrefs(parked)
+            }
+
+            var target = fallbackOverride?.trim()?.takeIf { it.isNotBlank() } ?: _fallbackCategory.value
+            if (target.equals(name, ignoreCase = true)) {
+                target = current.firstOrNull() ?: "Personal"
+                setFallbackCategory(target)
+            }
+
             viewModelScope.launch {
-                repository.resetCategory(name)
+                repository.resetCategory(name, target)
             }
             return true
         }
         return false
+    }
+
+    fun updateCategoriesOrder(newActive: List<String>) {
+        _categories.value = newActive
+        saveCategoriesToPrefs(newActive)
+    }
+
+    fun parkCategory(tag: String) {
+        val trimmed = tag.trim()
+        if (trimmed.equals("Personal", ignoreCase = true)) {
+            return
+        }
+        val active = _categories.value.toMutableList()
+        val parked = _parkedCategories.value.toMutableList()
+        val removed = active.removeAll { it.equals(trimmed, ignoreCase = true) }
+        if (removed) {
+            if (!parked.any { it.equals(trimmed, ignoreCase = true) }) {
+                parked.add(trimmed)
+            }
+            _categories.value = active
+            _parkedCategories.value = parked
+            saveCategoriesToPrefs(active)
+            saveParkedCategoriesToPrefs(parked)
+        }
+    }
+
+    fun unparkCategory(tag: String, toIndex: Int? = null) {
+        val trimmed = tag.trim()
+        val active = _categories.value.toMutableList()
+        val parked = _parkedCategories.value.toMutableList()
+        val removed = parked.removeAll { it.equals(trimmed, ignoreCase = true) }
+        if (removed) {
+            if (!active.any { it.equals(trimmed, ignoreCase = true) }) {
+                if (toIndex != null && toIndex in 0..active.size) {
+                    active.add(toIndex, trimmed)
+                } else {
+                    active.add(trimmed)
+                }
+            }
+            _categories.value = active
+            _parkedCategories.value = parked
+            saveCategoriesToPrefs(active)
+            saveParkedCategoriesToPrefs(parked)
+        }
+    }
+
+    fun reorderActiveCategories(fromIndex: Int, toIndex: Int) {
+        if (fromIndex == toIndex) return
+        val active = _categories.value.toMutableList()
+        if (fromIndex in active.indices && toIndex in active.indices) {
+            val item = active.removeAt(fromIndex)
+            active.add(toIndex, item)
+            _categories.value = active
+            saveCategoriesToPrefs(active)
+        }
+    }
+
+    fun resetCategoriesToDefaults() {
+        _categories.value = DEFAULT_CATEGORIES
+        _parkedCategories.value = emptyList()
+        _fallbackCategory.value = "Personal"
+        saveCategoriesToPrefs(DEFAULT_CATEGORIES)
+        saveParkedCategoriesToPrefs(emptyList())
+        prefs.edit().putString("fallback_deleted_category", "Personal").apply()
     }
 
     val websitesList: StateFlow<List<Website>?> = repository.allWebsites
@@ -206,10 +339,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
     fun findDuplicateUrl(url: String, excludeId: Long? = null): Website? {
-        val target = normalizeUrlForComparison(url)
-        if (target.isBlank()) return null
+        val targetKey = resolveDedupeKey(url)
+        if (targetKey.isBlank()) return null
         return websitesList.value?.firstOrNull {
-            it.id != excludeId && normalizeUrlForComparison(it.url) == target
+            it.id != excludeId && it.dedupeKey == targetKey
         }
     }
 
@@ -271,6 +404,21 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun deleteWebsites(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteWebsites(ids)
+            val filesDir = getApplication<Application>().filesDir
+            ids.forEach { id ->
+                try {
+                    java.io.File(filesDir, "screenshot_${id}.jpg").delete()
+                } catch (_: Exception) {}
+            }
+            val idSet = ids.toHashSet()
+            _cachedScreenshotIds.update { it - idSet }
+        }
+    }
+
     fun clearError() {
         _saveError.value = null
     }
@@ -316,10 +464,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
             // 2. Merge websites (non-destructive)
             val existingWebsites = repository.getAllWebsitesList()
-            val existingUrls = existingWebsites.map { normalizeUrlForComparison(it.url) }.toSet()
+            val existingKeys = existingWebsites.map { it.dedupeKey }.toSet()
 
             val toInsert = backupData.websites.filter {
-                !existingUrls.contains(normalizeUrlForComparison(it.url))
+                !existingKeys.contains(it.dedupeKey)
             }
 
             if (toInsert.isNotEmpty()) {

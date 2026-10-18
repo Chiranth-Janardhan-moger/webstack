@@ -17,8 +17,8 @@ android {
     applicationId = "com.chiranth7.webstack"
     minSdk = 24
     targetSdk = 36
-    versionCode = 6
-    versionName = "1.1.3"
+    versionCode = 7
+    versionName = "1.2.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -94,6 +94,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -105,6 +106,8 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.guava)
   implementation(libs.jsoup)
+  implementation("androidx.compose.material3:material3:1.5.0-alpha08")
+  implementation("androidx.graphics:graphics-shapes:1.0.1")
 
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

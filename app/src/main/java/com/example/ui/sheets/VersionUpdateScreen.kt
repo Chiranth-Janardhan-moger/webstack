@@ -29,11 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Devices
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -68,11 +67,11 @@ fun VersionUpdateScreen(
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    var targetDigit by remember { mutableStateOf("2") }
+    var targetDigit by remember { mutableStateOf("1") }
 
     LaunchedEffect(Unit) {
         delay(450)
-        targetDigit = "3"
+        targetDigit = "2"
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
@@ -105,14 +104,14 @@ fun VersionUpdateScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Version Odometer (1.1.1 -> 1.1.2)
+                // Version Odometer (1.1.0 -> 1.2.0)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.padding(bottom = 24.dp)
                 ) {
                     Text(
-                        text = "1.1.",
+                        text = "1.",
                         fontSize = 58.sp,
                         fontWeight = FontWeight.Black,
                         color = appColors.label,
@@ -144,6 +143,13 @@ fun VersionUpdateScreen(
                             letterSpacing = (-1.5).sp
                         )
                     }
+                    Text(
+                        text = ".0",
+                        fontSize = 58.sp,
+                        fontWeight = FontWeight.Black,
+                        color = appColors.label,
+                        letterSpacing = (-1.5).sp
+                    )
                 }
 
                 // Compact Frosted What's New Card
@@ -160,13 +166,13 @@ fun VersionUpdateScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Feature: Adaptive Foldable & Tablet Canvas
+                        // Feature 1: Expressive FAB Shapes
                         VersionFeatureTile(
-                            title = "Adaptive Foldable & Tablet Canvas",
-                            description = "Dynamic multi-column grid tailored for foldables, flips, and tablets"
+                            title = "Expressive FAB Shapes",
+                            description = "Style your action button with dynamic Material 3 shapes."
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Devices,
+                                imageVector = Icons.Outlined.AutoAwesome,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)
@@ -178,13 +184,31 @@ fun VersionUpdateScreen(
                             color = appColors.separator.copy(alpha = 0.5f)
                         )
 
-                        // Feature: Bug Fixes & Refinements
+                        // Feature 2: Bulk Selection & Triage
                         VersionFeatureTile(
-                            title = "Bug Fixes & Refinements",
-                            description = "Unified bouncy haptics, 6-tile options grid, and cleaner backup flow"
+                            title = "Bulk Selection & Triage",
+                            description = "Select, tag, and clean up multiple bookmarks effortlessly."
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.CheckCircle,
+                                imageVector = Icons.Outlined.Checklist,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator.copy(alpha = 0.5f)
+                        )
+
+                        // Feature 3: Rearrange the Tags
+                        VersionFeatureTile(
+                            title = "Rearrange the Tags",
+                            description = "Reorder tags easily and toggle card details on or off."
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Tune,
                                 contentDescription = null,
                                 tint = appColors.label,
                                 modifier = Modifier.size(18.dp)

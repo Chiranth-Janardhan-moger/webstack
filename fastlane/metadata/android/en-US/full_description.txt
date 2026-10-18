@@ -1,13 +1,15 @@
-WebStack is an open-source visual bookmark manager and website stack built with modern Android engineering, Jetpack Compose, and Material Design 3.
+WebStack is a private, offline-first visual bookmark manager for Android.
 
-Rather than juggling endless open browser tabs or struggling to remember URLs, WebStack provides Android users with a unified visual bookmarking experience.
+Stop keeping dozens of browser tabs open just to save articles, tools, and links. WebStack lets you save websites visually, organize them into custom tag categories, and access them instantly.
 
-Key Capabilities:
-* Visual Website Cards: Displays responsive page snapshots (via opt-in Microlink service) or clean local aesthetic cards.
-* Dual Layout System: Effortlessly toggle between rich visual cards and dense compact row listings.
-* Fast Filter & Search: Hardware-accelerated search across titles, URLs, and custom tags with smooth 60/120 FPS animations.
-* Interactive Tag Management: Create, edit, and filter custom category tags with haptic-enabled context sheets.
-* Offline Storage: Snapshots and metadata are preserved locally on-device in a Room SQLite database.
-* System Share Sheet Integration: Save links directly from Google Chrome, Firefox, or any app in a single tap.
-* Smart Clipboard Detection: Auto-detects URLs on the system clipboard for one-tap bookmarking.
-* 100% Privacy & Zero Trackers: Fully open source with no advertising SDKs, tracking pixels, or remote telemetry. Remote previews are optional and off by default, keeping bookmark data strictly on-device.
+<b>Key Features:</b>
+
+1. <b>Visual Previews</b>: Browse bookmarks as rich snapshot cards or clean, lightweight domain tiles.
+2. <b>Three Layout Views</b>: Switch between large preview cards, a two-column grid, or a dense compact list.
+3. <b>Instant Search</b>: Filter bookmarks in real time across titles, URLs, domains, and categories.
+4. <b>Smart Tag Organization</b>: Create, rename, park, and reorder category tags to fit your workflow.
+5. <b>Multi-Select & Batch Actions</b>: Long-press to select multiple bookmarks and delete them together in one tap.
+6. <b>One-Tap Share Sheet</b>: Save links directly from Chrome, Firefox, Brave, or any app via the Android share menu.
+7. <b>Quick Paste Detection</b>: Automatically detects links on your clipboard when adding a new bookmark.
+8. <b>Standard Backup & Restore</b>: Import and export your collection anytime using standard browser HTML bookmarks.
+9. <b>100% Private & Open Source</b>: No accounts, no advertising, no analytics, and no telemetry. All your data stays strictly on your device.

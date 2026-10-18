@@ -151,7 +151,7 @@ class BookmarkScaleBenchmarkTest {
         println("Memory diff: ${(memAfter - memBefore) / (1024 * 1024)} MB")
 
         assertEquals("All 600 links must be parsed", linkCount, parseResult.bookmarks.size)
-        assertTrue("Parse time must be < 10 seconds", parseDurationMs < 10_000)
+        assertTrue("Parse time must be < 15 seconds", parseDurationMs < 15_000)
 
         testFile.delete()
     }

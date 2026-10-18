@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -74,11 +75,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import com.example.ui.model.AppFabShape
+import com.example.ui.model.BookmarkSortOrder
+
 enum class SettingsSubScreen {
     MAIN,
     APPEARANCE,
     BACKUP_RESTORE,
-    CLUSTER_APPROVAL
+    CLUSTER_APPROVAL,
+    CUSTOMIZE_TAGS,
+    FAB_SHAPE,
+    CARD_DETAILS,
+    APP_INFO
 }
 
 private data class SettingsExplainer(
@@ -94,10 +102,19 @@ fun SettingsBottomSheetContent(
     onSetThemeMode: (AppThemeMode) -> Unit = {},
     layoutMode: WebStackLayoutMode,
     onSetLayoutMode: (WebStackLayoutMode) -> Unit,
+    fabShape: AppFabShape = AppFabShape.CIRCLE,
+    onSetFabShape: (AppFabShape) -> Unit = {},
     fetchWebPreviews: Boolean,
     onToggleFetchWebPreviews: (Boolean) -> Unit,
+    showCardDomain: Boolean = true,
+    onToggleShowCardDomain: (Boolean) -> Unit = {},
+    showCardCategory: Boolean = true,
+    onToggleShowCardCategory: (Boolean) -> Unit = {},
+    sortOrder: BookmarkSortOrder = BookmarkSortOrder.NEWEST,
+    onSetSortOrder: (BookmarkSortOrder) -> Unit = {},
+    onOpenAddTagDialog: () -> Unit = {},
     onOpenWhatsNew: () -> Unit,
-    onOpenAppInfo: () -> Unit,
+    onOpenAppInfo: () -> Unit = {},
     onDismiss: () -> Unit,
     viewModel: WebsiteViewModel? = null
 ) {
@@ -330,7 +347,37 @@ fun SettingsBottomSheetContent(
                 onSetThemeMode = onSetThemeMode,
                 layoutMode = layoutMode,
                 onSetLayoutMode = onSetLayoutMode,
+                fabShape = fabShape,
+                onOpenFabShapePicker = { navigateToSubScreen(SettingsSubScreen.FAB_SHAPE) },
+                showCardDomain = showCardDomain,
+                onToggleShowCardDomain = onToggleShowCardDomain,
+                showCardCategory = showCardCategory,
+                onToggleShowCardCategory = onToggleShowCardCategory,
+                onOpenCardDetails = { navigateToSubScreen(SettingsSubScreen.CARD_DETAILS) },
+                onOpenCustomizeTags = { navigateToSubScreen(SettingsSubScreen.CUSTOMIZE_TAGS) },
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
+                onDismiss = handleDismiss
+            )
+        }
+        SettingsSubScreen.CARD_DETAILS -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.APPEARANCE) }
+            CardDetailsSubSheetContent(
+                showCardDomain = showCardDomain,
+                onToggleShowCardDomain = onToggleShowCardDomain,
+                showCardCategory = showCardCategory,
+                onToggleShowCardCategory = onToggleShowCardCategory,
+                sortOrder = sortOrder,
+                onSetSortOrder = onSetSortOrder,
+                onBack = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
+                onDismiss = handleDismiss
+            )
+        }
+        SettingsSubScreen.FAB_SHAPE -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.APPEARANCE) }
+            FabShapePickerSubSheetContent(
+                selectedShape = fabShape,
+                onSelectShape = onSetFabShape,
+                onBack = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
                 onDismiss = handleDismiss
             )
         }
@@ -404,6 +451,27 @@ fun SettingsBottomSheetContent(
                 navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE)
             }
         }
+        SettingsSubScreen.CUSTOMIZE_TAGS -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.APPEARANCE) }
+            if (viewModel != null) {
+                CustomizeTagsSheetContent(
+                    viewModel = viewModel,
+                    onOpenAddTagDialog = onOpenAddTagDialog,
+                    onBack = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
+                    onDismiss = handleDismiss
+                )
+            } else {
+                navigateToSubScreen(SettingsSubScreen.APPEARANCE)
+            }
+        }
+        SettingsSubScreen.APP_INFO -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
+            AppInfoBottomSheetContent(
+                onDismiss = handleDismiss,
+                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
+                onOpenWhatsNew = onOpenWhatsNew
+            )
+        }
         SettingsSubScreen.MAIN -> {
             Column(
                 modifier = Modifier
@@ -476,61 +544,38 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Section: Look and Feel
-        Text(
-            text = "LOOK AND FEEL",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        SettingsNavCard(
-            title = "Appearance",
-            iconPainter = painterResource(id = R.drawable.ic_appearance),
-            onClick = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
-            onLongClick = {
-                activeExplainer = SettingsExplainer(
-                    title = "Appearance",
-                    description = "Personalize your theme and switch between Grid, Card, or Compact layouts.",
-                    icon = Icons.Outlined.Palette
-                )
-            }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Section: Network
-        Text(
-            text = "NETWORK",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
+        // Single Unified Grouped Settings Card
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             color = appColors.surface,
             border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 1. Appearance
+                SettingsGroupedNavRow(
+                    title = "Appearance",
+                    iconPainter = painterResource(id = R.drawable.ic_appearance),
+                    onClick = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
+                    onLongClick = {
+                        activeExplainer = SettingsExplainer(
+                            title = "Appearance",
+                            description = "Personalize your theme, card details, and switch between Grid, Card, or Compact layouts.",
+                            icon = Icons.Outlined.Palette
+                        )
+                    }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 2. Fetch Web Previews
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -547,99 +592,96 @@ fun SettingsBottomSheetContent(
                                 )
                             }
                         )
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        color = if (fetchWebPreviews) appColors.label else appColors.fill,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Public,
-                                contentDescription = null,
-                                tint = if (fetchWebPreviews) appColors.systemBackground else appColors.label,
-                                modifier = Modifier.size(18.dp)
+                        Surface(
+                            color = if (fetchWebPreviews) appColors.label else if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Public,
+                                    contentDescription = null,
+                                    tint = if (fetchWebPreviews) appColors.systemBackground else appColors.label,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Fetch Web Previews",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = "Generates visual card snapshots",
+                                fontSize = 12.sp,
+                                color = appColors.secondaryLabel
                             )
                         }
                     }
 
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = "Fetch Web Previews",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = appColors.label
-                        )
-                        Text(
-                            text = "Generates visual card snapshots",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
+                    AppSwitch(
+                        checked = fetchWebPreviews,
+                        onCheckedChange = onToggleFetchWebPreviews
+                    )
                 }
 
-                AppSwitch(
-                    checked = fetchWebPreviews,
-                    onCheckedChange = onToggleFetchWebPreviews
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 3. Backup and restore
+                SettingsGroupedNavRow(
+                    title = "Backup and restore",
+                    subtitle = lastBackupText,
+                    icon = Icons.Outlined.Restore,
+                    onClick = { navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE) },
+                    onLongClick = {
+                        activeExplainer = SettingsExplainer(
+                            title = "Backup and Restore",
+                            description = "Safely export or restore your stack. Imports merge cleanly without duplicates.",
+                            icon = Icons.Outlined.Restore
+                        )
+                    }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 4. App Info
+                SettingsGroupedNavRow(
+                    title = "App Info",
+                    icon = Icons.Outlined.Info,
+                    onClick = { navigateToSubScreen(SettingsSubScreen.APP_INFO) },
+                    onLongClick = {
+                        activeExplainer = SettingsExplainer(
+                            title = "App Info",
+                            description = "Version details, what's new changelog, and open-source credits.",
+                            icon = Icons.Outlined.Info
+                        )
+                    }
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Section: Storage
-        Text(
-            text = "STORAGE",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        SettingsNavCard(
-            title = "Backup and restore",
-            subtitle = lastBackupText,
-            icon = Icons.Outlined.Restore,
-            onClick = { navigateToSubScreen(SettingsSubScreen.BACKUP_RESTORE) },
-            onLongClick = {
-                activeExplainer = SettingsExplainer(
-                    title = "Backup and Restore",
-                    description = "Safely export or restore your stack. Imports merge cleanly without duplicates.",
-                    icon = Icons.Outlined.Restore
-                )
-            }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Section: About
-        Text(
-            text = "ABOUT",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        SettingsNavCard(
-            title = "App Info",
-            icon = Icons.Outlined.Info,
-            onClick = onOpenAppInfo,
-            onLongClick = {
-                activeExplainer = SettingsExplainer(
-                    title = "App Info",
-                    description = "Version details, what's new changelog, and open-source credits.",
-                    icon = Icons.Outlined.Info
-                )
-            }
-        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -674,7 +716,7 @@ fun SettingsBottomSheetContent(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SettingsNavCard(
+private fun SettingsGroupedNavRow(
     title: String,
     subtitle: String? = null,
     icon: ImageVector? = null,
@@ -684,29 +726,13 @@ private fun SettingsNavCard(
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "settings_card_bounce"
-    )
 
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = appColors.surface,
-        border = BorderStroke(0.75.dp, appColors.separator),
+        color = Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
             .combinedClickable(
-                interactionSource = interactionSource,
+                interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -721,7 +747,7 @@ private fun SettingsNavCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 16.dp, vertical = 13.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

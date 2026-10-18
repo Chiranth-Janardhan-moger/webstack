@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="56dp"
+        android:height="56dp"
+        android:gravity="center">
+        <vector
+            android:width="24dp"
+            android:height="24dp"
+            android:viewportWidth="24"
+            android:viewportHeight="24">
+            <path
+                android:fillColor="@color/splash_icon_color"
+                android:pathData="M12,2 L3,21 L12,14.5 L21,21 Z" />
+        </vector>
+    </item>
+</layer-list>

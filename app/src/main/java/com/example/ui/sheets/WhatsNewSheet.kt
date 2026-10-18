@@ -18,13 +18,16 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -100,6 +103,24 @@ fun WhatsNewBottomSheetContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         // Feature items
+        WhatsNewFeatureItem(
+            icon = Icons.Outlined.AutoAwesome,
+            title = "Expressive FAB Shapes",
+            description = "Style your action button with dynamic Material 3 shapes."
+        )
+
+        WhatsNewFeatureItem(
+            icon = Icons.Outlined.Checklist,
+            title = "Bulk Selection & Triage",
+            description = "Select, tag, and clean up multiple bookmarks effortlessly."
+        )
+
+        WhatsNewFeatureItem(
+            icon = Icons.Outlined.Tune,
+            title = "Rearrange the Tags",
+            description = "Reorder tags easily and toggle card details on or off."
+        )
+
         WhatsNewFeatureItem(
             icon = Icons.Outlined.Devices,
             title = "Adaptive Foldable & Tablet Canvas",
