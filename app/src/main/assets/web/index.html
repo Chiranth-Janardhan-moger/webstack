@@ -166,13 +166,13 @@
     </div>
   </div>
 
-  <!-- Standalone & Offline Access Modal -->
+  <!-- Standalone Desktop App Modal -->
   <div id="offlineModal" class="modal-overlay hidden">
     <div class="modal-card modal-offline-card">
       <div class="modal-header">
         <div class="modal-header-text">
-          <h3 class="modal-header-title">Standalone Desktop App</h3>
-          <p class="modal-header-sub">Keep WebStack running on PC anytime, even when your phone is turned off</p>
+          <h3 class="modal-header-title">WebStack Desktop App</h3>
+          <p class="modal-header-sub">Download the native desktop client for Windows or Linux</p>
         </div>
         <button id="btnCloseOfflineModal" class="btn-modal-close" aria-label="Close">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -183,7 +183,6 @@
       </div>
 
       <div class="offline-sections-list">
-        <!-- Tauri v2 Native Desktop App -->
         <div class="offline-card">
           <div class="offline-card-header">
             <div class="offline-card-title">
@@ -192,21 +191,21 @@
                 <line x1="8" y1="21" x2="16" y2="21"></line>
                 <line x1="12" y1="17" x2="12" y2="21"></line>
               </svg>
-              <span>WebStack Desktop (Windows & Linux)</span>
+              <span>Native Windows & Linux Client</span>
             </div>
-            <span class="badge-tag" style="background: rgba(37,99,235,0.12); color: #2563eb; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600;">~3.6 MB Native</span>
+            <span class="badge-tag" style="background: rgba(37,99,235,0.12); color: #2563eb; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600;">v1.0.0</span>
           </div>
           <div class="offline-card-desc">
-            Install WebStack directly onto your PC. Choose Windows (.exe) or Linux (.AppImage/.deb). Powered by Tauri v2 and native WebView2 for ultra-fast startup, automatic phone Wi-Fi discovery, and full offline bookmark access without browser mixed-content restrictions.
+            Install WebStack directly onto your PC. Choose Windows (.exe / .msi) or Linux (.AppImage / .deb). Powered by Tauri v2 and native WebView2 for instant startup, automatic phone Wi-Fi discovery, zero CORS or mixed-content limitations, and full offline bookmark caching.
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 10px;">
             <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
               <span>Auto Wi-Fi Discovery</span>
             </div>
             <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span>Zero CORS / Mixed-Content</span>
+              <span>Zero CORS Restrictions</span>
             </div>
             <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -217,20 +216,20 @@
               <span>Offline SQLite Caching</span>
             </div>
           </div>
-          <a id="btnDownloadDesktop" href="https://webstack7.vercel.app/download" target="_blank" rel="noopener noreferrer" class="btn-primary" style="justify-content: center; padding: 10px 16px; text-decoration: none;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+          <a id="btnDownloadDesktop" href="https://webstack7.vercel.app/download" target="_blank" rel="noopener noreferrer" class="btn-primary" style="justify-content: center; padding: 11px 16px; text-decoration: none; font-weight: 600;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span>Download for Windows & Linux</span>
+            <span>Download from WebStack Website</span>
           </a>
         </div>
       </div>
 
       <div class="shortcuts-footer">
-        <span>WebStack Desktop • Powered by Tauri v2</span>
-        <button type="button" id="btnGotItOffline" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
+        <span style="font-size: 11.5px; color: var(--text-muted);">Opens webstack7.vercel.app/download</span>
+        <button type="button" id="btnGotItOffline" class="btn-secondary" style="padding: 7px 18px; font-size: 13px;">Close</button>
       </div>
     </div>
   </div>
