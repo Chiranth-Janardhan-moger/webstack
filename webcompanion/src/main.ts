@@ -311,73 +311,78 @@ async function submitPin(pin: string) {
   btnConnect.textContent = 'Connecting...';
   authError.style.display = 'none';
 
-  try {
-    const data = await authenticateWithPin(clean);
-    if (data.success && data.token) {
-      setActivePin(clean);
-      setToken(data.token);
-      updateLastConnected(data.offlineExpiryHours);
-      setStatusState('online');
-      isOffline = false;
-      hideAuthModal();
-      showToast('Connected to WebStack on Android');
+  const isLocalOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || (typeof window !== 'undefined' && window.location.protocol === 'file:');
 
-      try {
-        await flushOfflineQueue((count) => {
-          showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
-        });
-        await loadData();
-      } catch (e) {}
-      return;
-    } else {
-      authError.style.display = 'block';
-      authError.textContent = data.error || 'Invalid PIN. Check your phone screen.';
-      return;
-    }
-  } catch (networkErr) {
-    // Phone server offline or unreachable: attempt offline vault unlock with PIN
-    let rawBms = getLocalItem('webstack_offline_bookmarks');
-    if (!rawBms) {
-      const seed = (typeof window !== 'undefined' ? (window as any).INITIAL_WEBSTACK_DATA : undefined);
-      if (seed && seed.offlineBookmarks) {
-        rawBms = typeof seed.offlineBookmarks === 'string' ? seed.offlineBookmarks : JSON.stringify(seed.offlineBookmarks);
+  if (!isLocalOffline) {
+    try {
+      const data = await authenticateWithPin(clean);
+      if (data.success && data.token) {
+        setActivePin(clean);
+        setToken(data.token);
+        updateLastConnected(data.offlineExpiryHours);
+        setStatusState('online');
+        isOffline = false;
+        hideAuthModal();
+        showToast('Connected to WebStack on Android');
+
+        try {
+          await flushOfflineQueue((count) => {
+            showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
+          });
+          await loadData();
+        } catch (e) {}
+        return;
+      } else {
+        authError.style.display = 'block';
+        authError.textContent = data.error || 'Invalid PIN. Check your phone screen.';
+        return;
       }
+    } catch (networkErr) {
+      // Fall through to offline vault unlock
     }
-    let vaultDecrypted = false;
-
-    if (rawBms) {
-      try {
-        const decrypted = await decryptPayload<Bookmark[]>(rawBms, clean);
-        if (decrypted) {
-          await unlockWithPin(clean);
-          vaultDecrypted = true;
-        }
-      } catch (decryptErr: any) {
-        if (decryptErr && decryptErr.message === 'DECRYPT_FAILED') {
-          authError.style.display = 'block';
-          authError.textContent = 'Incorrect PIN. Unable to decrypt offline bookmarks.';
-          return;
-        }
-      }
-    }
-
-    if (isOfflineSessionValid() && (vaultDecrypted || rawBms)) {
-      setActivePin(clean);
-      hideAuthModal();
-      setStatusState('offline');
-      isOffline = true;
-      loadOfflineData();
-      showToast('Unlocked offline vault');
-    } else if (rawBms && !isOfflineSessionValid()) {
-      authError.style.display = 'block';
-      authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
-    } else {
-      authError.style.display = 'block';
-      authError.textContent = `Cannot reach phone at ${getApiBase()}. Ensure phone companion is running and on the same Wi-Fi.`;
-    }
-  } finally {
-    btnConnect.textContent = 'Connect to Phone';
   }
+
+  // Phone server offline or unreachable: attempt offline vault unlock with PIN
+  let rawBms = getLocalItem('webstack_offline_bookmarks');
+  if (!rawBms) {
+    const seed = (typeof window !== 'undefined' ? (window as any).INITIAL_WEBSTACK_DATA : undefined);
+    if (seed && seed.offlineBookmarks) {
+      rawBms = typeof seed.offlineBookmarks === 'string' ? seed.offlineBookmarks : JSON.stringify(seed.offlineBookmarks);
+    }
+  }
+  let vaultDecrypted = false;
+
+  if (rawBms) {
+    try {
+      const decrypted = await decryptPayload<Bookmark[]>(rawBms, clean);
+      if (decrypted) {
+        await unlockWithPin(clean);
+        vaultDecrypted = true;
+      }
+    } catch (decryptErr: any) {
+      if (decryptErr && decryptErr.message === 'DECRYPT_FAILED') {
+        authError.style.display = 'block';
+        authError.textContent = 'Incorrect PIN. Unable to decrypt offline bookmarks.';
+        return;
+      }
+    }
+  }
+
+  if (isOfflineSessionValid() && (vaultDecrypted || rawBms)) {
+    setActivePin(clean);
+    hideAuthModal();
+    setStatusState('offline');
+    isOffline = true;
+    loadOfflineData();
+    showToast('Unlocked offline vault');
+  } else if (rawBms && !isOfflineSessionValid()) {
+    authError.style.display = 'block';
+    authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
+  } else {
+    authError.style.display = 'block';
+    authError.textContent = `Cannot reach phone at ${getApiBase()}. Ensure phone companion is running and on the same Wi-Fi.`;
+  }
+  btnConnect.textContent = 'Connect to Phone';
 }
 
 async function checkAuth() {
@@ -395,9 +400,22 @@ async function checkAuth() {
     await unlockWithPin(savedPin);
   }
 
+  // Instant optimistic offline render (0ms delay)
+  if (isOfflineSessionValid()) {
+    const raw = getLocalItem('webstack_offline_bookmarks');
+    if (raw) {
+      hideAuthModal();
+      setStatusState('offline');
+      isOffline = true;
+      loadOfflineData();
+    }
+  }
+
   const token = getToken();
   if (!token) {
-    showAuthModal();
+    if (!isOfflineSessionValid()) {
+      showAuthModal();
+    }
     return;
   }
 

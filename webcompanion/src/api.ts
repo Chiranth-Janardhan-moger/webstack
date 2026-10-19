@@ -44,7 +44,7 @@ export async function checkServerStatus(token?: string | null): Promise<ServerSt
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const q = token ? '?token=' + encodeURIComponent(token) : '';
-  const res = await fetchWithTimeout(apiUrl('/api/status' + q), { headers }, 2500);
+  const res = await fetchWithTimeout(apiUrl('/api/status' + q), { headers }, 1500);
   if (!res.ok) throw new Error('Status check failed: ' + res.status);
   return res.json();
 }
@@ -54,7 +54,7 @@ export async function authenticateWithPin(pin: string): Promise<AuthResponse> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pin: pin.trim() })
-  }, 2500);
+  }, 1800);
   return res.json();
 }
 
