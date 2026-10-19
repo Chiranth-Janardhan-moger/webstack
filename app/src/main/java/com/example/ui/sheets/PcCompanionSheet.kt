@@ -276,18 +276,11 @@ fun PcCompanionSubSheetContent(
                                 color = appColors.label
                             )
                             if (isRunning) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Color(0xFF34C759).copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "LIVE",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF34C759),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                    )
-                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(Color(0xFF34C759), CircleShape)
+                                )
                             }
                         }
 
@@ -507,30 +500,11 @@ fun PcCompanionSubSheetContent(
                                 }
 
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "PIN",
-                                            fontSize = 12.sp,
-                                            color = appColors.secondaryLabel
-                                        )
-                                        if (currentUseFixedPin) {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = appColors.fill
-                                            ) {
-                                                Text(
-                                                    text = "FIXED",
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = appColors.secondaryLabel,
-                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
+                                    Text(
+                                        text = "PIN",
+                                        fontSize = 12.sp,
+                                        color = appColors.secondaryLabel
+                                    )
                                     Text(
                                         text = formatPin(serverStatus.pin),
                                         fontSize = 16.sp,
