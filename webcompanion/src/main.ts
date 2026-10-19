@@ -303,6 +303,7 @@ async function loadData() {
       return;
     }
     handleOfflineFallback();
+    throw err;
   }
 }
 
@@ -339,7 +340,13 @@ async function submitPin(pin: string) {
     }
   } catch (networkErr) {
     // Phone server offline or unreachable: attempt offline vault unlock with PIN
-    const rawBms = getLocalItem('webstack_offline_bookmarks');
+    let rawBms = getLocalItem('webstack_offline_bookmarks');
+    if (!rawBms) {
+      const seed = (typeof window !== 'undefined' ? (window as any).INITIAL_WEBSTACK_DATA : undefined);
+      if (seed && seed.offlineBookmarks) {
+        rawBms = typeof seed.offlineBookmarks === 'string' ? seed.offlineBookmarks : JSON.stringify(seed.offlineBookmarks);
+      }
+    }
     let vaultDecrypted = false;
 
     if (rawBms) {
@@ -408,11 +415,11 @@ async function checkAuth() {
       return;
     }
     updateLastConnected(statusData.offlineExpiryHours);
+    await loadData();
     setStatusState('online');
     isOffline = false;
     hideAuthModal();
     await flushOfflineQueue();
-    await loadData();
   } catch (err: any) {
     if (err && (err.message?.includes('401') || err.message?.includes('403'))) {
       setToken(null);
@@ -439,6 +446,10 @@ async function disconnect() {
 
 // 1-Click Standalone Desktop App Export (.html)
 function downloadStandaloneHtmlApp() {
+  closeOfflineModal();
+  closeAddModal();
+  closeShortcutsModal();
+
   let docHtml = document.documentElement.outerHTML;
 
   const serverUrl = (offlineServerUrlInput ? offlineServerUrlInput.value.trim() : '') || getApiBase();
@@ -454,7 +465,9 @@ function downloadStandaloneHtmlApp() {
     offlineCategories: getLocalItem('webstack_offline_categories') || JSON.stringify(availableCategories)
   };
 
-  const seedScript = `<script id="webstack-seed-data">window.DEFAULT_PHONE_ORIGIN = ${JSON.stringify(serverUrl)}; window.INITIAL_WEBSTACK_DATA = ${JSON.stringify(seedData)};</script>`;
+  const safeSeedJson = JSON.stringify(seedData).replace(/</g, '\\u003c');
+  const safeServerOrigin = JSON.stringify(serverUrl).replace(/</g, '\\u003c');
+  const seedScript = `<script id="webstack-seed-data">window.DEFAULT_PHONE_ORIGIN = ${safeServerOrigin}; window.INITIAL_WEBSTACK_DATA = ${safeSeedJson};</script>`;
 
   if (docHtml.includes('<head>')) {
     docHtml = docHtml.replace('<head>', '<head>\n  ' + seedScript);
@@ -462,6 +475,10 @@ function downloadStandaloneHtmlApp() {
     docHtml = docHtml.replace('</head>', seedScript + '\n</head>');
   } else {
     docHtml = seedScript + '\n' + docHtml;
+  }
+
+  if (!docHtml.startsWith('<!DOCTYPE') && !docHtml.startsWith('<!doctype')) {
+    docHtml = '<!DOCTYPE html>\n' + docHtml;
   }
 
   const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
@@ -475,7 +492,6 @@ function downloadStandaloneHtmlApp() {
   URL.revokeObjectURL(url);
 
   showToast('Downloaded standalone WebStack app!');
-  closeOfflineModal();
 }
 
 // Event Bindings
@@ -736,11 +752,11 @@ setInterval(async () => {
     }
     updateLastConnected(statusData.offlineExpiryHours);
     if (isOffline) {
+      await loadData();
       setStatusState('online');
       isOffline = false;
       showToast('Reconnected to phone');
       await flushOfflineQueue();
-      await loadData();
     } else {
       const queue = getOfflineQueue();
       if (queue.length > 0) {

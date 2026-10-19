@@ -105,17 +105,36 @@ export function updateLastConnected(expiryHours?: number | null): void {
   }
 }
 
+export function getSeedData(): InitialWebStackData | undefined {
+  if (typeof window !== 'undefined' && (window as any).INITIAL_WEBSTACK_DATA) {
+    return (window as any).INITIAL_WEBSTACK_DATA as InitialWebStackData;
+  }
+  return undefined;
+}
+
 export function hasOfflineVaultData(): boolean {
   const raw = getLocalItem('webstack_offline_bookmarks');
-  return !!raw && raw.trim().length > 0;
+  if (raw && raw.trim().length > 0) return true;
+  const seed = getSeedData();
+  return !!seed?.offlineBookmarks && seed.offlineBookmarks.trim().length > 0;
 }
 
 export function getOfflineExpiryHours(): number {
-  return parseInt(getLocalItem('webstack_offline_expiry_hours') || '24', 10);
+  const local = getLocalItem('webstack_offline_expiry_hours');
+  if (local) return parseInt(local, 10);
+  const seed = getSeedData();
+  if (seed?.offlineExpiryHours) return parseInt(seed.offlineExpiryHours, 10);
+  return 24;
 }
 
 export function isOfflineSessionValid(): boolean {
-  const lastConnected = parseInt(getLocalItem('webstack_last_connected') || '0', 10);
+  let lastConnected = parseInt(getLocalItem('webstack_last_connected') || '0', 10);
+  if (!lastConnected) {
+    const seed = getSeedData();
+    if (seed?.lastConnected) {
+      lastConnected = parseInt(seed.lastConnected, 10);
+    }
+  }
   if (!lastConnected) return false;
   const expiryHours = getOfflineExpiryHours();
   if (expiryHours === 0) return true; // Never expires
@@ -128,7 +147,13 @@ export function getOfflineBookmarks(): Bookmark[] {
     return cachedOfflineBookmarks;
   }
   try {
-    const raw = getLocalItem('webstack_offline_bookmarks');
+    let raw = getLocalItem('webstack_offline_bookmarks');
+    if (!raw) {
+      const seed = getSeedData();
+      if (seed?.offlineBookmarks) {
+        raw = typeof seed.offlineBookmarks === 'string' ? seed.offlineBookmarks : JSON.stringify(seed.offlineBookmarks);
+      }
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (parsed && parsed.__encrypted) return [];
@@ -156,7 +181,13 @@ export function setCachedOfflineBookmarks(bms: Bookmark[]): void {
 
 export function getOfflineCategories(): string[] {
   try {
-    const raw = getLocalItem('webstack_offline_categories');
+    let raw = getLocalItem('webstack_offline_categories');
+    if (!raw) {
+      const seed = getSeedData();
+      if (seed?.offlineCategories) {
+        raw = typeof seed.offlineCategories === 'string' ? seed.offlineCategories : JSON.stringify(seed.offlineCategories);
+      }
+    }
     return raw ? JSON.parse(raw) : ['Personal', 'Work', 'Social', 'Reading'];
   } catch (e) {
     return ['Personal', 'Work', 'Social', 'Reading'];
@@ -201,7 +232,13 @@ export function setCachedOfflineQueue(q: OfflineQueueItem[]): void {
 }
 
 export async function unlockWithPin(pin: string): Promise<boolean> {
-  const rawBms = getLocalItem('webstack_offline_bookmarks');
+  let rawBms = getLocalItem('webstack_offline_bookmarks');
+  if (!rawBms) {
+    const seed = getSeedData();
+    if (seed?.offlineBookmarks) {
+      rawBms = typeof seed.offlineBookmarks === 'string' ? seed.offlineBookmarks : JSON.stringify(seed.offlineBookmarks);
+    }
+  }
   if (rawBms) {
     const dec = await decryptPayload<Bookmark[]>(rawBms, pin);
     if (dec) {
