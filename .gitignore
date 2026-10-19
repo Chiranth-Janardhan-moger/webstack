@@ -22,6 +22,3 @@ __pycache__/
 scratch/
 webcompanion/node_modules/
 webcompanion/dist/
-webstack-desktop/node_modules/
-webstack-desktop/dist/
-webstack-desktop/src-tauri/target/

@@ -519,7 +519,7 @@ offlineModal.addEventListener('click', (e) => {
 
 if (btnDownloadDesktop) {
   btnDownloadDesktop.addEventListener('click', () => {
-    window.open('https://github.com/Chiranth-Janardhan-moger/webstack/releases/latest', '_blank');
+    window.open('https://webstack-desktop.vercel.app', '_blank');
   });
 }
 
