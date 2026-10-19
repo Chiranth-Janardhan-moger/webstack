@@ -1,0 +1,67 @@
+name: Desktop CI/CD (Tauri v2 Native Build)
+
+on:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'webstack-desktop/**'
+      - '.github/workflows/desktop-build.yml'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Version tag for this release (e.g., v1.0.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Desktop App (Tauri v2)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'webstack-desktop/package-lock.json'
+
+      - name: Setup Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'webstack-desktop/src-tauri'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./webstack-desktop
+        run: npm ci
+
+      - name: Build Tauri Desktop Client
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: './webstack-desktop'
+          tagName: ${{ inputs.release_tag || github.ref_name }}
+          releaseName: 'WebStack Desktop ${{ inputs.release_tag || github.ref_name }}'
+          releaseBody: 'Native desktop client for WebStack powered by Tauri v2 and native WebView2 (~3.5 MB).'
+          releaseDraft: false
+          prerelease: false
+
+      - name: Upload Windows Standalone Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webstack-desktop-windows-x64
+          path: |
+            webstack-desktop/src-tauri/target/release/bundle/nsis/*.exe
+            webstack-desktop/src-tauri/target/release/bundle/msi/*.msi
+            webstack-desktop/src-tauri/target/release/webstack-desktop.exe
+          if-no-files-found: ignore

@@ -97,8 +97,7 @@ const offlineModal = document.getElementById('offlineModal') as HTMLDivElement;
 const btnOpenOfflineModal = document.getElementById('btnOpenOfflineModal') as HTMLButtonElement;
 const btnCloseOfflineModal = document.getElementById('btnCloseOfflineModal') as HTMLButtonElement;
 const btnGotItOffline = document.getElementById('btnGotItOffline') as HTMLButtonElement;
-const btnDownloadStandalone = document.getElementById('btnDownloadStandalone') as HTMLButtonElement;
-const offlineServerUrlInput = document.getElementById('offlineServerUrlInput') as HTMLInputElement;
+const btnDownloadDesktop = document.getElementById('btnDownloadDesktop') as HTMLButtonElement | null;
 
 const searchNav = document.getElementById('searchNav') as HTMLDivElement;
 const btnSearchToggle = document.getElementById('btnSearchToggle') as HTMLButtonElement;
@@ -145,9 +144,6 @@ function closeShortcutsModal() {
 
 function openOfflineModal() {
   offlineModal.classList.remove('hidden');
-  if (offlineServerUrlInput) {
-    offlineServerUrlInput.value = getApiBase();
-  }
 }
 
 function closeOfflineModal() {
@@ -444,55 +440,6 @@ async function disconnect() {
   showToast('Disconnected from WebStack');
 }
 
-// 1-Click Standalone Desktop App Export (.html)
-function downloadStandaloneHtmlApp() {
-  closeOfflineModal();
-  closeAddModal();
-  closeShortcutsModal();
-
-  let docHtml = document.documentElement.outerHTML;
-
-  const serverUrl = (offlineServerUrlInput ? offlineServerUrlInput.value.trim() : '') || getApiBase();
-
-  // Strip previous seed data block if re-exporting
-  docHtml = docHtml.replace(/<script id="webstack-seed-data">[\s\S]*?<\/script>/gi, '');
-
-  const seedData = {
-    serverUrl: serverUrl,
-    lastConnected: Date.now().toString(),
-    offlineExpiryHours: getLocalItem('webstack_offline_expiry_hours') || '24',
-    offlineBookmarks: getLocalItem('webstack_offline_bookmarks') || JSON.stringify(allBookmarks),
-    offlineCategories: getLocalItem('webstack_offline_categories') || JSON.stringify(availableCategories)
-  };
-
-  const safeSeedJson = JSON.stringify(seedData).replace(/</g, '\\u003c');
-  const safeServerOrigin = JSON.stringify(serverUrl).replace(/</g, '\\u003c');
-  const seedScript = `<script id="webstack-seed-data">window.DEFAULT_PHONE_ORIGIN = ${safeServerOrigin}; window.INITIAL_WEBSTACK_DATA = ${safeSeedJson};</script>`;
-
-  if (docHtml.includes('<head>')) {
-    docHtml = docHtml.replace('<head>', '<head>\n  ' + seedScript);
-  } else if (docHtml.includes('</head>')) {
-    docHtml = docHtml.replace('</head>', seedScript + '\n</head>');
-  } else {
-    docHtml = seedScript + '\n' + docHtml;
-  }
-
-  if (!docHtml.startsWith('<!DOCTYPE') && !docHtml.startsWith('<!doctype')) {
-    docHtml = '<!DOCTYPE html>\n' + docHtml;
-  }
-
-  const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'WebStack.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  showToast('Downloaded standalone WebStack app!');
-}
 
 // Event Bindings
 btnConnect.addEventListener('click', () => submitPin(pinInput.value));
@@ -570,8 +517,10 @@ offlineModal.addEventListener('click', (e) => {
   if (e.target === offlineModal) closeOfflineModal();
 });
 
-if (btnDownloadStandalone) {
-  btnDownloadStandalone.addEventListener('click', downloadStandaloneHtmlApp);
+if (btnDownloadDesktop) {
+  btnDownloadDesktop.addEventListener('click', () => {
+    window.open('https://github.com/Chiranth-Janardhan-moger/webstack/releases/latest', '_blank');
+  });
 }
 
 tagDropdownTrigger.addEventListener('click', (e) => {

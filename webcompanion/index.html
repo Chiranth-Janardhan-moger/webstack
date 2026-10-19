@@ -181,38 +181,53 @@
       </div>
 
       <div class="offline-sections-list">
-        <!-- Standalone HTML App -->
+        <!-- Tauri v2 Native Desktop App -->
         <div class="offline-card">
           <div class="offline-card-header">
             <div class="offline-card-title">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
               </svg>
-              <span>Single-File Offline WebStack</span>
+              <span>Tauri v2 Native Desktop App</span>
             </div>
+            <span class="badge-tag" style="background: rgba(37,99,235,0.12); color: #2563eb; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600;">~3.5 MB Native</span>
           </div>
           <div class="offline-card-desc">
-            Download a zero-install HTML app directly to your PC. Double-click to open 100% offline anytime with zero connection timeouts. All bookmarks are encrypted with AES-256-GCM.
+            Install WebStack directly onto your PC. Powered by Tauri v2 and native WebView2 for ultra-fast startup, automatic phone Wi-Fi discovery (no IP typing), and full offline access without browser address bars.
           </div>
-          <div style="display: flex; flex-direction: column; gap: 5px;">
-            <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);" for="offlineServerUrlInput">Phone Server Address</label>
-            <input type="text" id="offlineServerUrlInput" class="input-field-modal" style="font-family: monospace; font-size: 12px; padding: 7px 10px;" placeholder="http://192.168.x.x:8080" autocomplete="off">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px;">
+            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Auto Wi-Fi Discovery</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Zero CORS / Mixed-Content</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Start Menu & Taskbar</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Offline SQLite Caching</span>
+            </div>
           </div>
-          <button type="button" id="btnDownloadStandalone" class="btn-primary" style="justify-content: center; padding: 10px 16px;">
+          <button type="button" id="btnDownloadDesktop" class="btn-primary" style="justify-content: center; padding: 10px 16px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span>Download Standalone App (.html)</span>
+            <span>Download Desktop App (.exe)</span>
           </button>
         </div>
       </div>
 
       <div class="shortcuts-footer">
-        <span>WebStack Companion • Zero-Install Local App</span>
+        <span>WebStack Desktop • Powered by Tauri v2</span>
         <button type="button" id="btnGotItOffline" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
       </div>
     </div>
@@ -284,13 +299,13 @@
           <span class="tooltip">Shortcuts (?)</span>
         </button>
 
-        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Offline App Export">
+        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Desktop App">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
-          <span class="tooltip">Offline App</span>
+          <span class="tooltip">Desktop App</span>
         </button>
 
         <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
