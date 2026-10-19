@@ -1,7 +1,73 @@
-import type { Bookmark, OfflineQueueItem } from './types';
+import type { Bookmark, InitialWebStackData, OfflineQueueItem } from './types';
 import { encryptPayload, decryptPayload } from './crypto';
 
-let activePin = sessionStorage.getItem('webstack_pin') || '';
+function getLocalItem(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setLocalItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  } catch (e) {}
+}
+
+function removeLocalItem(key: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+  } catch (e) {}
+}
+
+function getSessionItem(key: string): string | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setSessionItem(key: string, value: string): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value);
+  } catch (e) {}
+}
+
+function removeSessionItem(key: string): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(key);
+  } catch (e) {}
+}
+
+// Hydrate offline storage from baked seed data (e.g. standalone exported HTML)
+export function initStorage(): void {
+  try {
+    const seed = (typeof window !== 'undefined' ? (window as any).INITIAL_WEBSTACK_DATA : undefined) as InitialWebStackData | undefined;
+    if (seed) {
+      if (!getLocalItem('webstack_server_url') && seed.serverUrl) {
+        setLocalItem('webstack_server_url', seed.serverUrl);
+      }
+      if (!getLocalItem('webstack_last_connected') && seed.lastConnected) {
+        setLocalItem('webstack_last_connected', seed.lastConnected);
+      }
+      if (!getLocalItem('webstack_offline_expiry_hours') && seed.offlineExpiryHours) {
+        setLocalItem('webstack_offline_expiry_hours', seed.offlineExpiryHours);
+      }
+      if (!getLocalItem('webstack_offline_bookmarks') && seed.offlineBookmarks) {
+        setLocalItem('webstack_offline_bookmarks', seed.offlineBookmarks);
+      }
+      if (!getLocalItem('webstack_offline_categories') && seed.offlineCategories) {
+        setLocalItem('webstack_offline_categories', seed.offlineCategories);
+      }
+    }
+  } catch (e) {}
+}
+
+initStorage();
+
+let activePin = getSessionItem('webstack_pin') || '';
 let cachedOfflineBookmarks: Bookmark[] | null = null;
 let cachedOfflineQueue: OfflineQueueItem[] | null = null;
 
@@ -12,37 +78,46 @@ export function getActivePin(): string {
 export function setActivePin(pin: string): void {
   activePin = pin;
   if (pin) {
-    sessionStorage.setItem('webstack_pin', pin);
+    setSessionItem('webstack_pin', pin);
   } else {
-    sessionStorage.removeItem('webstack_pin');
+    removeSessionItem('webstack_pin');
   }
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem('webstack_token') || sessionStorage.getItem('webstack_token');
+  return getLocalItem('webstack_token') || getSessionItem('webstack_token');
 }
 
 export function setToken(token: string | null): void {
   if (token) {
-    localStorage.setItem('webstack_token', token);
-    sessionStorage.setItem('webstack_token', token);
+    setLocalItem('webstack_token', token);
+    setSessionItem('webstack_token', token);
   } else {
-    localStorage.removeItem('webstack_token');
-    sessionStorage.removeItem('webstack_token');
+    removeLocalItem('webstack_token');
+    removeSessionItem('webstack_token');
   }
 }
 
 export function updateLastConnected(expiryHours?: number | null): void {
-  localStorage.setItem('webstack_last_connected', Date.now().toString());
+  setLocalItem('webstack_last_connected', Date.now().toString());
   if (expiryHours !== undefined && expiryHours !== null) {
-    localStorage.setItem('webstack_offline_expiry_hours', expiryHours.toString());
+    setLocalItem('webstack_offline_expiry_hours', expiryHours.toString());
   }
 }
 
+export function hasOfflineVaultData(): boolean {
+  const raw = getLocalItem('webstack_offline_bookmarks');
+  return !!raw && raw.trim().length > 0;
+}
+
+export function getOfflineExpiryHours(): number {
+  return parseInt(getLocalItem('webstack_offline_expiry_hours') || '24', 10);
+}
+
 export function isOfflineSessionValid(): boolean {
-  const lastConnected = parseInt(localStorage.getItem('webstack_last_connected') || '0', 10);
+  const lastConnected = parseInt(getLocalItem('webstack_last_connected') || '0', 10);
   if (!lastConnected) return false;
-  const expiryHours = parseInt(localStorage.getItem('webstack_offline_expiry_hours') || '24', 10);
+  const expiryHours = getOfflineExpiryHours();
   if (expiryHours === 0) return true; // Never expires
   const elapsedMs = Date.now() - lastConnected;
   return elapsedMs < expiryHours * 3600 * 1000;
@@ -53,7 +128,7 @@ export function getOfflineBookmarks(): Bookmark[] {
     return cachedOfflineBookmarks;
   }
   try {
-    const raw = localStorage.getItem('webstack_offline_bookmarks');
+    const raw = getLocalItem('webstack_offline_bookmarks');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (parsed && parsed.__encrypted) return [];
@@ -68,9 +143,9 @@ export async function saveOfflineBookmarks(bms: Bookmark[]): Promise<void> {
   try {
     if (activePin) {
       const enc = await encryptPayload(bms, activePin);
-      localStorage.setItem('webstack_offline_bookmarks', enc);
+      setLocalItem('webstack_offline_bookmarks', enc);
     } else {
-      localStorage.setItem('webstack_offline_bookmarks', JSON.stringify(bms));
+      setLocalItem('webstack_offline_bookmarks', JSON.stringify(bms));
     }
   } catch (e) {}
 }
@@ -81,7 +156,7 @@ export function setCachedOfflineBookmarks(bms: Bookmark[]): void {
 
 export function getOfflineCategories(): string[] {
   try {
-    const raw = localStorage.getItem('webstack_offline_categories');
+    const raw = getLocalItem('webstack_offline_categories');
     return raw ? JSON.parse(raw) : ['Personal', 'Work', 'Social', 'Reading'];
   } catch (e) {
     return ['Personal', 'Work', 'Social', 'Reading'];
@@ -90,7 +165,7 @@ export function getOfflineCategories(): string[] {
 
 export function saveOfflineCategories(cats: string[]): void {
   try {
-    localStorage.setItem('webstack_offline_categories', JSON.stringify(cats));
+    setLocalItem('webstack_offline_categories', JSON.stringify(cats));
   } catch (e) {}
 }
 
@@ -99,7 +174,7 @@ export function getOfflineQueue(): OfflineQueueItem[] {
     return cachedOfflineQueue;
   }
   try {
-    const raw = localStorage.getItem('webstack_offline_queue');
+    const raw = getLocalItem('webstack_offline_queue');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (parsed && parsed.__encrypted) return [];
@@ -114,9 +189,9 @@ export async function saveOfflineQueue(q: OfflineQueueItem[]): Promise<void> {
   try {
     if (activePin) {
       const enc = await encryptPayload(q, activePin);
-      localStorage.setItem('webstack_offline_queue', enc);
+      setLocalItem('webstack_offline_queue', enc);
     } else {
-      localStorage.setItem('webstack_offline_queue', JSON.stringify(q));
+      setLocalItem('webstack_offline_queue', JSON.stringify(q));
     }
   } catch (e) {}
 }
@@ -126,14 +201,14 @@ export function setCachedOfflineQueue(q: OfflineQueueItem[]): void {
 }
 
 export async function unlockWithPin(pin: string): Promise<boolean> {
-  const rawBms = localStorage.getItem('webstack_offline_bookmarks');
+  const rawBms = getLocalItem('webstack_offline_bookmarks');
   if (rawBms) {
     const dec = await decryptPayload<Bookmark[]>(rawBms, pin);
     if (dec) {
       cachedOfflineBookmarks = dec;
     }
   }
-  const rawQ = localStorage.getItem('webstack_offline_queue');
+  const rawQ = getLocalItem('webstack_offline_queue');
   if (rawQ) {
     const decQ = await decryptPayload<OfflineQueueItem[]>(rawQ, pin);
     if (decQ) {
@@ -148,5 +223,5 @@ export function clearSession(): void {
   setActivePin('');
   cachedOfflineBookmarks = null;
   cachedOfflineQueue = null;
-  localStorage.removeItem('webstack_last_connected');
+  removeLocalItem('webstack_last_connected');
 }

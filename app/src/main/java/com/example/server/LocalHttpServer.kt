@@ -215,8 +215,6 @@ class LocalHttpServer(
                     return
                 }
 
-                recordClientActivity(remoteIp)
-
                 when {
                     uriPath == "/" || uriPath == "/index.html" -> {
                         serveWebCompanion(output)
@@ -228,6 +226,9 @@ class LocalHttpServer(
                         serveManifest(output)
                     }
                     uriPath == "/api/status" -> {
+                        if (isAuthorized(headers, queryParams)) {
+                            recordClientActivity(remoteIp)
+                        }
                         val json = JSONObject().apply {
                             put("status", "online")
                             put("device", Build.MODEL ?: "Android Device")
@@ -237,7 +238,7 @@ class LocalHttpServer(
                         sendJsonResponse(output, 200, json.toString())
                     }
                     uriPath == "/api/auth" && method == "POST" -> {
-                        handleAuth(body, output)
+                        handleAuth(body, output, remoteIp)
                     }
                     uriPath == "/api/disconnect" && method == "POST" -> {
                         activeSessions.remove(remoteIp)
@@ -249,6 +250,7 @@ class LocalHttpServer(
                             sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
                             return
                         }
+                        recordClientActivity(remoteIp)
                         val categories = getCategories()
                         val jsonArray = JSONArray(categories)
                         sendJsonResponse(output, 200, jsonArray.toString())
@@ -258,6 +260,7 @@ class LocalHttpServer(
                             sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
                             return
                         }
+                        recordClientActivity(remoteIp)
                         val bookmarks = repository.getAllWebsitesList()
                         val array = JSONArray()
                         bookmarks.forEach { b ->
@@ -278,6 +281,7 @@ class LocalHttpServer(
                             sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
                             return
                         }
+                        recordClientActivity(remoteIp)
                         handleCreateBookmark(body, output)
                     }
                     else -> {
@@ -289,11 +293,12 @@ class LocalHttpServer(
         }
     }
 
-    private fun handleAuth(body: String, output: OutputStream) {
+    private fun handleAuth(body: String, output: OutputStream, remoteIp: String) {
         try {
             val json = JSONObject(body)
             val submittedPin = json.optString("pin", "").trim()
             if (submittedPin.isNotBlank() && submittedPin == activePin) {
+                recordClientActivity(remoteIp)
                 val resp = JSONObject().apply {
                     put("token", activeSessionToken)
                     put("success", true)
@@ -326,7 +331,9 @@ class LocalHttpServer(
                     put("id", site.id)
                     put("title", site.title)
                     put("url", site.url)
+                    put("domain", site.domain)
                     put("category", site.category)
+                    put("createdAtMs", site.createdAtMs)
                 }
                 sendJsonResponse(output, 201, resp.toString())
                 scope.launch {
@@ -456,7 +463,8 @@ class LocalHttpServer(
                 "Content-Length: ${bytes.size}\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: Content-Type, Authorization\r\n" +
+                "Access-Control-Allow-Headers: Content-Type, Authorization, Access-Control-Request-Private-Network\r\n" +
+                "Access-Control-Allow-Private-Network: true\r\n" +
                 "Connection: close\r\n\r\n"
         output.write(header.toByteArray(Charsets.UTF_8))
         output.write(bytes)
@@ -467,7 +475,8 @@ class LocalHttpServer(
         val header = "HTTP/1.1 204 No Content\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: Content-Type, Authorization\r\n" +
+                "Access-Control-Allow-Headers: Content-Type, Authorization, Access-Control-Request-Private-Network\r\n" +
+                "Access-Control-Allow-Private-Network: true\r\n" +
                 "Access-Control-Max-Age: 86400\r\n" +
                 "Content-Length: 0\r\n" +
                 "Connection: close\r\n\r\n"

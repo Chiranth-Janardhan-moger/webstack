@@ -22,6 +22,17 @@ export interface AuthResponse {
   offlineExpiryHours?: number;
 }
 
+export interface CreateBookmarkResponse {
+  success: boolean;
+  id?: number | string;
+  title?: string;
+  url?: string;
+  domain?: string;
+  category?: string;
+  createdAtMs?: number;
+  error?: string;
+}
+
 export interface OfflineQueueItem {
   url: string;
   category: string;
@@ -33,3 +44,12 @@ export interface EncryptedPayload {
   iv: number[];
   data: number[];
 }
+
+export interface InitialWebStackData {
+  serverUrl?: string;
+  lastConnected?: string;
+  offlineExpiryHours?: string;
+  offlineBookmarks?: string;
+  offlineCategories?: string;
+}
+

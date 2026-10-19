@@ -1,4 +1,4 @@
-import type { AuthResponse, Bookmark, ServerStatus } from './types';
+import type { AuthResponse, Bookmark, CreateBookmarkResponse, ServerStatus } from './types';
 
 export function getApiBase(): string {
   if (window.location && window.location.protocol.startsWith('http')) {
@@ -8,7 +8,24 @@ export function getApiBase(): string {
   }
   const saved = localStorage.getItem('webstack_server_url');
   if (saved && saved.startsWith('http')) return saved.replace(/\/+$/, '');
+
+  const injected = (window as any).DEFAULT_PHONE_ORIGIN;
+  if (injected && typeof injected === 'string' && injected.startsWith('http')) {
+    const cleanInjected = injected.replace(/\/+$/, '');
+    localStorage.setItem('webstack_server_url', cleanInjected);
+    return cleanInjected;
+  }
+
   return 'http://localhost:8080';
+}
+
+export function setApiBase(url: string): string {
+  let clean = url.trim().replace(/\/+$/, '');
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    clean = 'http://' + clean;
+  }
+  localStorage.setItem('webstack_server_url', clean);
+  return clean;
 }
 
 export function apiUrl(path: string): string {
@@ -49,7 +66,7 @@ export async function fetchCategories(token: string): Promise<string[]> {
   return res.json();
 }
 
-export async function postBookmark(url: string, category: string, token: string): Promise<{ success: boolean; error?: string }> {
+export async function postBookmark(url: string, category: string, token: string): Promise<CreateBookmarkResponse> {
   const res = await fetch(apiUrl('/api/bookmarks'), {
     method: 'POST',
     headers: {

@@ -17,6 +17,8 @@ import {
 } from './storage';
 import {
   apiUrl,
+  getApiBase,
+  setApiBase,
   checkServerStatus,
   authenticateWithPin,
   fetchBookmarks,
@@ -24,15 +26,21 @@ import {
   postBookmark,
   disconnectServer
 } from './api';
-import { flushOfflineQueue, saveBookmarkLocally } from './sync';
-import { initPwa, promptPwaInstall } from './pwa';
+import {
+  normalizeUrl,
+  normalizeUrlForComparison,
+  deduplicateBookmarks,
+  removeOfflineQueueItem,
+  flushOfflineQueue,
+  saveBookmarkLocally,
+  extractDomain
+} from './sync';
 import {
   showToast,
   setStatusState,
   renderCategories,
   renderBookmarks,
-  renderTagGrid,
-  escapeHtml
+  renderTagGrid
 } from './ui';
 import { decryptPayload } from './crypto';
 
@@ -51,6 +59,12 @@ const pinInput = document.getElementById('pinInput') as HTMLInputElement;
 const btnConnect = document.getElementById('btnConnect') as HTMLButtonElement;
 const authError = document.getElementById('authError') as HTMLDivElement;
 const btnDisconnect = document.getElementById('btnDisconnect') as HTMLButtonElement;
+
+const authServerDisplay = document.getElementById('authServerDisplay') as HTMLSpanElement | null;
+const btnToggleServerEdit = document.getElementById('btnToggleServerEdit') as HTMLButtonElement | null;
+const authServerEditBox = document.getElementById('authServerEditBox') as HTMLDivElement | null;
+const authServerUrlInput = document.getElementById('authServerUrlInput') as HTMLInputElement | null;
+const btnSaveServerUrl = document.getElementById('btnSaveServerUrl') as HTMLButtonElement | null;
 
 const addModal = document.getElementById('addModal') as HTMLDivElement;
 const btnOpenAddModal = document.getElementById('btnOpenAddModal') as HTMLButtonElement;
@@ -78,10 +92,7 @@ const btnOpenOfflineModal = document.getElementById('btnOpenOfflineModal') as HT
 const btnCloseOfflineModal = document.getElementById('btnCloseOfflineModal') as HTMLButtonElement;
 const btnGotItOffline = document.getElementById('btnGotItOffline') as HTMLButtonElement;
 const btnDownloadStandalone = document.getElementById('btnDownloadStandalone') as HTMLButtonElement;
-const btnTriggerPwaInstall = document.getElementById('btnTriggerPwaInstall') as HTMLButtonElement;
-const btnCopyChromeFlag = document.getElementById('btnCopyChromeFlag') as HTMLButtonElement;
 const offlineServerUrlInput = document.getElementById('offlineServerUrlInput') as HTMLInputElement;
-const chromeFlagHostDisplay = document.getElementById('chromeFlagHostDisplay') as HTMLSpanElement;
 
 const searchNav = document.getElementById('searchNav') as HTMLDivElement;
 const btnSearchToggle = document.getElementById('btnSearchToggle') as HTMLButtonElement;
@@ -89,8 +100,15 @@ const btnClearSearch = document.getElementById('btnClearSearch') as HTMLButtonEl
 const searchInput = document.getElementById('searchInput') as HTMLInputElement;
 
 // Modal Controls
+function updateAuthServerDisplay() {
+  const current = getApiBase();
+  if (authServerDisplay) authServerDisplay.textContent = current;
+  if (authServerUrlInput) authServerUrlInput.value = current;
+}
+
 function showAuthModal() {
   authModal.classList.remove('hidden');
+  updateAuthServerDisplay();
   pinInput.value = '';
   pinInput.focus();
 }
@@ -122,10 +140,7 @@ function closeShortcutsModal() {
 function openOfflineModal() {
   offlineModal.classList.remove('hidden');
   if (offlineServerUrlInput) {
-    offlineServerUrlInput.value = apiUrl('/');
-  }
-  if (chromeFlagHostDisplay) {
-    chromeFlagHostDisplay.textContent = apiUrl('/');
+    offlineServerUrlInput.value = getApiBase();
   }
 }
 
@@ -215,12 +230,13 @@ function loadOfflineData() {
 
   const queue = getOfflineQueue();
   queue.forEach((qItem) => {
-    if (!allBookmarks.some((b) => b.url === qItem.url)) {
+    const qKey = normalizeUrlForComparison(qItem.url);
+    if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === qKey)) {
       allBookmarks.unshift({
         id: 'offline_' + qItem.createdAtMs,
         title: qItem.url,
         url: qItem.url,
-        domain: qItem.url.replace(/^https?:\/\//, '').split('/')[0],
+        domain: extractDomain(qItem.url),
         category: qItem.category,
         createdAtMs: qItem.createdAtMs,
         isPendingSync: true
@@ -228,6 +244,7 @@ function loadOfflineData() {
     }
   });
 
+  allBookmarks = deduplicateBookmarks(allBookmarks);
   renderTagGrid(availableCategories, addCategory.value, selectCategory);
   refreshView();
 }
@@ -251,15 +268,16 @@ async function loadData() {
     await saveOfflineBookmarks(allBookmarks);
     saveOfflineCategories(availableCategories);
 
-    // Merge pending offline queue
+    // Merge pending offline queue without duplicates
     const queue = getOfflineQueue();
     queue.forEach((qItem) => {
-      if (!allBookmarks.some((b) => b.url === qItem.url)) {
+      const qKey = normalizeUrlForComparison(qItem.url);
+      if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === qKey)) {
         allBookmarks.unshift({
           id: 'offline_' + qItem.createdAtMs,
           title: qItem.url,
           url: qItem.url,
-          domain: qItem.url.replace(/^https?:\/\//, '').split('/')[0],
+          domain: extractDomain(qItem.url),
           category: qItem.category,
           createdAtMs: qItem.createdAtMs,
           isPendingSync: true
@@ -267,6 +285,7 @@ async function loadData() {
       }
     });
 
+    allBookmarks = deduplicateBookmarks(allBookmarks);
     renderTagGrid(availableCategories, addCategory.value, selectCategory);
     refreshView();
   } catch (err) {
@@ -279,7 +298,7 @@ async function submitPin(pin: string) {
   const clean = (pin || '').trim();
   if (clean.length !== 6 || !/^\d{6}$/.test(clean)) return;
 
-  btnConnect.textContent = 'Verifying...';
+  btnConnect.textContent = 'Connecting...';
   authError.style.display = 'none';
 
   try {
@@ -291,25 +310,33 @@ async function submitPin(pin: string) {
       setStatusState('online');
       isOffline = false;
       hideAuthModal();
-      await flushOfflineQueue((count) => {
-        showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
-      });
-      await loadData();
       showToast('Connected to WebStack on Android');
+
+      (async () => {
+        try {
+          await flushOfflineQueue((count) => {
+            showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
+          });
+          await loadData();
+        } catch (e) {}
+      })();
       return;
     } else {
       authError.style.display = 'block';
       authError.textContent = data.error || 'Invalid PIN. Check your phone screen.';
       return;
     }
-  } catch (err) {
-    // Phone server offline: attempt offline vault unlock with PIN
+  } catch (networkErr) {
+    // Phone server offline or unreachable: attempt offline vault unlock with PIN
     const rawBms = localStorage.getItem('webstack_offline_bookmarks');
+    let vaultDecrypted = false;
+
     if (rawBms) {
       try {
         const decrypted = await decryptPayload<Bookmark[]>(rawBms, clean);
         if (decrypted) {
           await unlockWithPin(clean);
+          vaultDecrypted = true;
         }
       } catch (decryptErr: any) {
         if (decryptErr && decryptErr.message === 'DECRYPT_FAILED') {
@@ -320,16 +347,19 @@ async function submitPin(pin: string) {
       }
     }
 
-    if (isOfflineSessionValid()) {
+    if (isOfflineSessionValid() && (vaultDecrypted || rawBms)) {
       setActivePin(clean);
       hideAuthModal();
       setStatusState('offline');
       isOffline = true;
       loadOfflineData();
       showToast('Unlocked offline vault');
-    } else {
+    } else if (rawBms && !isOfflineSessionValid()) {
       authError.style.display = 'block';
       authError.textContent = 'Offline session expired. Reconnect to phone to refresh.';
+    } else {
+      authError.style.display = 'block';
+      authError.textContent = `Cannot reach phone at ${getApiBase()}. Ensure phone companion is running and on the same Wi-Fi.`;
     }
   } finally {
     btnConnect.textContent = 'Connect to Phone';
@@ -365,7 +395,12 @@ async function checkAuth() {
     hideAuthModal();
     await flushOfflineQueue();
     await loadData();
-  } catch (err) {
+  } catch (err: any) {
+    if (err && (err.message?.includes('401') || err.message?.includes('403'))) {
+      setToken(null);
+      showAuthModal();
+      return;
+    }
     handleOfflineFallback();
   }
 }
@@ -386,13 +421,27 @@ async function disconnect() {
 function downloadStandaloneHtmlApp() {
   let docHtml = document.documentElement.outerHTML;
 
-  const serverUrl = (offlineServerUrlInput ? offlineServerUrlInput.value.trim() : '') || apiUrl('/');
-  const originInjection = `<script>window.DEFAULT_PHONE_ORIGIN = ${JSON.stringify(serverUrl)};</script>`;
+  const serverUrl = (offlineServerUrlInput ? offlineServerUrlInput.value.trim() : '') || getApiBase();
 
-  if (docHtml.includes('</head>')) {
-    docHtml = docHtml.replace('</head>', originInjection + '</head>');
+  // Strip previous seed data block if re-exporting
+  docHtml = docHtml.replace(/<script id="webstack-seed-data">[\s\S]*?<\/script>/gi, '');
+
+  const seedData = {
+    serverUrl: serverUrl,
+    lastConnected: Date.now().toString(),
+    offlineExpiryHours: localStorage.getItem('webstack_offline_expiry_hours') || '24',
+    offlineBookmarks: localStorage.getItem('webstack_offline_bookmarks') || JSON.stringify(allBookmarks),
+    offlineCategories: localStorage.getItem('webstack_offline_categories') || JSON.stringify(availableCategories)
+  };
+
+  const seedScript = `<script id="webstack-seed-data">window.DEFAULT_PHONE_ORIGIN = ${JSON.stringify(serverUrl)}; window.INITIAL_WEBSTACK_DATA = ${JSON.stringify(seedData)};</script>`;
+
+  if (docHtml.includes('<head>')) {
+    docHtml = docHtml.replace('<head>', '<head>\n  ' + seedScript);
+  } else if (docHtml.includes('</head>')) {
+    docHtml = docHtml.replace('</head>', seedScript + '\n</head>');
   } else {
-    docHtml = originInjection + docHtml;
+    docHtml = seedScript + '\n' + docHtml;
   }
 
   const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
@@ -414,6 +463,50 @@ btnConnect.addEventListener('click', () => submitPin(pinInput.value));
 pinInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') submitPin(pinInput.value);
 });
+pinInput.addEventListener('input', () => {
+  const val = pinInput.value.trim();
+  if (val.length === 6 && /^\d{6}$/.test(val)) {
+    submitPin(val);
+  }
+});
+
+// Auth Server Settings Edit Controls
+if (btnToggleServerEdit && authServerEditBox) {
+  btnToggleServerEdit.addEventListener('click', () => {
+    authServerEditBox.classList.toggle('hidden');
+    if (!authServerEditBox.classList.contains('hidden') && authServerUrlInput) {
+      authServerUrlInput.focus();
+      authServerUrlInput.select();
+    }
+  });
+}
+
+if (btnSaveServerUrl && authServerUrlInput && authServerEditBox) {
+  btnSaveServerUrl.addEventListener('click', () => {
+    const newUrl = authServerUrlInput.value.trim();
+    if (newUrl) {
+      const saved = setApiBase(newUrl);
+      updateAuthServerDisplay();
+      authServerEditBox.classList.add('hidden');
+      showToast(`Phone server set to ${saved}`);
+    }
+  });
+}
+
+if (authServerUrlInput) {
+  authServerUrlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newUrl = authServerUrlInput.value.trim();
+      if (newUrl) {
+        const saved = setApiBase(newUrl);
+        updateAuthServerDisplay();
+        if (authServerEditBox) authServerEditBox.classList.add('hidden');
+        showToast(`Phone server set to ${saved}`);
+      }
+    }
+  });
+}
 
 btnDisconnect.addEventListener('click', disconnect);
 
@@ -443,25 +536,6 @@ offlineModal.addEventListener('click', (e) => {
 
 if (btnDownloadStandalone) {
   btnDownloadStandalone.addEventListener('click', downloadStandaloneHtmlApp);
-}
-
-if (btnTriggerPwaInstall) {
-  btnTriggerPwaInstall.addEventListener('click', async () => {
-    const installed = await promptPwaInstall();
-    if (installed) {
-      showToast('WebStack installed successfully!');
-      closeOfflineModal();
-    } else {
-      showToast('Use browser menu (⋮) -> "Install WebStack"');
-    }
-  });
-}
-
-if (btnCopyChromeFlag) {
-  btnCopyChromeFlag.addEventListener('click', () => {
-    navigator.clipboard.writeText('chrome://flags/#unsafely-treat-insecure-origin-as-secure');
-    showToast('Copied flag URL!');
-  });
 }
 
 tagDropdownTrigger.addEventListener('click', (e) => {
@@ -515,13 +589,18 @@ addBookmarkForm.addEventListener('submit', async (e) => {
   const cat = addCategory.value || 'Personal';
   if (!rawUrl) return;
 
+  const normalizedUrl = normalizeUrl(rawUrl);
   const token = getToken();
+
   btnSaveBookmark.disabled = true;
   btnSaveBookmark.innerHTML = '<span>Saving...</span>';
 
   if (isOffline || !token) {
-    const offlineItem = await saveBookmarkLocally(rawUrl, cat);
-    allBookmarks.unshift(offlineItem);
+    const offlineItem = await saveBookmarkLocally(normalizedUrl, cat);
+    if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === normalizeUrlForComparison(offlineItem.url))) {
+      allBookmarks.unshift(offlineItem);
+    }
+    allBookmarks = deduplicateBookmarks(allBookmarks);
     closeAddModal();
     refreshView();
     btnSaveBookmark.disabled = false;
@@ -531,22 +610,42 @@ addBookmarkForm.addEventListener('submit', async (e) => {
   }
 
   try {
-    const res = await postBookmark(rawUrl, cat, token);
+    const res = await postBookmark(normalizedUrl, cat, token);
     if (res.success) {
+      await removeOfflineQueueItem(normalizedUrl);
+      const newBm: Bookmark = {
+        id: res.id ?? ('bm_' + Date.now()),
+        title: res.title || normalizedUrl,
+        url: res.url || normalizedUrl,
+        domain: res.domain || extractDomain(res.url || normalizedUrl),
+        category: res.category || cat,
+        createdAtMs: res.createdAtMs || Date.now()
+      };
+      allBookmarks.unshift(newBm);
+      allBookmarks = deduplicateBookmarks(allBookmarks);
       closeAddModal();
-      await loadData();
+      refreshView();
       showToast('Bookmark synced to phone!');
+
+      loadData().catch(() => {});
+    } else if (res.error && res.error.toLowerCase().includes('already in your stack')) {
+      await removeOfflineQueueItem(normalizedUrl);
+      closeAddModal();
+      showToast(res.error);
     } else {
       showToast(res.error || 'Failed to sync bookmark.');
     }
   } catch (err) {
     setStatusState('offline');
     isOffline = true;
-    const offlineItem = await saveBookmarkLocally(rawUrl, cat);
-    allBookmarks.unshift(offlineItem);
+    const offlineItem = await saveBookmarkLocally(normalizedUrl, cat);
+    if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === normalizeUrlForComparison(offlineItem.url))) {
+      allBookmarks.unshift(offlineItem);
+    }
+    allBookmarks = deduplicateBookmarks(allBookmarks);
     closeAddModal();
     refreshView();
-    showToast('Network error: saved offline. Will sync when phone connects.');
+    showToast('Saved offline. Will sync when phone connects.');
   } finally {
     btnSaveBookmark.disabled = false;
     btnSaveBookmark.innerHTML = '<span>Save Bookmark</span>';
@@ -631,13 +730,5 @@ setInterval(async () => {
     }
   }
 }, 8000);
-
-// Initialize PWA and App
-initPwa(() => {
-  // PWA is installable on PC
-  if (btnTriggerPwaInstall) {
-    btnTriggerPwaInstall.classList.add('pwa-ready');
-  }
-});
 
 checkAuth();

@@ -25,6 +25,18 @@
       <div id="authError" class="modal-error">Invalid PIN. Please try again.</div>
       <input type="text" id="pinInput" class="pin-input" maxlength="6" placeholder="000000" autofocus inputmode="numeric">
       <button id="btnConnect" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Connect to Phone</button>
+
+      <div class="auth-server-section">
+        <div class="auth-server-row">
+          <span class="auth-server-label">Server:</span>
+          <span id="authServerDisplay" class="auth-server-display">http://localhost:8080</span>
+          <button type="button" id="btnToggleServerEdit" class="auth-server-edit-btn">Change</button>
+        </div>
+        <div id="authServerEditBox" class="auth-server-edit-box hidden">
+          <input type="text" id="authServerUrlInput" class="input-field-modal" placeholder="http://192.168.x.x:8080" autocomplete="off">
+          <button type="button" id="btnSaveServerUrl" class="btn-secondary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Save</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -150,12 +162,12 @@
     </div>
   </div>
 
-  <!-- Desktop & Offline Access Modal -->
+  <!-- Standalone & Offline Access Modal -->
   <div id="offlineModal" class="modal-overlay hidden">
     <div class="modal-card modal-offline-card">
       <div class="modal-header">
         <div class="modal-header-text">
-          <h3 class="modal-header-title">Desktop & Offline Access</h3>
+          <h3 class="modal-header-title">Standalone Desktop App</h3>
           <p class="modal-header-sub">Keep WebStack running on PC anytime, even when your phone is turned off</p>
         </div>
         <button id="btnCloseOfflineModal" class="btn-modal-close" aria-label="Close">
@@ -167,7 +179,7 @@
       </div>
 
       <div class="offline-sections-list">
-        <!-- Option 1: Standalone HTML App -->
+        <!-- Standalone HTML App -->
         <div class="offline-card">
           <div class="offline-card-header">
             <div class="offline-card-title">
@@ -176,12 +188,11 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span>1. Standalone Single-File App</span>
+              <span>Single-File Offline WebStack</span>
             </div>
-            <span class="offline-badge">Recommended</span>
           </div>
           <div class="offline-card-desc">
-            Download a zero-install HTML app directly to your PC Desktop. Double-click to open 100% offline anytime with zero connection timeouts. All cached bookmarks are encrypted with AES-256-GCM.
+            Download a zero-install HTML app directly to your PC. Double-click to open 100% offline anytime with zero connection timeouts. All bookmarks are encrypted with AES-256-GCM.
           </div>
           <div style="display: flex; flex-direction: column; gap: 5px;">
             <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);" for="offlineServerUrlInput">Phone Server Address</label>
@@ -196,56 +207,10 @@
             <span>Download Standalone App (.html)</span>
           </button>
         </div>
-
-        <!-- Option 2: Native PWA Desktop App -->
-        <div class="offline-card">
-          <div class="offline-card-header">
-            <div class="offline-card-title">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
-              <span>2. Install as Desktop App (PWA)</span>
-            </div>
-          </div>
-          <div class="offline-card-desc">
-            Install WebStack into your Windows or Linux Start Menu and Taskbar. Opens in a clean, dedicated window without browser address bars.
-          </div>
-          <button type="button" id="btnTriggerPwaInstall" class="btn-secondary" style="justify-content: center; padding: 10px 16px;">
-            <span>Install Desktop App</span>
-          </button>
-        </div>
-
-        <!-- Option 3: Chrome Offline Tab Reopening (Flag Guide) -->
-        <div class="offline-card">
-          <div class="offline-card-header">
-            <div class="offline-card-title">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              <span>3. Chrome Offline Tab Reopening</span>
-            </div>
-          </div>
-          <div class="offline-card-desc">
-            Browsers block Service Workers on plain local Wi-Fi IPs by default. If you close this tab while offline, Chrome won't reopen it until you reconnect—unless you enable this one-time Chrome flag:
-          </div>
-          <div class="code-box">
-            <span id="chromeFlagText">chrome://flags/#unsafely-treat-insecure-origin-as-secure</span>
-            <button type="button" id="btnCopyChromeFlag" class="action-btn" title="Copy flag URL">Copy</button>
-          </div>
-          <div class="offline-card-desc" style="font-size: 11.5px;">
-            1. Paste into Chrome address bar.<br>
-            2. Add your phone's address (<span id="chromeFlagHostDisplay">http://...</span>) into the box.<br>
-            3. Set dropdown to <b>Enabled</b> and click <b>Relaunch</b>.
-          </div>
-        </div>
       </div>
 
       <div class="shortcuts-footer">
-        <span>WebStack Companion • AES-256 Offline Sync</span>
+        <span>WebStack Companion • Zero-Install Local App</span>
         <button type="button" id="btnGotItOffline" class="btn-primary" style="padding: 7px 18px; font-size: 13px;">Got it</button>
       </div>
     </div>
@@ -317,13 +282,13 @@
           <span class="tooltip">Shortcuts (?)</span>
         </button>
 
-        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Desktop & Offline App">
+        <button id="btnOpenOfflineModal" class="btn-circle-action" aria-label="Offline App Export">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
-          <span class="tooltip">Desktop & Offline</span>
+          <span class="tooltip">Offline App</span>
         </button>
 
         <button id="btnDisconnect" class="btn-circle-action btn-disconnect" aria-label="Disconnect">
