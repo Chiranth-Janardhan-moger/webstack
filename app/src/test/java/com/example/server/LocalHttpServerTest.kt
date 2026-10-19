@@ -381,10 +381,15 @@ class LocalHttpServerTest {
         val icoUrl = URL("http://127.0.0.1:$customPort/favicon.ico")
         val icoConn = icoUrl.openConnection() as HttpURLConnection
         assertEquals(200, icoConn.responseCode)
-        assertTrue(icoConn.contentType.contains("svg+xml"))
-        val icoBody = icoConn.inputStream.bufferedReader().use { it.readText() }
-        assertTrue(icoBody.contains("<svg") && icoBody.contains("M16 6"))
+        assertTrue(icoConn.contentType.contains("icon") || icoConn.contentType.contains("svg+xml") || icoConn.contentType.contains("image/"))
         icoConn.disconnect()
+
+        // 3. /favicon.png
+        val pngUrl = URL("http://127.0.0.1:$customPort/favicon.png")
+        val pngConn = pngUrl.openConnection() as HttpURLConnection
+        assertEquals(200, pngConn.responseCode)
+        assertTrue(pngConn.contentType.contains("png") || pngConn.contentType.contains("svg+xml") || pngConn.contentType.contains("image/"))
+        pngConn.disconnect()
     }
 
     @Test

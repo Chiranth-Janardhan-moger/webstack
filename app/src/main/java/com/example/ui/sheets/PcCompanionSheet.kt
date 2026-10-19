@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DesktopWindows
@@ -106,7 +107,7 @@ fun PcCompanionSubSheetContent(
     val currentCustomPin by (viewModel?.companionCustomPin?.collectAsState() ?: remember { mutableStateOf("") })
     val currentOfflineExpiryHours by (viewModel?.companionOfflineExpiryHours?.collectAsState() ?: remember { mutableStateOf(24) })
 
-    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showSettingsPage by remember { mutableStateOf(false) }
     var showOfflineInfoPage by remember { mutableStateOf(false) }
 
     var copiedUrl by remember { mutableStateOf(false) }
@@ -125,15 +126,15 @@ fun PcCompanionSubSheetContent(
         return
     }
 
-    BackHandler { onBack() }
-
-    if (showSettingsDialog) {
-        PcCompanionSettingsDialog(
+    if (showSettingsPage) {
+        PcCompanionSettingsPage(
             initialPort = currentPort,
             initialUseFixedPin = currentUseFixedPin,
             initialCustomPin = currentCustomPin,
             initialOfflineExpiryHours = currentOfflineExpiryHours,
             isRunning = isRunning,
+            onBack = { showSettingsPage = false },
+            onDismiss = onDismiss,
             onSave = { port, useFixed, customPin, expiryHours ->
                 viewModel?.setCompanionPort(port)
                 viewModel?.setCompanionUseFixedPin(useFixed)
@@ -145,11 +146,13 @@ fun PcCompanionSubSheetContent(
                 } else {
                     Toast.makeText(context, "Settings saved", Toast.LENGTH_SHORT).show()
                 }
-                showSettingsDialog = false
-            },
-            onDismiss = { showSettingsDialog = false }
+                showSettingsPage = false
+            }
         )
+        return
     }
+
+    BackHandler { onBack() }
 
     Column(
         modifier = Modifier
@@ -158,47 +161,69 @@ fun PcCompanionSubSheetContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        AppSubSheetHeader(
-            title = "PC Companion",
-            onBack = onBack,
-            onDismiss = onDismiss,
-            showClose = false,
-            action = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onBack()
+                    },
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    IconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            showOfflineInfoPage = true
-                        },
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = "Offline Support Info",
-                            tint = appColors.label,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            showSettingsDialog = true
-                        },
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "PC Companion Settings",
-                            tint = appColors.label,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                        contentDescription = "Back",
+                        tint = appColors.label,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = "PC Companion",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appColors.label,
+                    letterSpacing = (-0.3).sp
+                )
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showOfflineInfoPage = true
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "PC Companion Info",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier.size(19.dp)
+                    )
                 }
             }
-        )
+
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    showSettingsPage = true
+                },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "PC Companion Settings",
+                    tint = appColors.label,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -252,7 +277,7 @@ fun PcCompanionSubSheetContent(
                             )
                             if (isRunning) {
                                 Surface(
-                                    shape = RoundedCornerShape(4.dp),
+                                    shape = CircleShape,
                                     color = Color(0xFF34C759).copy(alpha = 0.15f)
                                 ) {
                                     Text(
@@ -260,7 +285,7 @@ fun PcCompanionSubSheetContent(
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF34C759),
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                     )
                                 }
                             }
@@ -493,7 +518,7 @@ fun PcCompanionSubSheetContent(
                                         )
                                         if (currentUseFixedPin) {
                                             Surface(
-                                                shape = RoundedCornerShape(4.dp),
+                                                shape = CircleShape,
                                                 color = appColors.fill
                                             ) {
                                                 Text(
@@ -501,7 +526,7 @@ fun PcCompanionSubSheetContent(
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = appColors.secondaryLabel,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                                 )
                                             }
                                         }
@@ -667,17 +692,19 @@ private fun formatPin(raw: String): String {
 }
 
 @Composable
-fun PcCompanionSettingsDialog(
+fun PcCompanionSettingsPage(
     initialPort: Int,
     initialUseFixedPin: Boolean,
     initialCustomPin: String,
     initialOfflineExpiryHours: Int = 24,
     isRunning: Boolean,
-    onSave: (port: Int, useFixedPin: Boolean, customPin: String, offlineExpiryHours: Int) -> Unit,
-    onDismiss: () -> Unit
+    onBack: () -> Unit,
+    onDismiss: () -> Unit,
+    onSave: (port: Int, useFixedPin: Boolean, customPin: String, offlineExpiryHours: Int) -> Unit
 ) {
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
+    val scrollState = rememberScrollState()
 
     var portText by remember { mutableStateOf(initialPort.toString()) }
     var useFixedPin by remember { mutableStateOf(initialUseFixedPin) }
@@ -695,53 +722,46 @@ fun PcCompanionSettingsDialog(
     val isPinValid = !useFixedPin || cleanPin.length == 6
     val canSave = isPortValid && isPinValid
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = appColors.secondaryGroupedBackground,
-        tonalElevation = 0.dp,
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(24.dp)),
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+    BackHandler { onBack() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        AppSubSheetHeader(
+            title = "Settings",
+            onBack = onBack,
+            onDismiss = onDismiss,
+            showClose = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Network Port Card
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Surface(
-                    color = appColors.fill,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.size(36.dp)
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = null,
-                            tint = appColors.label,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                Text(
-                    text = "Companion Settings",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = appColors.label
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Port Section
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "PORT",
+                            text = "NETWORK PORT",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = appColors.secondaryLabel,
@@ -750,7 +770,7 @@ fun PcCompanionSettingsDialog(
                         if (portText.trim() != "8080") {
                             Text(
                                 text = "Reset to 8080",
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = appColors.accent,
                                 modifier = Modifier.clickable {
@@ -770,7 +790,7 @@ fun PcCompanionSettingsDialog(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(46.dp)
+                            .height(48.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -784,7 +804,7 @@ fun PcCompanionSettingsDialog(
                                 singleLine = true,
                                 textStyle = androidx.compose.ui.text.TextStyle(
                                     color = appColors.label,
-                                    fontSize = 15.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     fontFamily = FontFamily.Monospace
                                 ),
@@ -799,16 +819,24 @@ fun PcCompanionSettingsDialog(
                     }
 
                     Text(
-                        text = if (!isPortValid && portText.isNotBlank()) "Port must be between 1024 and 65535" else "Default: 8080 (usable range: 1024 - 65535)",
-                        fontSize = 11.sp,
-                        color = if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30) else appColors.tertiaryLabel
+                        text = if (!isPortValid && portText.isNotBlank()) "Port must be between 1024 and 65535" else "Default port is 8080. Range 1024 to 65535.",
+                        fontSize = 12.sp,
+                        color = if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30) else appColors.secondaryLabel
                     )
                 }
+            }
 
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-
-                // Fixed PIN Section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Fixed PIN Security Card
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -816,8 +844,8 @@ fun PcCompanionSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Use Fixed PIN",
-                                fontSize = 14.sp,
+                                text = "Fixed PIN Code",
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = appColors.label
                             )
@@ -850,7 +878,7 @@ fun PcCompanionSettingsDialog(
                                 ),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(46.dp)
+                                    .height(48.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -865,7 +893,7 @@ fun PcCompanionSettingsDialog(
                                         singleLine = true,
                                         textStyle = androidx.compose.ui.text.TextStyle(
                                             color = appColors.label,
-                                            fontSize = 16.sp,
+                                            fontSize = 17.sp,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = FontFamily.Monospace,
                                             letterSpacing = 2.sp
@@ -896,29 +924,38 @@ fun PcCompanionSettingsDialog(
                             }
 
                             Text(
-                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be exactly 6 digits" else "Saved PIN will be used every time you connect",
-                                fontSize = 11.sp,
-                                color = if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30) else appColors.tertiaryLabel
+                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be exactly 6 digits" else "This permanent PIN will be required whenever your PC connects.",
+                                fontSize = 12.sp,
+                                color = if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30) else appColors.secondaryLabel
                             )
                         }
                     }
                 }
+            }
 
-                // Offline Session Access Section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column {
+            // Offline Session Access Card
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "OFFLINE SESSION ACCESS",
+                            text = "OFFLINE SESSION DURATION",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = appColors.secondaryLabel,
                             letterSpacing = 0.5.sp
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Duration PC can view & queue bookmarks without connecting to phone",
-                            fontSize = 11.sp,
-                            color = appColors.tertiaryLabel
+                            text = "Duration PC can browse & queue bookmarks without reconnecting to phone",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel
                         )
                     }
 
@@ -931,7 +968,7 @@ fun PcCompanionSettingsDialog(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         expiryOptions.forEach { (hours, label) ->
                             val isSelected = selectedExpiryHours == hours
@@ -950,12 +987,12 @@ fun PcCompanionSettingsDialog(
                                 )
                             ) {
                                 Box(
-                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp),
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = label,
-                                        fontSize = 11.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isSelected) appColors.systemBackground else appColors.label,
                                         maxLines = 1
@@ -965,26 +1002,28 @@ fun PcCompanionSettingsDialog(
                         }
                     }
                 }
+            }
 
-                if (isRunning) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFFF9500).copy(alpha = 0.12f),
-                        border = BorderStroke(0.5.dp, Color(0xFFFF9500).copy(alpha = 0.3f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Server is active. Saving will restart it with new settings immediately.",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFFFF9500),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
+            if (isRunning) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFF9500).copy(alpha = 0.12f),
+                    border = BorderStroke(0.5.dp, Color(0xFFFF9500).copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Server is active. Saving will restart it with new settings immediately.",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFFF9500),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
                 }
             }
-        },
-        confirmButton = {
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Save Button
             Button(
                 onClick = {
                     val port = parsedPort ?: return@Button
@@ -994,26 +1033,27 @@ fun PcCompanionSettingsDialog(
                     }
                 },
                 enabled = canSave,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = appColors.label,
                     contentColor = appColors.systemBackground,
                     disabledContainerColor = appColors.fill,
                     disabledContentColor = appColors.tertiaryLabel
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Text(
+                    text = if (isRunning) "Save & Restart Server" else "Save Settings",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
                 )
-            ) {
-                Text(if (isRunning) "Save & Restart" else "Save", fontWeight = FontWeight.Bold)
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
-            ) {
-                Text("Cancel", fontWeight = FontWeight.Medium)
-            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
-    )
+    }
 }
 
 @Composable
@@ -1024,8 +1064,6 @@ fun PcCompanionOfflineInfoPage(
     onDismiss: () -> Unit
 ) {
     val appColors = LocalAppColors.current
-    val haptics = LocalHapticFeedback.current
-    val context = LocalContext.current
     val scrollState = rememberScrollState()
 
     BackHandler { onBack() }
@@ -1038,7 +1076,7 @@ fun PcCompanionOfflineInfoPage(
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         AppSubSheetHeader(
-            title = "Desktop & Offline",
+            title = "PC Companion Info",
             onBack = onBack,
             onDismiss = onDismiss,
             showClose = true
@@ -1050,7 +1088,7 @@ fun PcCompanionOfflineInfoPage(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Card 1: Offline Auto-Sync
+            // Card 1: Local Wi-Fi Sync
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = appColors.surface,
@@ -1072,7 +1110,7 @@ fun PcCompanionOfflineInfoPage(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Outlined.WifiOff,
+                                    imageVector = Icons.Outlined.Wifi,
                                     contentDescription = null,
                                     tint = appColors.label,
                                     modifier = Modifier.size(18.dp)
@@ -1080,14 +1118,14 @@ fun PcCompanionOfflineInfoPage(
                             }
                         }
                         Text(
-                            text = "Offline Auto-Sync",
+                            text = "Local Wi-Fi Sync",
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = appColors.label
                         )
                     }
                     Text(
-                        text = "Browse, search, and save bookmarks offline. Everything syncs to your phone automatically when reconnected.",
+                        text = "Access and manage all your bookmarks on any PC or laptop connected to the same Wi-Fi. Add, edit, or delete links seamlessly with instant bidirectional sync.",
                         fontSize = 13.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 18.sp
@@ -1095,7 +1133,7 @@ fun PcCompanionOfflineInfoPage(
                 }
             }
 
-            // Card 2: Standalone Desktop App
+            // Card 2: Native Desktop App
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = appColors.surface,
@@ -1125,14 +1163,14 @@ fun PcCompanionOfflineInfoPage(
                             }
                         }
                         Text(
-                            text = "Standalone Desktop App",
+                            text = "Native Desktop App",
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = appColors.label
                         )
                     }
                     Text(
-                        text = "Download the single-file offline app from your PC companion. Open it anytime without network timeouts. Secured with your 6-digit PIN.",
+                        text = "Install the dedicated WebStack desktop client for Windows, macOS, or Linux. Enjoy keyboard shortcuts, tray integration, and a focused desktop workspace.",
                         fontSize = 13.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 18.sp
@@ -1140,107 +1178,7 @@ fun PcCompanionOfflineInfoPage(
                 }
             }
 
-            // Card 3: Reopen Closed Tabs
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = appColors.surface,
-                border = BorderStroke(0.75.dp, appColors.separator),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            color = appColors.fill,
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Link,
-                                    contentDescription = null,
-                                    tint = appColors.label,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = "Reopen Closed Tabs",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = appColors.label
-                        )
-                    }
-                    Text(
-                        text = "Enable this Chrome flag to reopen tabs offline over Wi-Fi without connection errors:",
-                        fontSize = 13.sp,
-                        color = appColors.secondaryLabel,
-                        lineHeight = 18.sp
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = appColors.fill,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "chrome://flags/#unsafely-treat-insecure-origin-as-secure",
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = appColors.label,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                    Text(
-                        text = "Add your phone's address below, set to Enabled, and relaunch Chrome.",
-                        fontSize = 13.sp,
-                        color = appColors.secondaryLabel,
-                        lineHeight = 18.sp
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Button(
-                            onClick = {
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("Chrome Flag", "chrome://flags/#unsafely-treat-insecure-origin-as-secure"))
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                Toast.makeText(context, "Copied Chrome Flag URL", Toast.LENGTH_SHORT).show()
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = appColors.fill, contentColor = appColors.label),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Copy Flag", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-
-                        Button(
-                            onClick = {
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("Companion URL", hostUrl))
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                Toast.makeText(context, "Copied Server URL", Toast.LENGTH_SHORT).show()
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = appColors.fill, contentColor = appColors.label),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Copy URL", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-
-            // Card 4: USB Mode (Zero-Config)
+            // Card 3: Zero Cloud & Encrypted
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = appColors.surface,
@@ -1262,7 +1200,7 @@ fun PcCompanionOfflineInfoPage(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Refresh,
+                                    imageVector = Icons.Outlined.Lock,
                                     contentDescription = null,
                                     tint = appColors.label,
                                     modifier = Modifier.size(18.dp)
@@ -1270,14 +1208,14 @@ fun PcCompanionOfflineInfoPage(
                             }
                         }
                         Text(
-                            text = "USB Mode (Zero-Config)",
+                            text = "Zero Cloud & Private",
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = appColors.label
                         )
                     }
                     Text(
-                        text = "Connect via USB and run 'adb reverse tcp:$port tcp:$port'. Open http://localhost:$port for instant offline access without any browser flags.",
+                        text = "Your data never leaves your local network. No external servers or cloud accounts are used. Connection is authenticated with a 6-digit PIN and encrypted with AES-256.",
                         fontSize = 13.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 18.sp

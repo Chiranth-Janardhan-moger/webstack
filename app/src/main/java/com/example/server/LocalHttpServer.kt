@@ -225,8 +225,14 @@ class LocalHttpServer(
                     uriPath == "/manifest.json" -> {
                         serveManifest(output)
                     }
-                    uriPath == "/favicon.ico" || uriPath == "/favicon.svg" -> {
-                        serveFavicon(output)
+                    uriPath == "/favicon.ico" -> {
+                        serveFaviconIco(output)
+                    }
+                    uriPath == "/favicon.png" -> {
+                        serveFaviconPng(output)
+                    }
+                    uriPath == "/favicon.svg" -> {
+                        serveFaviconSvg(output)
                     }
                     uriPath == "/api/status" -> {
                         val hasToken = (headers["authorization"]?.startsWith("Bearer ", ignoreCase = true) == true) || queryParams.containsKey("token")
@@ -462,8 +468,8 @@ class LocalHttpServer(
         output.flush()
     }
 
-    private fun serveFavicon(output: OutputStream) {
-        val svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#18181b"/><path d="M16 6 L7 25 L16 19 L25 25 Z" fill="#ffffff"/></svg>"""
+    private fun serveFaviconSvg(output: OutputStream) {
+        val svg = """<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#18181b"/><path d="M16 6 L7 25 L16 19 L25 25 Z" fill="#ffffff"/></svg>"""
         val bytes = svg.toByteArray(Charsets.UTF_8)
         val header = "HTTP/1.1 200 OK\r\n" +
                 "Content-Type: image/svg+xml; charset=utf-8\r\n" +
@@ -474,6 +480,39 @@ class LocalHttpServer(
         output.write(header.toByteArray(Charsets.UTF_8))
         output.write(bytes)
         output.flush()
+    }
+
+    private fun serveFaviconPng(output: OutputStream) {
+        serveAssetBinary(output, "web/favicon.png", "image/png")
+    }
+
+    private fun serveFaviconIco(output: OutputStream) {
+        serveAssetBinary(output, "web/favicon.ico", "image/x-icon")
+    }
+
+    private fun serveAssetBinary(output: OutputStream, assetPath: String, contentType: String) {
+        try {
+            context.assets.open(assetPath).use { input ->
+                val buffer = ByteArray(8192)
+                val byteStream = ByteArrayOutputStream()
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    byteStream.write(buffer, 0, read)
+                }
+                val bytes = byteStream.toByteArray()
+                val header = "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: $contentType\r\n" +
+                        "Content-Length: ${bytes.size}\r\n" +
+                        "Cache-Control: public, max-age=86400\r\n" +
+                        "Access-Control-Allow-Origin: *\r\n" +
+                        "Connection: close\r\n\r\n"
+                output.write(header.toByteArray(Charsets.UTF_8))
+                output.write(bytes)
+                output.flush()
+            }
+        } catch (_: Exception) {
+            serveFaviconSvg(output)
+        }
     }
 
     private fun sendJsonResponse(output: OutputStream, statusCode: Int, json: String) {
