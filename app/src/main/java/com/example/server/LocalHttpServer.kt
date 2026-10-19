@@ -226,11 +226,18 @@ class LocalHttpServer(
                         serveManifest(output)
                     }
                     uriPath == "/api/status" -> {
-                        if (isAuthorized(headers, queryParams)) {
+                        val hasToken = (headers["authorization"]?.startsWith("Bearer ", ignoreCase = true) == true) || queryParams.containsKey("token")
+                        val isAuth = isAuthorized(headers, queryParams)
+                        if (isAuth) {
                             recordClientActivity(remoteIp)
+                        }
+                        if (hasToken && !isAuth) {
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized: Invalid or expired session token","status":"online","authenticated":false}""")
+                            return
                         }
                         val json = JSONObject().apply {
                             put("status", "online")
+                            put("authenticated", isAuth)
                             put("device", Build.MODEL ?: "Android Device")
                             put("bookmarksCount", repository.getAllWebsitesList().size)
                             put("offlineExpiryHours", getOfflineExpiryHours())
@@ -463,7 +470,7 @@ class LocalHttpServer(
                 "Content-Length: ${bytes.size}\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: Content-Type, Authorization, Access-Control-Request-Private-Network\r\n" +
+                "Access-Control-Allow-Headers: *\r\n" +
                 "Access-Control-Allow-Private-Network: true\r\n" +
                 "Connection: close\r\n\r\n"
         output.write(header.toByteArray(Charsets.UTF_8))
@@ -475,7 +482,7 @@ class LocalHttpServer(
         val header = "HTTP/1.1 204 No Content\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: Content-Type, Authorization, Access-Control-Request-Private-Network\r\n" +
+                "Access-Control-Allow-Headers: *\r\n" +
                 "Access-Control-Allow-Private-Network: true\r\n" +
                 "Access-Control-Max-Age: 86400\r\n" +
                 "Content-Length: 0\r\n" +

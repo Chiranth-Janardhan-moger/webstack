@@ -357,4 +357,62 @@ class LocalHttpServerTest {
         assertEquals("standalone", body.getString("display"))
         conn.disconnect()
     }
+
+    @Test
+    fun testStatusEndpoint_tokenAuthenticationAndActiveConnections() = runBlocking {
+        val customPort = 18901
+        server.start(preferredPort = customPort)
+        delay(150)
+        val pin = server.status.value.pin
+
+        // 1. Initial status check without token: returns 200, authenticated=false, connectedClients=0
+        val anonUrl = URL("http://127.0.0.1:$customPort/api/status")
+        val anonConn = anonUrl.openConnection() as HttpURLConnection
+        assertEquals(200, anonConn.responseCode)
+        val anonBody = JSONObject(anonConn.inputStream.bufferedReader().use { it.readText() })
+        assertEquals("online", anonBody.getString("status"))
+        assertFalse("Should not be authenticated", anonBody.getBoolean("authenticated"))
+        anonConn.disconnect()
+        assertEquals(0, server.status.value.connectedClients)
+
+        // 2. Status check with invalid token: returns 401 Unauthorized
+        val badUrl = URL("http://127.0.0.1:$customPort/api/status?token=invalid_token_123")
+        val badConn = badUrl.openConnection() as HttpURLConnection
+        assertEquals(401, badConn.responseCode)
+        badConn.disconnect()
+        assertEquals(0, server.status.value.connectedClients)
+
+        // 3. Authenticate with PIN to get valid token
+        val authUrl = URL("http://127.0.0.1:$customPort/api/auth")
+        val authConn = authUrl.openConnection() as HttpURLConnection
+        authConn.requestMethod = "POST"
+        authConn.doOutput = true
+        authConn.setRequestProperty("Content-Type", "application/json")
+        authConn.outputStream.use { it.write("""{"pin":"$pin"}""".toByteArray()) }
+        assertEquals(200, authConn.responseCode)
+        val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+        authConn.disconnect()
+
+        // 4. Status check with valid token via query parameter: returns 200, authenticated=true, increments connectedClients
+        val goodUrl = URL("http://127.0.0.1:$customPort/api/status?token=$token")
+        val goodConn = goodUrl.openConnection() as HttpURLConnection
+        assertEquals(200, goodConn.responseCode)
+        val goodBody = JSONObject(goodConn.inputStream.bufferedReader().use { it.readText() })
+        assertEquals("online", goodBody.getString("status"))
+        assertTrue("Should be authenticated", goodBody.getBoolean("authenticated"))
+        goodConn.disconnect()
+        assertEquals(1, server.status.value.connectedClients)
+
+        // 5. Bookmarks endpoint with query param token: returns 200 OK
+        val bmsUrl = URL("http://127.0.0.1:$customPort/api/bookmarks?token=$token")
+        val bmsConn = bmsUrl.openConnection() as HttpURLConnection
+        assertEquals(200, bmsConn.responseCode)
+        bmsConn.disconnect()
+
+        // 6. Categories endpoint with query param token: returns 200 OK
+        val catsUrl = URL("http://127.0.0.1:$customPort/api/categories?token=$token")
+        val catsConn = catsUrl.openConnection() as HttpURLConnection
+        assertEquals(200, catsConn.responseCode)
+        catsConn.disconnect()
+    }
 }

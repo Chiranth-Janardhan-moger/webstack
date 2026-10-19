@@ -1,4 +1,5 @@
 import type { EncryptedPayload } from './types';
+import { getLocalItem, setLocalItem } from './storage';
 
 export async function deriveKey(pin: string, saltBytes: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder();
@@ -24,16 +25,16 @@ export async function deriveKey(pin: string, saltBytes: Uint8Array): Promise<Cry
 }
 
 export function getOrCreateSalt(): Uint8Array {
-  let saltStr = localStorage.getItem('webstack_vault_salt');
+  let saltStr = getLocalItem('webstack_vault_salt');
   if (!saltStr) {
     const arr = new Uint8Array(16);
-    if (window.crypto && window.crypto.getRandomValues) {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
       window.crypto.getRandomValues(arr);
     } else {
       for (let i = 0; i < 16; i++) arr[i] = Math.floor(Math.random() * 256);
     }
     saltStr = btoa(String.fromCharCode(...arr));
-    localStorage.setItem('webstack_vault_salt', saltStr);
+    setLocalItem('webstack_vault_salt', saltStr);
   }
   const binary = atob(saltStr);
   const bytes = new Uint8Array(binary.length);

@@ -20,6 +20,34 @@ export function escapeJs(str: string): string {
     .replace(/\r/g, '\\r');
 }
 
+export function copyToClipboard(text: string): boolean {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      return true;
+    }
+  } catch (e) {}
+  return fallbackCopy(text);
+}
+
+function fallbackCopy(text: string): boolean {
+  try {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.setAttribute('readonly', '');
+    el.style.position = 'fixed';
+    el.style.left = '-9999px';
+    el.style.top = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(el);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
 export function showToast(message: string): void {
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
@@ -131,7 +159,6 @@ export function renderBookmarks(
     .map((b) => {
       const displayDomain = b.domain || b.url.replace(/^https?:\/\//, '').split('/')[0];
       const initial = (displayDomain || 'W').charAt(0).toUpperCase();
-      const encodedUrl = encodeURIComponent(b.url);
       const faviconUrl = `https://www.google.com/s2/favicons?domain=${displayDomain}&sz=64`;
 
       return `
@@ -153,7 +180,7 @@ export function renderBookmarks(
               ${b.isPendingSync ? '<span class="tag-pending-sync" title="Saved locally, will sync when phone connects">Pending Sync</span>' : ''}
             </div>
             <div class="card-actions">
-              <button class="action-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${escapeJs(b.url)}'); window.webstackShowToast('Copied link!');" title="Copy link">
+              <button class="action-btn" onclick="event.stopPropagation(); window.webstackCopyLink('${escapeJs(b.url)}');" title="Copy link">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>

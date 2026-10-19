@@ -13,7 +13,8 @@ import {
   saveOfflineCategories,
   getOfflineQueue,
   unlockWithPin,
-  clearSession
+  clearSession,
+  getLocalItem
 } from './storage';
 import {
   apiUrl,
@@ -37,6 +38,7 @@ import {
 } from './sync';
 import {
   showToast,
+  copyToClipboard,
   setStatusState,
   renderCategories,
   renderBookmarks,
@@ -44,8 +46,12 @@ import {
 } from './ui';
 import { decryptPayload } from './crypto';
 
-// Global bridge for inline HTML onclick handlers
+// Global bridges for inline HTML onclick handlers
 (window as any).webstackShowToast = showToast;
+(window as any).webstackCopyLink = (url: string) => {
+  copyToClipboard(url);
+  showToast('Copied link!');
+};
 
 let allBookmarks: Bookmark[] = [];
 let availableCategories: string[] = ['Personal', 'Work', 'Social', 'Reading'];
@@ -288,7 +294,14 @@ async function loadData() {
     allBookmarks = deduplicateBookmarks(allBookmarks);
     renderTagGrid(availableCategories, addCategory.value, selectCategory);
     refreshView();
-  } catch (err) {
+  } catch (err: any) {
+    if (err && (err.message?.includes('401') || err.message?.includes('403'))) {
+      setToken(null);
+      showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
+      return;
+    }
     handleOfflineFallback();
   }
 }
@@ -312,14 +325,12 @@ async function submitPin(pin: string) {
       hideAuthModal();
       showToast('Connected to WebStack on Android');
 
-      (async () => {
-        try {
-          await flushOfflineQueue((count) => {
-            showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
-          });
-          await loadData();
-        } catch (e) {}
-      })();
+      try {
+        await flushOfflineQueue((count) => {
+          showToast(`Synced ${count} offline bookmark${count > 1 ? 's' : ''} to phone!`);
+        });
+        await loadData();
+      } catch (e) {}
       return;
     } else {
       authError.style.display = 'block';
@@ -328,7 +339,7 @@ async function submitPin(pin: string) {
     }
   } catch (networkErr) {
     // Phone server offline or unreachable: attempt offline vault unlock with PIN
-    const rawBms = localStorage.getItem('webstack_offline_bookmarks');
+    const rawBms = getLocalItem('webstack_offline_bookmarks');
     let vaultDecrypted = false;
 
     if (rawBms) {
@@ -389,6 +400,13 @@ async function checkAuth() {
 
   try {
     const statusData = await checkServerStatus(token);
+    if (statusData.authenticated === false) {
+      setToken(null);
+      showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
+      return;
+    }
     updateLastConnected(statusData.offlineExpiryHours);
     setStatusState('online');
     isOffline = false;
@@ -399,6 +417,8 @@ async function checkAuth() {
     if (err && (err.message?.includes('401') || err.message?.includes('403'))) {
       setToken(null);
       showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
       return;
     }
     handleOfflineFallback();
@@ -429,9 +449,9 @@ function downloadStandaloneHtmlApp() {
   const seedData = {
     serverUrl: serverUrl,
     lastConnected: Date.now().toString(),
-    offlineExpiryHours: localStorage.getItem('webstack_offline_expiry_hours') || '24',
-    offlineBookmarks: localStorage.getItem('webstack_offline_bookmarks') || JSON.stringify(allBookmarks),
-    offlineCategories: localStorage.getItem('webstack_offline_categories') || JSON.stringify(availableCategories)
+    offlineExpiryHours: getLocalItem('webstack_offline_expiry_hours') || '24',
+    offlineBookmarks: getLocalItem('webstack_offline_bookmarks') || JSON.stringify(allBookmarks),
+    offlineCategories: getLocalItem('webstack_offline_categories') || JSON.stringify(availableCategories)
   };
 
   const seedScript = `<script id="webstack-seed-data">window.DEFAULT_PHONE_ORIGIN = ${JSON.stringify(serverUrl)}; window.INITIAL_WEBSTACK_DATA = ${JSON.stringify(seedData)};</script>`;
@@ -597,9 +617,7 @@ addBookmarkForm.addEventListener('submit', async (e) => {
 
   if (isOffline || !token) {
     const offlineItem = await saveBookmarkLocally(normalizedUrl, cat);
-    if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === normalizeUrlForComparison(offlineItem.url))) {
-      allBookmarks.unshift(offlineItem);
-    }
+    allBookmarks.unshift(offlineItem);
     allBookmarks = deduplicateBookmarks(allBookmarks);
     closeAddModal();
     refreshView();
@@ -619,7 +637,8 @@ addBookmarkForm.addEventListener('submit', async (e) => {
         url: res.url || normalizedUrl,
         domain: res.domain || extractDomain(res.url || normalizedUrl),
         category: res.category || cat,
-        createdAtMs: res.createdAtMs || Date.now()
+        createdAtMs: res.createdAtMs || Date.now(),
+        isPendingSync: false
       };
       allBookmarks.unshift(newBm);
       allBookmarks = deduplicateBookmarks(allBookmarks);
@@ -632,6 +651,11 @@ addBookmarkForm.addEventListener('submit', async (e) => {
       await removeOfflineQueueItem(normalizedUrl);
       closeAddModal();
       showToast(res.error);
+    } else if (res.error && res.error.toLowerCase().includes('unauthorized')) {
+      setToken(null);
+      showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
     } else {
       showToast(res.error || 'Failed to sync bookmark.');
     }
@@ -639,9 +663,7 @@ addBookmarkForm.addEventListener('submit', async (e) => {
     setStatusState('offline');
     isOffline = true;
     const offlineItem = await saveBookmarkLocally(normalizedUrl, cat);
-    if (!allBookmarks.some((b) => normalizeUrlForComparison(b.url) === normalizeUrlForComparison(offlineItem.url))) {
-      allBookmarks.unshift(offlineItem);
-    }
+    allBookmarks.unshift(offlineItem);
     allBookmarks = deduplicateBookmarks(allBookmarks);
     closeAddModal();
     refreshView();
@@ -705,6 +727,13 @@ setInterval(async () => {
 
   try {
     const statusData = await checkServerStatus(token);
+    if (statusData.authenticated === false) {
+      setToken(null);
+      showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
+      return;
+    }
     updateLastConnected(statusData.offlineExpiryHours);
     if (isOffline) {
       setStatusState('online');
@@ -718,7 +747,14 @@ setInterval(async () => {
         await flushOfflineQueue();
       }
     }
-  } catch (e) {
+  } catch (e: any) {
+    if (e && (e.message?.includes('401') || e.message?.includes('403'))) {
+      setToken(null);
+      showAuthModal();
+      authError.style.display = 'block';
+      authError.textContent = 'Session expired on phone. Please enter the 6-digit PIN.';
+      return;
+    }
     if (!isOffline) {
       setStatusState('offline');
       isOffline = true;

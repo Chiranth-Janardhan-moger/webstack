@@ -10,6 +10,7 @@ export interface Bookmark {
 
 export interface ServerStatus {
   status: string;
+  authenticated?: boolean;
   device: string;
   bookmarksCount: number;
   offlineExpiryHours: number;

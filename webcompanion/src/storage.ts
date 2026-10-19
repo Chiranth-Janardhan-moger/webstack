@@ -1,7 +1,7 @@
 import type { Bookmark, InitialWebStackData, OfflineQueueItem } from './types';
 import { encryptPayload, decryptPayload } from './crypto';
 
-function getLocalItem(key: string): string | null {
+export function getLocalItem(key: string): string | null {
   try {
     return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
   } catch (e) {
@@ -9,19 +9,19 @@ function getLocalItem(key: string): string | null {
   }
 }
 
-function setLocalItem(key: string, value: string): void {
+export function setLocalItem(key: string, value: string): void {
   try {
     if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
   } catch (e) {}
 }
 
-function removeLocalItem(key: string): void {
+export function removeLocalItem(key: string): void {
   try {
     if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
   } catch (e) {}
 }
 
-function getSessionItem(key: string): string | null {
+export function getSessionItem(key: string): string | null {
   try {
     return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
   } catch (e) {
@@ -29,13 +29,13 @@ function getSessionItem(key: string): string | null {
   }
 }
 
-function setSessionItem(key: string, value: string): void {
+export function setSessionItem(key: string, value: string): void {
   try {
     if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value);
   } catch (e) {}
 }
 
-function removeSessionItem(key: string): void {
+export function removeSessionItem(key: string): void {
   try {
     if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(key);
   } catch (e) {}
