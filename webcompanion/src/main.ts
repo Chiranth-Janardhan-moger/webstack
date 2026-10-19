@@ -519,7 +519,7 @@ offlineModal.addEventListener('click', (e) => {
 
 if (btnDownloadDesktop) {
   btnDownloadDesktop.addEventListener('click', () => {
-    window.open('https://webstack-desktop.vercel.app', '_blank');
+    window.open('https://webstack-desktop.vercel.app/download', '_blank');
   });
 }
 
