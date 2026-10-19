@@ -401,19 +401,20 @@ async function checkAuth() {
   }
 
   // Instant optimistic offline render (0ms delay)
-  if (isOfflineSessionValid()) {
-    const raw = getLocalItem('webstack_offline_bookmarks');
-    if (raw) {
-      hideAuthModal();
-      setStatusState('offline');
-      isOffline = true;
-      loadOfflineData();
-    }
+  const cachedBms = getOfflineBookmarks();
+  if (cachedBms.length > 0) {
+    hideAuthModal();
+    setStatusState('offline');
+    isOffline = true;
+    allBookmarks = cachedBms;
+    availableCategories = getOfflineCategories();
+    renderTagGrid(availableCategories, addCategory.value, selectCategory);
+    refreshView();
   }
 
   const token = getToken();
   if (!token) {
-    if (!isOfflineSessionValid()) {
+    if (cachedBms.length === 0 && !isOfflineSessionValid()) {
       showAuthModal();
     }
     return;
@@ -583,6 +584,14 @@ btnClearSearch.addEventListener('click', (e) => {
 searchInput.addEventListener('input', (e: Event) => {
   searchQuery = (e.target as HTMLInputElement).value;
   renderBookmarks(allBookmarks, currentCategory, searchQuery, openAddModal);
+});
+
+// Click outside to collapse search bar smoothly
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (searchNav && searchNav.classList.contains('open') && !searchNav.contains(target)) {
+    closeSearch();
+  }
 });
 
 // Bookmark Submission

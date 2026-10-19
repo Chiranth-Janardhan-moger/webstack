@@ -166,12 +166,7 @@ export function getOfflineBookmarks(): Bookmark[] {
 export async function saveOfflineBookmarks(bms: Bookmark[]): Promise<void> {
   cachedOfflineBookmarks = bms;
   try {
-    if (activePin) {
-      const enc = await encryptPayload(bms, activePin);
-      setLocalItem('webstack_offline_bookmarks', enc);
-    } else {
-      setLocalItem('webstack_offline_bookmarks', JSON.stringify(bms));
-    }
+    setLocalItem('webstack_offline_bookmarks', JSON.stringify(bms));
   } catch (e) {}
 }
 
@@ -218,12 +213,7 @@ export function getOfflineQueue(): OfflineQueueItem[] {
 export async function saveOfflineQueue(q: OfflineQueueItem[]): Promise<void> {
   cachedOfflineQueue = q;
   try {
-    if (activePin) {
-      const enc = await encryptPayload(q, activePin);
-      setLocalItem('webstack_offline_queue', enc);
-    } else {
-      setLocalItem('webstack_offline_queue', JSON.stringify(q));
-    }
+    setLocalItem('webstack_offline_queue', JSON.stringify(q));
   } catch (e) {}
 }
 
