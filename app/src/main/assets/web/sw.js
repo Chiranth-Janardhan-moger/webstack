@@ -1,6 +1,6 @@
 // WebStack PC Companion Service Worker
 const CACHE_NAME = 'webstack-shell-v1';
-const ASSETS_TO_CACHE = ['/', '/index.html'];
+const ASSETS_TO_CACHE = ['/', '/index.html', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -225,6 +225,9 @@ class LocalHttpServer(
                     uriPath == "/manifest.json" -> {
                         serveManifest(output)
                     }
+                    uriPath == "/favicon.ico" || uriPath == "/favicon.svg" -> {
+                        serveFavicon(output)
+                    }
                     uriPath == "/api/status" -> {
                         val hasToken = (headers["authorization"]?.startsWith("Bearer ", ignoreCase = true) == true) || queryParams.containsKey("token")
                         val isAuth = isAuthorized(headers, queryParams)
@@ -432,6 +435,12 @@ class LocalHttpServer(
     }
 
     private fun serveManifest(output: OutputStream) {
+        val icon = JSONObject().apply {
+            put("src", "/favicon.svg")
+            put("sizes", "any")
+            put("type", "image/svg+xml")
+            put("purpose", "any maskable")
+        }
         val json = JSONObject().apply {
             put("name", "WebStack PC Companion")
             put("short_name", "WebStack")
@@ -440,11 +449,26 @@ class LocalHttpServer(
             put("display", "standalone")
             put("background_color", "#121214")
             put("theme_color", "#121214")
+            put("icons", JSONArray().put(icon))
         }
         val bytes = json.toString().toByteArray(Charsets.UTF_8)
         val header = "HTTP/1.1 200 OK\r\n" +
                 "Content-Type: application/manifest+json; charset=utf-8\r\n" +
                 "Content-Length: ${bytes.size}\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Connection: close\r\n\r\n"
+        output.write(header.toByteArray(Charsets.UTF_8))
+        output.write(bytes)
+        output.flush()
+    }
+
+    private fun serveFavicon(output: OutputStream) {
+        val svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#18181b"/><path d="M16 6 L7 25 L16 19 L25 25 Z" fill="#ffffff"/></svg>"""
+        val bytes = svg.toByteArray(Charsets.UTF_8)
+        val header = "HTTP/1.1 200 OK\r\n" +
+                "Content-Type: image/svg+xml; charset=utf-8\r\n" +
+                "Content-Length: ${bytes.size}\r\n" +
+                "Cache-Control: public, max-age=86400\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Connection: close\r\n\r\n"
         output.write(header.toByteArray(Charsets.UTF_8))

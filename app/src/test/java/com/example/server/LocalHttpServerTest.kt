@@ -355,7 +355,36 @@ class LocalHttpServerTest {
         val body = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
         assertEquals("WebStack PC Companion", body.getString("name"))
         assertEquals("standalone", body.getString("display"))
+        assertTrue(body.has("icons"))
+        val icons = body.getJSONArray("icons")
+        assertEquals(1, icons.length())
+        assertEquals("/favicon.svg", icons.getJSONObject(0).getString("src"))
         conn.disconnect()
+    }
+
+    @Test
+    fun testFaviconEndpoint_returnsValidSvg() = runBlocking {
+        val customPort = 18902
+        server.start(preferredPort = customPort)
+        delay(150)
+
+        // 1. /favicon.svg
+        val svgUrl = URL("http://127.0.0.1:$customPort/favicon.svg")
+        val svgConn = svgUrl.openConnection() as HttpURLConnection
+        assertEquals(200, svgConn.responseCode)
+        assertTrue(svgConn.contentType.contains("svg+xml"))
+        val svgBody = svgConn.inputStream.bufferedReader().use { it.readText() }
+        assertTrue(svgBody.contains("<svg") && svgBody.contains("M16 6"))
+        svgConn.disconnect()
+
+        // 2. /favicon.ico
+        val icoUrl = URL("http://127.0.0.1:$customPort/favicon.ico")
+        val icoConn = icoUrl.openConnection() as HttpURLConnection
+        assertEquals(200, icoConn.responseCode)
+        assertTrue(icoConn.contentType.contains("svg+xml"))
+        val icoBody = icoConn.inputStream.bufferedReader().use { it.readText() }
+        assertTrue(icoBody.contains("<svg") && icoBody.contains("M16 6"))
+        icoConn.disconnect()
     }
 
     @Test
