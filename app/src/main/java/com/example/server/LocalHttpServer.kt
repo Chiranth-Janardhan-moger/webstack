@@ -17,6 +17,8 @@ import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -41,6 +43,7 @@ class LocalHttpServer(
     private val getOfflineExpiryHours: () -> Int = { 24 }
 ) {
     private var serverSocket: ServerSocket? = null
+    private var udpSocket: DatagramSocket? = null
     private var serverJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private val secureRandom = SecureRandom()
@@ -101,6 +104,34 @@ class LocalHttpServer(
                 errorMessage = null
             )
 
+            // Start UDP Discovery Responder for zero-config discovery on LAN
+            launch(Dispatchers.IO) {
+                try {
+                    val udp = DatagramSocket(boundPort)
+                    udp.reuseAddress = true
+                    udpSocket = udp
+                    val buffer = ByteArray(512)
+                    while (isActive && !udp.isClosed) {
+                        val packet = DatagramPacket(buffer, buffer.size)
+                        try {
+                            udp.receive(packet)
+                        } catch (_: Exception) {
+                            break
+                        }
+                        val msg = String(packet.data, 0, packet.length, Charsets.UTF_8).trim()
+                        if (msg.contains("WEBSTACK_DISCOVER_PROBE")) {
+                            val currentIp = WifiUtils.getLocalIpAddress() ?: ip
+                            val replyMsg = "WEBSTACK_DISCOVER_ACK http://$currentIp:$boundPort"
+                            val replyBytes = replyMsg.toByteArray(Charsets.UTF_8)
+                            val replyPacket = DatagramPacket(replyBytes, replyBytes.size, packet.socketAddress)
+                            try {
+                                udp.send(replyPacket)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
             launch {
                 while (isActive) {
                     delay(3000L)
@@ -135,6 +166,10 @@ class LocalHttpServer(
             serverSocket?.close()
         } catch (_: Exception) {}
         serverSocket = null
+        try {
+            udpSocket?.close()
+        } catch (_: Exception) {}
+        udpSocket = null
         serverJob?.cancel()
         serverJob = null
         activeSessions.clear()

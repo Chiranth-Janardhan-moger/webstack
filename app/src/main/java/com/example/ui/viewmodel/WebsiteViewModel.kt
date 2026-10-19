@@ -115,6 +115,17 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         startLocalServer()
     }
 
+    val websiteRepository: WebsiteRepository get() = repository
+
+    suspend fun syncWithHost(hostUrl: String, pin: String): com.example.server.SyncResult {
+        return com.example.server.HostSyncClient.syncBookmarks(
+            hostUrl = hostUrl,
+            pin = pin,
+            repository = repository,
+            onAddCategory = { cat -> addCategory(cat) }
+        )
+    }
+
     fun setSettingsSubScreen(subScreen: com.example.ui.sheets.SettingsSubScreen) {
         _settingsSubScreen.value = subScreen
     }

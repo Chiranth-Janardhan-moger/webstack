@@ -3,8 +3,13 @@ package com.example.ui.sheets
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,20 +38,27 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,7 +70,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.example.server.HostSyncClient
+import com.example.server.SyncResult
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -227,6 +243,73 @@ fun PcCompanionSubSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        var activeMode by remember { mutableStateOf(0) } // 0: Share as Host, 1: Connect to Host
+
+        // Mode Switcher: Share as Host vs Connect to Host
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = appColors.fill,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(11.dp),
+                    color = if (activeMode == 0) appColors.surface else Color.Transparent,
+                    border = if (activeMode == 0) BorderStroke(0.5.dp, appColors.separator) else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeMode = 0
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Share as Host",
+                            fontSize = 13.sp,
+                            fontWeight = if (activeMode == 0) FontWeight.Bold else FontWeight.Medium,
+                            color = if (activeMode == 0) appColors.label else appColors.secondaryLabel
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(11.dp),
+                    color = if (activeMode == 1) appColors.surface else Color.Transparent,
+                    border = if (activeMode == 1) BorderStroke(0.5.dp, appColors.separator) else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeMode = 1
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Connect to Host",
+                            fontSize = 13.sp,
+                            fontWeight = if (activeMode == 1) FontWeight.Bold else FontWeight.Medium,
+                            color = if (activeMode == 1) appColors.label else appColors.secondaryLabel
+                        )
+                    }
+                }
+            }
+        }
+
+        if (activeMode == 0) {
         // Hero Power Card: Server Switch
         Surface(
             shape = RoundedCornerShape(18.dp),
@@ -623,8 +706,573 @@ fun PcCompanionSubSheetContent(
                 )
             }
         }
+        } else {
+            ConnectToHostSection(
+                viewModel = viewModel,
+                context = context,
+                haptics = haptics
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ConnectToHostSection(
+    viewModel: WebsiteViewModel?,
+    context: Context,
+    haptics: androidx.compose.ui.hapticfeedback.HapticFeedback
+) {
+    val appColors = LocalAppColors.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var hostAddress by remember { mutableStateOf("") }
+    var hostPin by remember { mutableStateOf("") }
+    var isDiscovering by remember { mutableStateOf(false) }
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncSuccess by remember { mutableStateOf<String?>(null) }
+    var syncError by remember { mutableStateOf<String?>(null) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            val decoded = QrCodeUtils.decodeQrBitmap(bitmap)
+            if (decoded != null) {
+                val parsed = QrCodeUtils.parseQrUrlAndPin(decoded)
+                if (parsed != null) {
+                    hostAddress = parsed.first
+                    if (parsed.second.isNotBlank()) hostPin = parsed.second
+                    syncError = null
+                    Toast.makeText(context, "QR code recognized!", Toast.LENGTH_SHORT).show()
+                } else {
+                    hostAddress = decoded.trim()
+                    syncError = null
+                    Toast.makeText(context, "Host address detected", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(context, "No QR code detected in photo. Try closer.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+                if (bitmap != null) {
+                    val decoded = QrCodeUtils.decodeQrBitmap(bitmap)
+                    if (decoded != null) {
+                        val parsed = QrCodeUtils.parseQrUrlAndPin(decoded)
+                        if (parsed != null) {
+                            hostAddress = parsed.first
+                            if (parsed.second.isNotBlank()) hostPin = parsed.second
+                            syncError = null
+                            Toast.makeText(context, "QR code recognized!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            hostAddress = decoded.trim()
+                            syncError = null
+                            Toast.makeText(context, "Host address detected", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "No QR code found in selected image", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (_: Exception) {
+                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val cleanPin = hostPin.filter { it.isDigit() }.take(6)
+    val canSync = hostAddress.isNotBlank() && cleanPin.length == 6 && !isSyncing
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Main Sync Configuration Card
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = appColors.surface,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.CloudDownload,
+                                contentDescription = null,
+                                tint = appColors.label,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Connect to WebStack Host",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                        Text(
+                            text = "Sync bookmarks from phone or PC on this Wi-Fi",
+                            fontSize = 12.sp,
+                            color = appColors.secondaryLabel
+                        )
+                    }
+                }
+
+                // 3 Fast Action Buttons: Scan QR, Pick Image, Auto-Find
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Scan QR Button
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = appColors.fill,
+                        border = BorderStroke(0.5.dp, appColors.separator),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                takePictureLauncher.launch(null)
+                            }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CameraAlt,
+                                contentDescription = "Scan QR",
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Scan QR",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.label
+                            )
+                        }
+                    }
+
+                    // Pick Image Button
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = appColors.fill,
+                        border = BorderStroke(0.5.dp, appColors.separator),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                pickImageLauncher.launch("image/*")
+                            }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PhotoLibrary,
+                                contentDescription = "Pick Image",
+                                tint = appColors.label,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Pick Image",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.label
+                            )
+                        }
+                    }
+
+                    // Auto-Find on Wi-Fi Button
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isDiscovering) appColors.label else appColors.fill,
+                        border = BorderStroke(0.5.dp, if (isDiscovering) appColors.label else appColors.separator),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(enabled = !isDiscovering) {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                coroutineScope.launch {
+                                    isDiscovering = true
+                                    syncError = null
+                                    val found = HostSyncClient.discoverHost()
+                                    isDiscovering = false
+                                    if (found != null) {
+                                        hostAddress = found
+                                        Toast.makeText(context, "Host found: $found", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "No WebStack host found on Wi-Fi", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (isDiscovering) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = appColors.systemBackground
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Sensors,
+                                    contentDescription = "Auto-Find",
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Text(
+                                text = if (isDiscovering) "Scanning..." else "Auto-Find",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDiscovering) appColors.systemBackground else appColors.label
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // Host Address Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "HOST ADDRESS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.secondaryLabel,
+                        letterSpacing = 0.5.sp
+                    )
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(0.75.dp, appColors.separator),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            BasicTextField(
+                                value = hostAddress,
+                                onValueChange = { hostAddress = it },
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = appColors.label,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                cursorBrush = SolidColor(appColors.accent),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Uri,
+                                    imeAction = ImeAction.Next
+                                ),
+                                modifier = Modifier.weight(1f),
+                                decorationBox = { innerTextField ->
+                                    if (hostAddress.isBlank()) {
+                                        Text(
+                                            text = "http://192.168.1.xxx:8080",
+                                            fontSize = 14.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = appColors.tertiaryLabel
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            if (hostAddress.isNotBlank()) {
+                                IconButton(
+                                    onClick = { hostAddress = "" },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Clear",
+                                        tint = appColors.secondaryLabel,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // PIN Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "HOST 6-DIGIT PIN",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.secondaryLabel,
+                        letterSpacing = 0.5.sp
+                    )
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(0.75.dp, appColors.separator),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            BasicTextField(
+                                value = hostPin,
+                                onValueChange = { hostPin = it.filter { ch -> ch.isDigit() }.take(6) },
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = appColors.label,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp
+                                ),
+                                cursorBrush = SolidColor(appColors.accent),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                decorationBox = { innerTextField ->
+                                    if (hostPin.isBlank()) {
+                                        Text(
+                                            text = "123456",
+                                            fontSize = 17.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            letterSpacing = 2.sp,
+                                            color = appColors.tertiaryLabel
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Sync Button
+                Button(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        coroutineScope.launch {
+                            isSyncing = true
+                            syncSuccess = null
+                            syncError = null
+                            val res = viewModel?.syncWithHost(hostAddress, cleanPin)
+                            isSyncing = false
+                            when (res) {
+                                is SyncResult.Success -> {
+                                    syncSuccess = "Synced ${res.addedCount} new bookmarks from ${res.hostDevice}! (${res.totalHostCount} total on host)"
+                                    Toast.makeText(context, "Sync complete!", Toast.LENGTH_SHORT).show()
+                                }
+                                is SyncResult.Error -> {
+                                    syncError = res.message
+                                }
+                                null -> {
+                                    syncError = "Sync service unavailable"
+                                }
+                            }
+                        }
+                    },
+                    enabled = canSync,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = appColors.label,
+                        contentColor = appColors.systemBackground,
+                        disabledContainerColor = appColors.fill,
+                        disabledContentColor = appColors.tertiaryLabel
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    if (isSyncing) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = appColors.systemBackground
+                            )
+                            Text(
+                                text = "Syncing with Host...",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Sync,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Connect & Sync Bookmarks",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Success Card
+        syncSuccess?.let { successText ->
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF34C759).copy(alpha = 0.12f),
+                border = BorderStroke(0.5.dp, Color(0xFF34C759).copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = Color(0xFF34C759),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = successText,
+                        color = Color(0xFF28A745),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Error Card
+        syncError?.let { errorText ->
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFFF3B30).copy(alpha = 0.1f),
+                border = BorderStroke(0.5.dp, Color(0xFFFF3B30).copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = Color(0xFFFF3B30),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = errorText,
+                        color = Color(0xFFFF3B30),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Instructions Guide Card
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = appColors.surface,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DesktopWindows,
+                        contentDescription = null,
+                        tint = appColors.label,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "How APK-to-APK sync works",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = appColors.label
+                    )
+                }
+
+                GuideStepRow(step = "1", text = "On the primary phone, open PC Companion and enable Local Wi-Fi Sharing.")
+                GuideStepRow(step = "2", text = "On this Chromebook or second phone, tap 'Scan QR' or 'Auto-Find on Wi-Fi'.")
+                GuideStepRow(step = "3", text = "Tap 'Connect & Sync Bookmarks' to pull and merge all bookmarks into your local offline storage.")
+                GuideStepRow(step = "4", text = "100% private: All data stays directly between the two devices on your local router.")
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                Text(
+                    text = "Zero Cloud Accounts • 100% Offline Local Wi-Fi Peer Sync",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = appColors.secondaryLabel
+                )
+            }
+        }
     }
 }
 
@@ -696,6 +1344,16 @@ fun PcCompanionSettingsPage(
     val isPinValid = !useFixedPin || cleanPin.length == 6
     val canSave = isPortValid && isPinValid
 
+    var showSettingsInfoPage by remember { mutableStateOf(false) }
+
+    if (showSettingsInfoPage) {
+        PcCompanionSettingsInfoPage(
+            onBack = { showSettingsInfoPage = false },
+            onDismiss = onDismiss
+        )
+        return
+    }
+
     BackHandler { onBack() }
 
     Column(
@@ -705,12 +1363,66 @@ fun PcCompanionSettingsPage(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        AppSubSheetHeader(
-            title = "Settings",
-            onBack = onBack,
-            onDismiss = onDismiss,
-            showClose = true
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onBack()
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                        contentDescription = "Back",
+                        tint = appColors.label,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = "Settings",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = appColors.label,
+                    letterSpacing = (-0.3).sp
+                )
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showSettingsInfoPage = true
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "Settings Info",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Close",
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -1190,6 +1902,176 @@ fun PcCompanionOfflineInfoPage(
                     }
                     Text(
                         text = "Your data never leaves your local network. No external servers or cloud accounts are used. Connection is authenticated with a 6-digit PIN and encrypted with AES-256.",
+                        fontSize = 13.sp,
+                        color = appColors.secondaryLabel,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun PcCompanionSettingsInfoPage(
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val scrollState = rememberScrollState()
+
+    BackHandler { onBack() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        AppSubSheetHeader(
+            title = "Settings Info",
+            onBack = onBack,
+            onDismiss = onDismiss,
+            showClose = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Card 1: Network Port
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            color = appColors.fill,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Sensors,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Network Port",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                    }
+                    Text(
+                        text = "The local TCP port where the WebStack embedded server listens. The default is 8080. You can change this to any port between 1024 and 65535 if 8080 conflicts with another service or is blocked by your firewall.",
+                        fontSize = 13.sp,
+                        color = appColors.secondaryLabel,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+
+            // Card 2: Fixed vs Dynamic PIN
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            color = appColors.fill,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Fixed vs Dynamic PIN",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                    }
+                    Text(
+                        text = "Dynamic PIN creates a fresh random 6-digit code each time sharing is started for enhanced security. Fixed PIN preserves a chosen permanent 6-digit PIN across restarts, ideal for persistent paired computers, tablets, and Chromebooks.",
+                        fontSize = 13.sp,
+                        color = appColors.secondaryLabel,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+
+            // Card 3: Offline Session Duration
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            color = appColors.fill,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Refresh,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Offline Session Duration",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                    }
+                    Text(
+                        text = "Determines how long a connected PC or browser can browse and queue bookmarks offline before re-authenticating with the host phone. When expired, the PC must re-verify credentials on the local network.",
                         fontSize = 13.sp,
                         color = appColors.secondaryLabel,
                         lineHeight = 18.sp
