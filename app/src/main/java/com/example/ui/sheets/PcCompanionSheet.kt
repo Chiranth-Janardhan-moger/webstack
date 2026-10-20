@@ -9,6 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Refresh
@@ -62,6 +66,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
@@ -578,53 +583,98 @@ fun PcCompanionSubSheetContent(
             }
         }
 
-        // Instructions Guide Card
+        // Instructions Guide Card (Expandable Dropdown)
+        var isHowToConnectExpanded by remember { mutableStateOf(false) }
+        val chevronRotation by animateFloatAsState(
+            targetValue = if (isHowToConnectExpanded) 180f else 0f,
+            label = "howToConnectChevron"
+        )
+
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = appColors.surface,
             border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isHowToConnectExpanded = !isHowToConnectExpanded }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            color = appColors.fill,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DesktopWindows,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "How to connect from your PC",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = appColors.label
+                        )
+                    }
+
                     Icon(
-                        imageVector = Icons.Outlined.DesktopWindows,
-                        contentDescription = null,
-                        tint = appColors.label,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "How to connect from PC",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = appColors.label
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = if (isHowToConnectExpanded) "Collapse guide" else "Expand guide",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(chevronRotation)
                     )
                 }
 
-                GuideStepRow(step = "1", text = "Connect your PC/laptop to the same Wi-Fi router as your phone.")
-                GuideStepRow(step = "2", text = "Turn ON the server toggle and open the URL or scan the QR code.")
-                GuideStepRow(step = "3", text = "Enter the 6-digit PIN on your computer to securely access your bookmarks.")
-                GuideStepRow(step = "4", text = "Paste links from PC to instantly save them into WebStack on your phone.")
+                AnimatedVisibility(
+                    visible = isHowToConnectExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator
+                        )
 
-                HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = appColors.separator
-                )
+                        GuideStepRow(step = "1", text = "Connect your PC/laptop to the same Wi-Fi router as your phone.")
+                        GuideStepRow(step = "2", text = "Turn ON the server toggle and open the URL or scan the QR code.")
+                        GuideStepRow(step = "3", text = "Enter the 6-digit PIN on your computer to securely access your bookmarks.")
+                        GuideStepRow(step = "4", text = "Paste links from PC to instantly save them into WebStack on your phone.")
 
-                Text(
-                    text = "Zero Internet Required • 100% Private Local Subnet",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = appColors.secondaryLabel
-                )
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator
+                        )
+
+                        Text(
+                            text = "Zero Internet Required • 100% Private Local Subnet",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = appColors.secondaryLabel
+                        )
+                    }
+                }
             }
         }
 
