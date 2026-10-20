@@ -16,8 +16,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -174,31 +175,44 @@ fun PcCompanionSubSheetContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            contentAlignment = Alignment.Center
         ) {
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onBack()
+                },
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.CenterStart)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                    contentDescription = "Back",
+                    tint = appColors.label,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onBack()
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
-                        contentDescription = "Back",
-                        tint = appColors.label,
-                        modifier = Modifier.size(20.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showOfflineInfoPage = true
+                        }
                     )
-                }
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            ) {
                 Text(
                     text = "PC Companion",
                     fontWeight = FontWeight.Bold,
@@ -206,20 +220,12 @@ fun PcCompanionSubSheetContent(
                     color = appColors.label,
                     letterSpacing = (-0.3).sp
                 )
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        showOfflineInfoPage = true
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "PC Companion Info",
-                        tint = appColors.secondaryLabel,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "PC Companion Info",
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(17.dp)
+                )
             }
 
             IconButton(
@@ -227,7 +233,9 @@ fun PcCompanionSubSheetContent(
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     showSettingsPage = true
                 },
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.CenterEnd)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,
@@ -836,6 +844,43 @@ fun PcCompanionSubSheetContent(
                         GuideStepRow(step = "2", text = "Turn ON the server toggle and open the URL or scan the QR code.")
                         GuideStepRow(step = "3", text = "Enter the 6-digit PIN on your computer to securely access your bookmarks.")
                         GuideStepRow(step = "4", text = "Paste links from PC to instantly save them into WebStack on your phone.")
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = appColors.fill,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                try {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = null,
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Tip: Set WebStack to Unrestricted in Android Settings to keep the server running when your screen is locked.",
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = appColors.secondaryLabel,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
 
                         HorizontalDivider(
                             thickness = 0.5.dp,
