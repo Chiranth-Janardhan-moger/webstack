@@ -55,6 +55,10 @@ class LocalHttpServer(
     private var activeSessionToken: String = ""
     private val activeSessions = ConcurrentHashMap<String, Long>()
 
+    private val serverPrefs by lazy {
+        context.getSharedPreferences("webstack_companion_server_prefs", Context.MODE_PRIVATE)
+    }
+
     @Synchronized
     fun start(preferredPort: Int = 8080, customPin: String? = null) {
         if (_status.value.isRunning) return
@@ -68,8 +72,36 @@ class LocalHttpServer(
             return
         }
 
-        activePin = if (!customPin.isNullOrBlank() && customPin.trim().length == 6 && customPin.trim().all { it.isDigit() }) customPin.trim() else generatePin()
-        activeSessionToken = generateToken()
+        // Reuse persistent session token and PIN if within valid offline expiry window
+        val prefs = serverPrefs
+        val storedToken = prefs.getString("active_session_token", null)
+        val tokenTimestamp = prefs.getLong("active_session_token_timestamp", 0L)
+        val expiryMs = getOfflineExpiryHours().toLong() * 3600_000L
+        val isTokenValid = !storedToken.isNullOrBlank() && (System.currentTimeMillis() - tokenTimestamp in 0..expiryMs)
+
+        activeSessionToken = if (isTokenValid) {
+            storedToken!!
+        } else {
+            val newToken = generateToken()
+            prefs.edit()
+                .putString("active_session_token", newToken)
+                .putLong("active_session_token_timestamp", System.currentTimeMillis())
+                .apply()
+            newToken
+        }
+
+        val storedPin = prefs.getString("active_pin", null)
+        activePin = if (!customPin.isNullOrBlank() && customPin.trim().length == 6 && customPin.trim().all { it.isDigit() }) {
+            val cleanPin = customPin.trim()
+            prefs.edit().putString("active_pin", cleanPin).apply()
+            cleanPin
+        } else if (isTokenValid && !storedPin.isNullOrBlank()) {
+            storedPin
+        } else {
+            val newPin = generatePin()
+            prefs.edit().putString("active_pin", newPin).apply()
+            newPin
+        }
 
         serverJob = scope.launch {
             var boundSocket: ServerSocket? = null
@@ -176,6 +208,18 @@ class LocalHttpServer(
         _status.value = ServerStatus(isRunning = false, connectedClients = 0)
     }
 
+    @Synchronized
+    fun revokeSession() {
+        serverPrefs.edit()
+            .remove("active_session_token")
+            .remove("active_session_token_timestamp")
+            .remove("active_pin")
+            .apply()
+        activeSessionToken = ""
+        activePin = ""
+        activeSessions.clear()
+    }
+
     private fun generatePin(): String {
         val n = secureRandom.nextInt(900000) + 100000
         return n.toString()
@@ -196,8 +240,12 @@ class LocalHttpServer(
         val cutoff = System.currentTimeMillis() - 25_000L
         activeSessions.entries.removeIf { it.value < cutoff }
         val count = activeSessions.size
-        if (_status.value.isRunning && _status.value.connectedClients != count) {
-            _status.value = _status.value.copy(connectedClients = count)
+        val freshIp = WifiUtils.getLocalIpAddress()
+        if (_status.value.isRunning && (_status.value.connectedClients != count || (freshIp != null && freshIp != _status.value.ipAddress))) {
+            _status.value = _status.value.copy(
+                connectedClients = count,
+                ipAddress = freshIp ?: _status.value.ipAddress
+            )
         }
     }
 
@@ -294,6 +342,11 @@ class LocalHttpServer(
                     uriPath == "/api/disconnect" && method == "POST" -> {
                         activeSessions.remove(remoteIp)
                         cleanupOldSessions()
+                        serverPrefs.edit()
+                            .remove("active_session_token")
+                            .remove("active_session_token_timestamp")
+                            .remove("active_pin")
+                            .apply()
                         sendJsonResponse(output, 200, """{"success":true}""")
                     }
                     uriPath == "/api/categories" -> {
@@ -350,6 +403,9 @@ class LocalHttpServer(
             val submittedPin = json.optString("pin", "").trim()
             if (submittedPin.isNotBlank() && submittedPin == activePin) {
                 recordClientActivity(remoteIp)
+                serverPrefs.edit()
+                    .putLong("active_session_token_timestamp", System.currentTimeMillis())
+                    .apply()
                 val resp = JSONObject().apply {
                     put("token", activeSessionToken)
                     put("success", true)

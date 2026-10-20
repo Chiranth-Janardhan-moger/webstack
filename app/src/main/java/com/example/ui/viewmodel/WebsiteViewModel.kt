@@ -110,6 +110,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         localServer.stop()
     }
 
+    fun revokeCompanionSession() {
+        localServer.revokeSession()
+    }
+
     fun restartLocalServer() {
         stopLocalServer()
         startLocalServer()
