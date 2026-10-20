@@ -79,6 +79,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.res.painterResource
 import com.example.R
 import com.example.ui.components.AppSubSheetHeader
@@ -118,6 +119,7 @@ fun PcCompanionSubSheetContent(
 
     var showSettingsPage by remember { mutableStateOf(false) }
     var showOfflineInfoPage by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
 
     var copiedUrl by remember { mutableStateOf(false) }
     var copiedPin by remember { mutableStateOf(false) }
@@ -353,53 +355,7 @@ fun PcCompanionSubSheetContent(
             exit = fadeOut()
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // QR Code Card
-                if (qrBitmap != null) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = appColors.surface,
-                        border = BorderStroke(0.75.dp, appColors.separator),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Scan with PC or Tablet",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = appColors.label
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // High-contrast QR Container
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color.White,
-                                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                                modifier = Modifier.size(200.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        bitmap = qrBitmap,
-                                        contentDescription = "Connection QR Code",
-                                        modifier = Modifier.size(176.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Connection Credentials Card
+                // Unified Connection Hub Card
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = appColors.surface,
@@ -554,6 +510,75 @@ fun PcCompanionSubSheetContent(
                             color = appColors.separator
                         )
 
+                        // Scan with PC or Tablet Row (QR Modal Trigger)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showQrDialog = true
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Surface(
+                                    color = appColors.fill,
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_qr_code),
+                                            contentDescription = null,
+                                            tint = appColors.label,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Scan with PC or Tablet",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = appColors.label
+                                    )
+                                    Text(
+                                        text = "Tap to show QR code",
+                                        fontSize = 12.sp,
+                                        color = appColors.secondaryLabel
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = appColors.fill,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_qr_code),
+                                        contentDescription = "Show QR Code",
+                                        tint = appColors.label,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 0.5.dp,
+                            color = appColors.separator
+                        )
+
                         // Active Clients Row
                         Row(
                             modifier = Modifier
@@ -577,6 +602,107 @@ fun PcCompanionSubSheetContent(
                                 fontWeight = FontWeight.Medium,
                                 color = if (serverStatus.connectedClients > 0) Color(0xFF34C759) else appColors.secondaryLabel
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // QR Code Dialog (Modal with dark/gray background and centered QR)
+        if (showQrDialog && qrBitmap != null) {
+            Dialog(onDismissRequest = { showQrDialog = false }) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFF1E1E20),
+                    border = BorderStroke(1.dp, Color(0xFF333336)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Scan to Connect",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Point your PC or tablet camera at the QR",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF9E9EA4)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { showQrDialog = false },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Close",
+                                    tint = Color(0xFF9E9EA4),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                            modifier = Modifier.size(220.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    bitmap = qrBitmap,
+                                    contentDescription = "Connection QR Code",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF2C2C2E),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "PIN:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF9E9EA4)
+                                )
+                                Text(
+                                    text = formatPin(serverStatus.pin),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.5.sp,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }
