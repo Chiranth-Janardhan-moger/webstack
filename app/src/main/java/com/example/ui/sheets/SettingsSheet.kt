@@ -705,11 +705,24 @@ fun SettingsBottomSheetContent(
             shape = RoundedCornerShape(16.dp),
             color = appColors.surface,
             border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                navigateToSubScreen(SettingsSubScreen.PC_SHARE)
-            }
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        navigateToSubScreen(SettingsSubScreen.PC_SHARE)
+                    },
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        activeExplainer = SettingsExplainer(
+                            title = "PC Companion",
+                            description = "Connect your computer or tablet over local Wi-Fi to browse, search, and instantly save bookmarks to your phone.",
+                            icon = Icons.Outlined.DesktopWindows
+                        )
+                    }
+                )
         ) {
             Row(
                 modifier = Modifier
