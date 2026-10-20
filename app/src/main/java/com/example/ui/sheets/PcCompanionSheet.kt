@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.painterResource
 import com.example.R
 import com.example.ui.components.AppSubSheetHeader
@@ -564,10 +566,10 @@ fun PcCompanionSubSheetContent(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.ic_qr_code),
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                         contentDescription = "Show QR Code",
-                                        tint = appColors.label,
-                                        modifier = Modifier.size(18.dp)
+                                        tint = appColors.secondaryLabel,
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
@@ -608,16 +610,20 @@ fun PcCompanionSubSheetContent(
             }
         }
 
-        // QR Code Dialog (Modal with dark/gray background and centered QR)
-        if (showQrDialog && qrBitmap != null) {
-            Dialog(onDismissRequest = { showQrDialog = false }) {
+        // QR Code Dialog (Modal with adaptive theme background and centered QR)
+        if (showQrDialog) {
+            Dialog(
+                onDismissRequest = { showQrDialog = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF1E1E20),
-                    border = BorderStroke(1.dp, Color(0xFF333336)),
+                    shape = RoundedCornerShape(26.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(1.dp, appColors.separator),
+                    shadowElevation = if (appColors.isDark) 0.dp else 12.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .padding(horizontal = 24.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -626,43 +632,60 @@ fun PcCompanionSubSheetContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Header with Title, Subtitle, and Circular Close Button
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.Top
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
                                 Text(
                                     text = "Scan to Connect",
-                                    fontSize = 17.sp,
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = appColors.label
                                 )
                                 Text(
-                                    text = "Point your PC or tablet camera at the QR",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF9E9EA4)
+                                    text = "Point your PC or tablet camera at the QR code",
+                                    fontSize = 13.sp,
+                                    color = appColors.secondaryLabel,
+                                    lineHeight = 17.sp
                                 )
                             }
 
-                            IconButton(
-                                onClick = { showQrDialog = false },
-                                modifier = Modifier.size(32.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = appColors.fill,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clickable {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showQrDialog = false
+                                    }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Close,
-                                    contentDescription = "Close",
-                                    tint = Color(0xFF9E9EA4),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Close",
+                                        tint = appColors.secondaryLabel,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
 
+                        // Centered High-Contrast QR Code Card
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(20.dp),
                             color = Color.White,
-                            border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
-                            modifier = Modifier.size(220.dp)
+                            border = BorderStroke(1.dp, if (appColors.isDark) Color(0xFF2C2C2E) else appColors.separator),
+                            shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
+                            modifier = Modifier.size(230.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -670,40 +693,64 @@ fun PcCompanionSubSheetContent(
                                     .padding(14.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Image(
-                                    bitmap = qrBitmap,
-                                    contentDescription = "Connection QR Code",
-                                    modifier = Modifier.fillMaxSize()
+                                if (qrBitmap != null) {
+                                    Image(
+                                        bitmap = qrBitmap,
+                                        contentDescription = "Connection QR Code",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+
+                        // Interactive PIN Code Card with 1-Tap Copy
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = appColors.secondaryBackground,
+                            border = BorderStroke(0.75.dp, appColors.separator),
+                            modifier = Modifier
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("WebStack PIN", serverStatus.pin))
+                                    copiedPin = true
+                                    Toast.makeText(context, "PIN copied", Toast.LENGTH_SHORT).show()
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "PIN",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = appColors.secondaryLabel,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = formatPin(serverStatus.pin),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 2.sp,
+                                    color = appColors.label
+                                )
+                                Icon(
+                                    imageVector = if (copiedPin) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
+                                    contentDescription = "Copy PIN",
+                                    tint = if (copiedPin) Color(0xFF34C759) else appColors.secondaryLabel,
+                                    modifier = Modifier.size(15.dp)
                                 )
                             }
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF2C2C2E),
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "PIN:",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF9E9EA4)
-                                )
-                                Text(
-                                    text = formatPin(serverStatus.pin),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace,
-                                    letterSpacing = 1.5.sp,
-                                    color = Color.White
-                                )
-                            }
-                        }
+                        Text(
+                            text = "Or enter the PIN manually on your PC",
+                            fontSize = 11.sp,
+                            color = appColors.tertiaryLabel
+                        )
                     }
                 }
             }
