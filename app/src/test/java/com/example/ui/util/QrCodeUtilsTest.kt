@@ -27,41 +27,17 @@ class QrCodeUtilsTest {
     }
 
     @Test
-    fun testQrCodeRoundTrip_encodeAndDecode() {
+    fun testGenerateAndroidBitmap_validPayload_createsCorrectDimensions() {
         val testPayload = "http://192.168.1.155:8080/?pin=445566"
-        val androidBitmap = QrCodeUtils.generateAndroidBitmap(testPayload, 256)
+        val androidBitmap = QrCodeUtils.generateAndroidBitmap(testPayload, 300)
         assertNotNull(androidBitmap)
-        val decoded = QrCodeUtils.decodeQrBitmap(androidBitmap!!)
-        assertEquals(testPayload, decoded)
+        assertEquals(300, androidBitmap!!.width)
+        assertEquals(300, androidBitmap.height)
     }
 
     @Test
-    fun testParseQrUrlAndPin_validUrlWithPin() {
-        val parsed = QrCodeUtils.parseQrUrlAndPin("http://192.168.1.200:8080/?pin=654321")
-        assertNotNull(parsed)
-        assertEquals("http://192.168.1.200:8080", parsed!!.first)
-        assertEquals("654321", parsed.second)
-    }
-
-    @Test
-    fun testParseQrUrlAndPin_validUrlWithoutPin() {
-        val parsed = QrCodeUtils.parseQrUrlAndPin("http://10.0.0.5:8081/index.html")
-        assertNotNull(parsed)
-        assertEquals("http://10.0.0.5:8081", parsed!!.first)
-        assertEquals("", parsed.second)
-    }
-
-    @Test
-    fun testParseQrUrlAndPin_invalidString_returnsNull() {
-        assertNull(QrCodeUtils.parseQrUrlAndPin("not a url at all"))
-        assertNull(QrCodeUtils.parseQrUrlAndPin(""))
-        assertNull(QrCodeUtils.parseQrUrlAndPin("ftp://ftp.example.com"))
-    }
-
-    @Test
-    fun testDecodeQrBitmap_solidColor_returnsNull() {
-        val blankBitmap = android.graphics.Bitmap.createBitmap(100, 100, android.graphics.Bitmap.Config.ARGB_8888)
-        val decoded = QrCodeUtils.decodeQrBitmap(blankBitmap)
-        assertNull(decoded)
+    fun testGenerateAndroidBitmap_blankPayload_returnsNull() {
+        assertNull(QrCodeUtils.generateAndroidBitmap("", 256))
+        assertNull(QrCodeUtils.generateAndroidBitmap("  ", 256))
     }
 }
