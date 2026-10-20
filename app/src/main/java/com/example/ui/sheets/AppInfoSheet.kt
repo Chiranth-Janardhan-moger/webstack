@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.BuildConfig
@@ -519,16 +520,20 @@ private fun FeedbackOptionsDialog(
                         )
                     }
                 }
-                Column {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         text = "Feedback & Support",
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
+                        lineHeight = 22.sp,
                         color = appColors.label
                     )
                     Text(
                         text = "Choose your preferred channel",
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = appColors.secondaryLabel
                     )
                 }
@@ -573,16 +578,23 @@ private fun FeedbackOptionsDialog(
                                 )
                             }
                         }
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
                             Text(
                                 text = "GitHub Issues",
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
+                                lineHeight = 18.sp,
                                 color = appColors.label
                             )
                             Text(
-                                text = "Report bugs or request features",
+                                text = "Bugs & feature requests",
                                 fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 color = appColors.secondaryLabel
                             )
                         }
@@ -640,16 +652,23 @@ private fun FeedbackOptionsDialog(
                                 )
                             }
                         }
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
                             Text(
                                 text = "Send Email",
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
+                                lineHeight = 18.sp,
                                 color = appColors.label
                             )
                             Text(
                                 text = DEVELOPER_EMAIL,
                                 fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 color = appColors.secondaryLabel
                             )
                         }
