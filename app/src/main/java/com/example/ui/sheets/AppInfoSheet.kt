@@ -7,6 +7,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,11 +28,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,7 +70,6 @@ import com.example.ui.theme.LocalAppColors
 
 enum class AppInfoSubScreen {
     MAIN,
-    ROADMAP,
     FEATURES
 }
 
@@ -107,189 +110,132 @@ fun AppInfoBottomSheetContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Top Full-Width Hero Card: App Branding (Icon squircle + WebStack + v1.2.0 + Author)
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = appColors.surface,
-                    border = BorderStroke(0.75.dp, appColors.separator),
-                    modifier = Modifier.fillMaxWidth()
+                // Center-Aligned App Branding (Minimalist Spotlight)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.size(68.dp)
                     ) {
-                        Surface(
-                            color = appColors.fill,
-                            shape = RoundedCornerShape(15.dp),
-                            modifier = Modifier.size(58.dp),
-                            border = BorderStroke(0.5.dp, appColors.separator.copy(alpha = 0.5f))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.ic_logo),
-                                    contentDescription = "WebStack Logo",
-                                    modifier = Modifier.size(32.dp),
-                                    colorFilter = ColorFilter.tint(appColors.label)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = "WebStack",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp,
-                                    color = appColors.label,
-                                    letterSpacing = (-0.5).sp
-                                )
-
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = appColors.fill
-                                ) {
-                                    Text(
-                                        text = "v$versionName",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = appColors.label,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "by Chiranth Moger",
-                                fontSize = 14.sp,
-                                color = appColors.secondaryLabel
+                        Box(contentAlignment = Alignment.Center) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_logo),
+                                contentDescription = "WebStack Logo",
+                                modifier = Modifier.size(38.dp),
+                                colorFilter = ColorFilter.tint(appColors.label)
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "WebStack",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = appColors.label,
+                        letterSpacing = (-0.5).sp
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = "by Chiranth Moger",
+                        fontSize = 13.sp,
+                        color = appColors.secondaryLabel
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Bottom Side-by-Side Cards: GitHub & Feedback
+                // 4 Borderless Circular Action Items in One Line
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    // 1. GitHub Card
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = appColors.surface,
-                        border = BorderStroke(0.75.dp, appColors.separator),
-                        modifier = Modifier.weight(1f),
+                    // 1. Android
+                    AppInfoActionItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Android,
+                                contentDescription = "Android",
+                                tint = appColors.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        title = "Android",
+                        subtitle = "v$versionName",
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            Toast.makeText(context, "WebStack for Android v$versionName", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    // 2. Desktop (Windows & Linux)
+                    AppInfoActionItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.DesktopWindows,
+                                contentDescription = "Desktop Companion",
+                                tint = appColors.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        title = "Desktop",
+                        subtitle = "v1.0.0",
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://webstack7.vercel.app/download"))
+                            context.startActivity(intent)
+                        }
+                    )
+
+                    // 3. GitHub
+                    AppInfoActionItem(
+                        icon = {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_github),
+                                contentDescription = "GitHub",
+                                colorFilter = ColorFilter.tint(appColors.label),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        title = "GitHub",
+                        subtitle = "Source",
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO_URL))
                             context.startActivity(intent)
                         }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = appColors.fill,
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.ic_github),
-                                        contentDescription = "GitHub",
-                                        modifier = Modifier.size(20.dp),
-                                        colorFilter = ColorFilter.tint(appColors.label)
-                                    )
-                                }
-                            }
+                    )
 
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "GitHub",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appColors.label
-                                )
-                                Text(
-                                    text = "View source code",
-                                    fontSize = 12.sp,
-                                    color = appColors.secondaryLabel,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-
-                    // 2. Feedback Card
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = appColors.surface,
-                        border = BorderStroke(0.75.dp, appColors.separator),
-                        modifier = Modifier.weight(1f),
+                    // 4. Website
+                    AppInfoActionItem(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Public,
+                                contentDescription = "Website",
+                                tint = appColors.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        title = "Website",
+                        subtitle = "webstack7",
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            showFeedbackOptionsDialog = true
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://webstack7.vercel.app"))
+                            context.startActivity(intent)
                         }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = appColors.fill,
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.BugReport,
-                                        contentDescription = "Feedback",
-                                        tint = appColors.label,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Feedback",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = appColors.label
-                                )
-                                Text(
-                                    text = "Report issues",
-                                    fontSize = 12.sp,
-                                    color = appColors.secondaryLabel,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Unified Grouped Info Card (Features, Updates, Roadmap, Sponsor)
+                // Unified Grouped Info Card (Features, Updates, Feedback, Sponsor)
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = appColors.surface,
@@ -344,18 +290,18 @@ fun AppInfoBottomSheetContent(
                         )
 
                         InfoGroupedRow(
-                            title = "Roadmap",
-                            subtitle = "Planned features & companion mode",
+                            title = "Feedback & Support",
+                            subtitle = "Report issues or request features",
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                currentSubScreen = AppInfoSubScreen.ROADMAP
+                                showFeedbackOptionsDialog = true
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Lightbulb,
+                                imageVector = Icons.Outlined.BugReport,
                                 contentDescription = null,
                                 tint = appColors.label,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                         }
 
@@ -404,12 +350,6 @@ fun AppInfoBottomSheetContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        AppInfoSubScreen.ROADMAP -> {
-            RoadmapSubSheetContent(
-                onBack = { currentSubScreen = AppInfoSubScreen.MAIN },
-                onDismiss = onDismiss
-            )
-        }
         AppInfoSubScreen.FEATURES -> {
             WebStackFeaturesSubSheetContent(
                 onBack = { currentSubScreen = AppInfoSubScreen.MAIN },
@@ -427,8 +367,57 @@ fun AppInfoBottomSheetContent(
 }
 
 /**
+ * Borderless circular action item for the App Info top dock.
+ * Displays a 44dp circular icon container with zero borders, followed by title and subtitle.
+ */
+@Composable
+private fun AppInfoActionItem(
+    icon: @Composable () -> Unit,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = appColors.fill,
+            modifier = Modifier.size(46.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                icon()
+            }
+        }
+
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = appColors.label
+        )
+
+        Text(
+            text = subtitle,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = appColors.secondaryLabel
+        )
+    }
+}
+
+/**
  * Shared grouped card row: icon box (36dp) + title + subtitle + trailing arrow.
- * Used for What's New, Roadmap, and Sponsor rows in AppInfoSheet.
+ * Used for What's New, Feedback & Support, and Sponsor rows in AppInfoSheet.
  */
 @Composable
 private fun InfoGroupedRow(
