@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -72,6 +74,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import com.example.ui.components.AppSubSheetHeader
 import com.example.ui.components.AppSwitch
 import com.example.ui.theme.LocalAppColors
@@ -1126,6 +1130,86 @@ fun PcCompanionOfflineInfoPage(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Network Architecture Diagram Hero Card
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = appColors.surface,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_network_architecture),
+                        contentDescription = "Local Wi-Fi Network Architecture",
+                        colorFilter = ColorFilter.tint(appColors.label),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(2172f / 724f)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Phone",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = "Host Server",
+                                fontSize = 11.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1.2f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Local Wi-Fi",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = "No Internet Needed",
+                                fontSize = 11.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "PC / Laptop",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = "Desktop Client",
+                                fontSize = 11.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
+                    }
+                }
+            }
+
             // Card 1: Local Wi-Fi Sync
             Surface(
                 shape = RoundedCornerShape(16.dp),

@@ -1,0 +1,104 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="2172dp"
+    android:height="724dp"
+    android:viewportWidth="2172"
+    android:viewportHeight="724">
+
+    <!-- Phone Body -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 340.5,297.5 h 94.5 a 26,26 0 0 1 26,26 v 192 a 26,26 0 0 1 -26,26 h -94.5 a 26,26 0 0 1 -26,-26 v -192 a 26,26 0 0 1 26,-26 z" />
+
+    <!-- Phone Dynamic Island -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 371,311 h 34 a 6,6 0 0 1 6,6 v 0 a 6,6 0 0 1 -6,6 h -34 a 6,6 0 0 1 -6,-6 v 0 a 6,6 0 0 1 6,-6 z" />
+
+    <!-- Phone Side Button -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M 465,354 v 36" />
+
+    <!-- Left Dashed Line (Phone to Router) -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M 503.2,346.5 L 520.4,352.1 M 546.2,360.5 L 563.4,366.1 M 588.8,374.0 L 606.0,379.6 M 632.2,388.1 L 649.4,393.7 M 675.3,401.8 L 692.5,407.4 M 718.0,415.5 L 735.2,421.1 M 760.6,429.5 L 777.8,435.1 M 802.9,443.2 L 820.1,448.8" />
+
+    <!-- Router Antennas -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="25"
+        android:strokeLineCap="round"
+        android:pathData="M 896,446 L 864,332 M 1146,446 L 1178,332" />
+
+    <!-- Router Body -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 873,446 h 295 a 24,24 0 0 1 24,24 v 37.5 a 24,24 0 0 1 -24,24 h -295 a 24,24 0 0 1 -24,-24 v -37.5 a 24,24 0 0 1 24,-24 z" />
+
+    <!-- Router Slit -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 893,479 h 37 a 9,9 0 0 1 9,9 v 0 a 9,9 0 0 1 -9,9 h -37 a 9,9 0 0 1 -9,-9 v 0 a 9,9 0 0 1 9,-9 z" />
+
+    <!-- Router 3 LED Dots -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 1034,478.5 a 9.5,9.5 0 1,1 0,19 a 9.5,9.5 0 1,1 0,-19 z M 1077,478.5 a 9.5,9.5 0 1,1 0,19 a 9.5,9.5 0 1,1 0,-19 z M 1120,478.5 a 9.5,9.5 0 1,1 0,19 a 9.5,9.5 0 1,1 0,-19 z" />
+
+    <!-- Wi-Fi Center Dot -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 1021,313 a 19,19 0 1,1 0,38 a 19,19 0 1,1 0,-38 z" />
+
+    <!-- Wi-Fi Arcs -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="15"
+        android:strokeLineCap="round"
+        android:pathData="M 973,305 A 64,64 0 0 1 1069,305" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="15"
+        android:strokeLineCap="round"
+        android:pathData="M 947,282 A 102,102 0 0 1 1095,282" />
+
+    <!-- Right Dashed Line (Router to Laptop) -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M 1232.8,447.3 L 1250.0,442.1 M 1276.1,434.0 L 1293.3,428.8 M 1319.6,420.5 L 1336.8,415.3 M 1363.5,407.2 L 1380.7,402.0 M 1407.3,394.0 L 1424.5,388.8 M 1451.0,380.5 L 1468.2,375.3 M 1494.3,367.3 L 1511.5,362.1" />
+
+    <!-- Laptop Screen -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="15"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 1562,304 h 280 a 18,18 0 0 1 18,18 v 156 a 18,18 0 0 1 -18,18 h -280 a 18,18 0 0 1 -18,-18 v -156 a 18,18 0 0 1 18,-18 z" />
+
+    <!-- Laptop Base -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="14"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 1526,496 h 356 a 14,14 0 0 1 14,14 v 8 a 14,14 0 0 1 -14,14 h -356 a 14,14 0 0 1 -14,-14 v -8 a 14,14 0 0 1 14,-14 z" />
+
+    <!-- Laptop Trackpad Notch -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 1661,496 L 1661,506 A 6,6 0 0 0 1667,512 L 1741,512 A 6,6 0 0 0 1747,506 L 1747,496 Z" />
+
+</vector>

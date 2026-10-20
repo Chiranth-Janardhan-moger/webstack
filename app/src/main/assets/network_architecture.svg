@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2172 724" width="2172" height="724" fill="none">
+  <!-- Phone Body -->
+  <rect x="314.5" y="297.5" width="146.5" height="244" rx="26" ry="26" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Phone Dynamic Island -->
+  <rect x="365" y="311" width="46" height="12" rx="6" fill="currentColor" />
+  <!-- Phone Side Button -->
+  <line x1="465" y1="354" x2="465" y2="390" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+
+  <!-- Left Dashed Line (Phone to Router) -->
+  <g stroke="currentColor" stroke-width="8" stroke-linecap="round">
+    <path d="M 503.2 346.5 L 520.4 352.1" />
+    <path d="M 546.2 360.5 L 563.4 366.1" />
+    <path d="M 588.8 374.0 L 606.0 379.6" />
+    <path d="M 632.2 388.1 L 649.4 393.7" />
+    <path d="M 675.3 401.8 L 692.5 407.4" />
+    <path d="M 718.0 415.5 L 735.2 421.1" />
+    <path d="M 760.6 429.5 L 777.8 435.1" />
+    <path d="M 802.9 443.2 L 820.1 448.8" />
+  </g>
+
+  <!-- Router Antennas -->
+  <line x1="896" y1="446" x2="864" y2="332" stroke="currentColor" stroke-width="25" stroke-linecap="round" />
+  <line x1="1146" y1="446" x2="1178" y2="332" stroke="currentColor" stroke-width="25" stroke-linecap="round" />
+
+  <!-- Router Body -->
+  <rect x="849" y="446" width="343" height="85.5" rx="24" ry="24" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Router Slit -->
+  <rect x="884" y="479" width="55" height="18" rx="9" fill="currentColor" />
+  <!-- Router 3 LED Dots -->
+  <circle cx="1034" cy="488" r="9.5" fill="currentColor" />
+  <circle cx="1077" cy="488" r="9.5" fill="currentColor" />
+  <circle cx="1120" cy="488" r="9.5" fill="currentColor" />
+
+  <!-- Wi-Fi Waves -->
+  <circle cx="1021" cy="332" r="19" fill="currentColor" />
+  <path d="M 973 305 A 64 64 0 0 1 1069 305" stroke="currentColor" stroke-width="15" stroke-linecap="round" />
+  <path d="M 947 282 A 102 102 0 0 1 1095 282" stroke="currentColor" stroke-width="15" stroke-linecap="round" />
+
+  <!-- Right Dashed Line (Router to Laptop) -->
+  <g stroke="currentColor" stroke-width="8" stroke-linecap="round">
+    <path d="M 1232.8 447.3 L 1250.0 442.1" />
+    <path d="M 1276.1 434.0 L 1293.3 428.8" />
+    <path d="M 1319.6 420.5 L 1336.8 415.3" />
+    <path d="M 1363.5 407.2 L 1380.7 402.0" />
+    <path d="M 1407.3 394.0 L 1424.5 388.8" />
+    <path d="M 1451.0 380.5 L 1468.2 375.3" />
+    <path d="M 1494.3 367.3 L 1511.5 362.1" />
+  </g>
+
+  <!-- Laptop Screen -->
+  <rect x="1544" y="304" width="316" height="192" rx="18" ry="18" stroke="currentColor" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Laptop Base -->
+  <rect x="1512" y="496" width="384" height="36" rx="14" ry="14" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Laptop Trackpad Notch -->
+  <path d="M 1661 496 L 1661 506 A 6 6 0 0 0 1667 512 L 1741 512 A 6 6 0 0 0 1747 506 L 1747 496 Z" fill="currentColor" />
+</svg>
