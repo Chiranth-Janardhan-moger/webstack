@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -873,11 +874,17 @@ fun PcCompanionSubSheetContent(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
-                                    text = "Tip: Set WebStack to Unrestricted in Android Settings to keep the server running when your screen is locked.",
+                                    text = "Tip: Tap to set Battery to Unrestricted in Android Settings to keep the server running in the background and when locked.",
                                     fontSize = 12.sp,
                                     lineHeight = 16.sp,
                                     color = appColors.secondaryLabel,
                                     modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open App Settings",
+                                    tint = appColors.tertiaryLabel,
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -989,31 +996,44 @@ fun PcCompanionSettingsPage(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            contentAlignment = Alignment.Center
         ) {
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onBack()
+                },
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.CenterStart)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                    contentDescription = "Back",
+                    tint = appColors.label,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onBack()
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
-                        contentDescription = "Back",
-                        tint = appColors.label,
-                        modifier = Modifier.size(20.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showSettingsInfoPage = true
+                        }
                     )
-                }
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            ) {
                 Text(
                     text = "Settings",
                     fontWeight = FontWeight.Bold,
@@ -1021,25 +1041,19 @@ fun PcCompanionSettingsPage(
                     color = appColors.label,
                     letterSpacing = (-0.3).sp
                 )
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        showSettingsInfoPage = true
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Settings Info",
-                        tint = appColors.secondaryLabel,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Settings Info",
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(17.dp)
+                )
             }
 
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.CenterEnd)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
@@ -1054,261 +1068,340 @@ fun PcCompanionSettingsPage(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Network Port Card
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = appColors.surface,
-                border = BorderStroke(0.75.dp, appColors.separator),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "NETWORK PORT",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = appColors.secondaryLabel,
-                            letterSpacing = 0.5.sp
-                        )
-                        if (portText.trim() != "8080") {
-                            Text(
-                                text = "Reset to 8080",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = appColors.accent,
-                                modifier = Modifier.clickable {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    portText = "8080"
-                                }
-                            )
-                        }
-                    }
+            // 1. Connection Section
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "CONNECTION",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = appColors.secondaryLabel,
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
 
-                    Surface(
-                        color = appColors.fill,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(
-                            0.75.dp,
-                            if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.75.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            BasicTextField(
-                                value = portText,
-                                onValueChange = { portText = it.filter { ch -> ch.isDigit() }.take(5) },
-                                singleLine = true,
-                                textStyle = androidx.compose.ui.text.TextStyle(
-                                    color = appColors.label,
-                                    fontSize = 16.sp,
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Network Port",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontFamily = FontFamily.Monospace
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = "Default port for local LAN syncing (1024–65535)",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+
+                            Surface(
+                                color = appColors.fill,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(
+                                    0.75.dp,
+                                    if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
                                 ),
-                                cursorBrush = SolidColor(appColors.accent),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Next
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                modifier = Modifier
+                                    .width(84.dp)
+                                    .height(38.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    BasicTextField(
+                                        value = portText,
+                                        onValueChange = { portText = it.filter { ch -> ch.isDigit() }.take(5) },
+                                        singleLine = true,
+                                        textStyle = androidx.compose.ui.text.TextStyle(
+                                            color = appColors.label,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontFamily = FontFamily.Monospace,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        ),
+                                        cursorBrush = SolidColor(appColors.accent),
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Number,
+                                            imeAction = ImeAction.Next
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        if (portText.trim() != "8080" || (!isPortValid && portText.isNotBlank())) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!isPortValid && portText.isNotBlank()) {
+                                    Text(
+                                        text = "Must be between 1024 and 65535",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFFF3B30)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+
+                                if (portText.trim() != "8080") {
+                                    Text(
+                                        text = "Reset to 8080",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = appColors.accent,
+                                        modifier = Modifier.clickable {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            portText = "8080"
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
-
-                    Text(
-                        text = if (!isPortValid && portText.isNotBlank()) "Port must be between 1024 and 65535" else "Default port is 8080. Range 1024 to 65535.",
-                        fontSize = 12.sp,
-                        color = if (!isPortValid && portText.isNotBlank()) Color(0xFFFF3B30) else appColors.secondaryLabel
-                    )
                 }
             }
 
-            // Fixed PIN Security Card
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = appColors.surface,
-                border = BorderStroke(0.75.dp, appColors.separator),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+            // 2. Security Section
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "SECURITY",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = appColors.secondaryLabel,
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.75.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Fixed PIN Code",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = if (useFixedPin) "Keep this PIN across all sessions" else "Generate fresh PIN on every start",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                            AppSwitch(
+                                checked = useFixedPin,
+                                onCheckedChange = { checked ->
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    useFixedPin = checked
+                                }
+                            )
+                        }
+
+                        AnimatedVisibility(visible = useFixedPin) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color = appColors.separator
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "PIN Code",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = appColors.label
+                                        )
+                                        Text(
+                                            text = "Required when connecting your PC",
+                                            fontSize = 12.sp,
+                                            color = appColors.secondaryLabel
+                                        )
+                                    }
+
+                                    Surface(
+                                        color = appColors.fill,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(
+                                            0.75.dp,
+                                            if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
+                                        ),
+                                        modifier = Modifier
+                                            .width(135.dp)
+                                            .height(38.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            BasicTextField(
+                                                value = pinText,
+                                                onValueChange = { pinText = it.filter { ch -> ch.isDigit() }.take(6) },
+                                                singleLine = true,
+                                                textStyle = androidx.compose.ui.text.TextStyle(
+                                                    color = appColors.label,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    letterSpacing = 1.5.sp,
+                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                ),
+                                                cursorBrush = SolidColor(appColors.accent),
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = KeyboardType.Number,
+                                                    imeAction = ImeAction.Done
+                                                ),
+                                                modifier = Modifier.weight(1f)
+                                            )
+
+                                            IconButton(
+                                                onClick = {
+                                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    pinText = (100000..999999).random().toString()
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Refresh,
+                                                    contentDescription = "Randomize PIN",
+                                                    tint = appColors.secondaryLabel,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (!isPinValid && pinText.isNotBlank()) {
+                                    Text(
+                                        text = "PIN must be exactly 6 digits",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFFF3B30)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Offline Access Section
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "OFFLINE ACCESS",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = appColors.secondaryLabel,
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = appColors.surface,
+                    border = BorderStroke(0.75.dp, appColors.separator),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Fixed PIN Code",
+                                text = "Session Duration",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = appColors.label
                             )
                             Text(
-                                text = if (useFixedPin) "Keep this PIN across all sessions" else "Generate fresh PIN on every start",
+                                text = "Duration PC can browse & queue bookmarks without reconnecting to phone",
                                 fontSize = 12.sp,
                                 color = appColors.secondaryLabel
                             )
                         }
-                        AppSwitch(
-                            checked = useFixedPin,
-                            onCheckedChange = { checked ->
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                useFixedPin = checked
-                            }
+
+                        val expiryOptions = listOf(
+                            24 to "24 Hours",
+                            168 to "7 Days",
+                            720 to "30 Days",
+                            0 to "Never"
                         )
-                    }
 
-                    AnimatedVisibility(visible = useFixedPin) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(top = 4.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Surface(
-                                color = appColors.fill,
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(
-                                    0.75.dp,
-                                    if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30).copy(alpha = 0.6f) else appColors.separator
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                            ) {
-                                Row(
+                            expiryOptions.forEach { (hours, label) ->
+                                val isSelected = selectedExpiryHours == hours
+                                Surface(
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    BasicTextField(
-                                        value = pinText,
-                                        onValueChange = { pinText = it.filter { ch -> ch.isDigit() }.take(6) },
-                                        singleLine = true,
-                                        textStyle = androidx.compose.ui.text.TextStyle(
-                                            color = appColors.label,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace,
-                                            letterSpacing = 2.sp
-                                        ),
-                                        cursorBrush = SolidColor(appColors.accent),
-                                        keyboardOptions = KeyboardOptions(
-                                            keyboardType = KeyboardType.Number,
-                                            imeAction = ImeAction.Done
-                                        ),
-                                        modifier = Modifier.weight(1f)
-                                    )
-
-                                    IconButton(
-                                        onClick = {
+                                        .weight(1f)
+                                        .clickable {
                                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            pinText = (100000..999999).random().toString()
+                                            selectedExpiryHours = hours
                                         },
-                                        modifier = Modifier.size(32.dp)
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) appColors.label else appColors.fill,
+                                    border = BorderStroke(
+                                        0.5.dp,
+                                        if (isSelected) appColors.label else appColors.separator
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 9.dp, horizontal = 2.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Refresh,
-                                            contentDescription = "Randomize PIN",
-                                            tint = appColors.secondaryLabel,
-                                            modifier = Modifier.size(16.dp)
+                                        Text(
+                                            text = label,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) appColors.systemBackground else appColors.label,
+                                            maxLines = 1
                                         )
                                     }
-                                }
-                            }
-
-                            Text(
-                                text = if (!isPinValid && pinText.isNotBlank()) "PIN must be exactly 6 digits" else "This permanent PIN will be required whenever your PC connects.",
-                                fontSize = 12.sp,
-                                color = if (!isPinValid && pinText.isNotBlank()) Color(0xFFFF3B30) else appColors.secondaryLabel
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Offline Session Access Card
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = appColors.surface,
-                border = BorderStroke(0.75.dp, appColors.separator),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = "OFFLINE SESSION DURATION",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = appColors.secondaryLabel,
-                            letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "Duration PC can browse & queue bookmarks without reconnecting to phone",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
-
-                    val expiryOptions = listOf(
-                        24 to "24 Hours",
-                        168 to "7 Days",
-                        720 to "30 Days",
-                        0 to "Never"
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        expiryOptions.forEach { (hours, label) ->
-                            val isSelected = selectedExpiryHours == hours
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        selectedExpiryHours = hours
-                                    },
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) appColors.label else appColors.fill,
-                                border = BorderStroke(
-                                    0.5.dp,
-                                    if (isSelected) appColors.label else appColors.separator
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) appColors.systemBackground else appColors.label,
-                                        maxLines = 1
-                                    )
                                 }
                             }
                         }
@@ -1323,17 +1416,28 @@ fun PcCompanionSettingsPage(
                     border = BorderStroke(0.5.dp, Color(0xFFFF9500).copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Server is active. Saving will restart it with new settings immediately.",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFFF9500),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9500),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Server is active. Saving will restart it with new settings immediately.",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9500)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Save Button
             Button(
