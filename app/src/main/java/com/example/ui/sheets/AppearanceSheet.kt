@@ -521,7 +521,7 @@ fun AppearanceSubSheetContent(
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 activeExplainer = AppearanceExplainer(
                                     title = "Tags & Categories",
-                                    description = "Reorder active tags, park tags safely, and manage category organization.",
+                                    description = "Customize your category bar with drag-and-drop reordering, hide tags to keep your screen tidy, and set fallback tags.",
                                     icon = Icons.AutoMirrored.Outlined.Label
                                 )
                             }
@@ -562,7 +562,7 @@ fun AppearanceSubSheetContent(
                                     color = appColors.label
                                 )
                                 Text(
-                                    text = "Reorder, park, and manage tags",
+                                    text = "Reorder, hide, and organize category tags",
                                     fontSize = 12.sp,
                                     color = appColors.secondaryLabel
                                 )

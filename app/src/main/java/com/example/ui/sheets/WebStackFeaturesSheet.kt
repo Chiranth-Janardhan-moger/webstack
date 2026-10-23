@@ -102,8 +102,8 @@ fun WebStackFeaturesSubSheetContent(
             ),
             FeatureGuideItem(
                 id = "rearrange_tags",
-                title = "Rearrange & Park Tags",
-                tagline = "Reorder home tags or hide them safely",
+                title = "Rearrange & Hide Tags",
+                tagline = "Drag to reorder home tags or hide unused categories",
                 icon = Icons.AutoMirrored.Outlined.Label,
                 breadcrumbs = listOf("Settings", "Appearance", "Interface", "Tags & Categories")
             ),
