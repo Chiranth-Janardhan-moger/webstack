@@ -117,9 +117,9 @@ fun CustomizationSubSheetContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Sub-sheet Header (Empty title as requested)
+        // Sub-sheet Header: Back button on start, centered "Customization" title, and close button on end
         AppSubSheetHeader(
-            title = "",
+            title = "Customization",
             onBack = onBack,
             onDismiss = onDismiss
         )
