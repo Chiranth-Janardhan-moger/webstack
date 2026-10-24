@@ -401,6 +401,10 @@ fun WebStackScreen(
                     },
                     onDeleteSelected = {
                         showBulkDeleteConfirmDialog = true
+                    },
+                    allSelectedAreFavorites = selectedWebsiteIds.isNotEmpty() && selectedWebsiteIds.all { favoriteIds.contains(it) },
+                    onToggleFavoriteSelected = {
+                        viewModel.toggleWebsitesFavorite(selectedWebsiteIds.toList())
                     }
                 )
             }

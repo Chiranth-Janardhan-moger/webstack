@@ -27,7 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -61,6 +63,8 @@ fun AppFloatingActionButton(
     onAddClick: () -> Unit,
     onCancelSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
+    allSelectedAreFavorites: Boolean = false,
+    onToggleFavoriteSelected: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val appColors = LocalAppColors.current
@@ -70,7 +74,7 @@ fun AppFloatingActionButton(
 
     // Smooth animated width for continuous expansion from FAB into floating action bar
     val barWidth by animateDpAsState(
-        targetValue = if (isSelectionMode) 220.dp else 58.dp,
+        targetValue = if (isSelectionMode) 268.dp else 58.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -172,40 +176,73 @@ fun AppFloatingActionButton(
                     Text(
                         text = "$selectedCount Selected",
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         color = appColors.systemBackground,
                         letterSpacing = (-0.2).sp
                     )
                 }
 
-                // Right Action: Delete Button (Apple red destructive circle)
+                // Right Actions: Bulk Favorite and Delete Buttons
                 AnimatedVisibility(
                     visible = isSelectionMode && barWidth > 170.dp,
                     enter = fadeIn(tween(140, delayMillis = 90)) + slideInHorizontally { it / 2 },
                     exit = fadeOut(tween(80))
                 ) {
-                    IconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onDeleteSelected()
-                        },
-                        modifier = Modifier.size(50.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFFF3B30).copy(alpha = 0.18f),
-                            modifier = Modifier.size(38.dp)
+                        // Bulk Favorite / Heart Action Button
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onToggleFavoriteSelected()
+                            },
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFFFF2D55).copy(alpha = if (allSelectedAreFavorites) 0.28f else 0.15f),
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Delete Selected",
-                                    tint = Color(0xFFFF453A),
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        imageVector = if (allSelectedAreFavorites) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = if (allSelectedAreFavorites) "Remove from Favorites" else "Mark as Favorite",
+                                        tint = Color(0xFFFF2D55),
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Bulk Delete Action Button (Apple red destructive circle)
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDeleteSelected()
+                            },
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFFFF3B30).copy(alpha = 0.18f),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = "Delete Selected",
+                                        tint = Color(0xFFFF453A),
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
                             }
                         }
                     }

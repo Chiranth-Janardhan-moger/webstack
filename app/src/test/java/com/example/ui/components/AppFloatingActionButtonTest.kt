@@ -78,6 +78,31 @@ class AppFloatingActionButtonTest {
     }
 
     @Test
+    fun testSelectionMode_bulkFavorite_invokesToggleFavorite() {
+        var favoriteClicked = false
+
+        composeTestRule.setContent {
+            MyApplicationTheme {
+                AppFloatingActionButton(
+                    fabShape = AppFabShape.CIRCLE,
+                    isSelectionMode = true,
+                    selectedCount = 3,
+                    onAddClick = {},
+                    onCancelSelection = {},
+                    onDeleteSelected = {},
+                    allSelectedAreFavorites = false,
+                    onToggleFavoriteSelected = { favoriteClicked = true }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("bulk_action_bar").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Mark as Favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Mark as Favorite").performClick()
+        assertTrue("onToggleFavoriteSelected should be triggered", favoriteClicked)
+    }
+
+    @Test
     fun testAllFabShapes_renderInAppFloatingActionButtonWithoutExceptions() {
         composeTestRule.setContent {
             MyApplicationTheme {

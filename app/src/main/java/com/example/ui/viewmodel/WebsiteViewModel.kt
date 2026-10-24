@@ -182,6 +182,23 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun setWebsitesFavorite(ids: Collection<Long>, isFavorite: Boolean) {
+        if (ids.isEmpty()) return
+        val current = _favoriteWebsiteIds.value
+        val updated = if (isFavorite) current + ids else current - ids.toSet()
+        if (updated != current) {
+            _favoriteWebsiteIds.value = updated
+            prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        }
+    }
+
+    fun toggleWebsitesFavorite(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val current = _favoriteWebsiteIds.value
+        val allFavorited = ids.all { current.contains(it) }
+        setWebsitesFavorite(ids, !allFavorited)
+    }
+
     private fun loadCategories() {
         val list = prefs.getString("saved_categories_csv", null)
             ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }

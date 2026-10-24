@@ -320,27 +320,20 @@ fun WebsiteSnapshotImage(
             }
         }
 
-        // Top-Left Floating Favorite Heart Indicator
+        // Top-Left Floating Favorite Heart Indicator (pure vector icon, zero box shadow)
         if (isFavorite) {
-            Box(
+            Icon(
+                imageVector = Icons.Filled.Favorite,
+                contentDescription = "Favorited",
+                tint = Color(0xFFFF2D55),
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(
                         top = if (isCompact) 5.dp else if (isGrid) 8.dp else 10.dp,
                         start = if (isCompact) 5.dp else if (isGrid) 8.dp else 10.dp
                     )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Favorite,
-                    contentDescription = "Favorited",
-                    tint = Color(0xFFFF2D55),
-                    modifier = Modifier
-                        .size(if (isCompact) 13.dp else if (isGrid) 16.dp else 20.dp)
-                        .graphicsLayer {
-                            shadowElevation = 3f
-                        }
-                )
-            }
+                    .size(if (isCompact) 13.dp else if (isGrid) 16.dp else 20.dp)
+            )
         }
 
         // Top-Right Action: Refresh Snapshot
