@@ -75,6 +75,12 @@ class ThemeAndSettingsTest {
         vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.APPEARANCE)
         assertEquals(com.example.ui.sheets.SettingsSubScreen.APPEARANCE, vm.settingsSubScreen.value)
 
+        vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.THEME_LAYOUT)
+        assertEquals(com.example.ui.sheets.SettingsSubScreen.THEME_LAYOUT, vm.settingsSubScreen.value)
+
+        vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.FAVORITES_CUSTOMIZE)
+        assertEquals(com.example.ui.sheets.SettingsSubScreen.FAVORITES_CUSTOMIZE, vm.settingsSubScreen.value)
+
         vm.setSettingsSubScreen(com.example.ui.sheets.SettingsSubScreen.APP_INFO)
         assertEquals(com.example.ui.sheets.SettingsSubScreen.APP_INFO, vm.settingsSubScreen.value)
 

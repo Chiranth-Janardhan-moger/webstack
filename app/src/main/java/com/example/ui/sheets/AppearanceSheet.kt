@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -75,40 +76,37 @@ import com.example.ui.model.FavoriteIconType
 import com.example.ui.model.WebStackLayoutMode
 import com.example.ui.theme.LocalAppColors
 
-private data class AppearanceExplainer(
+private data class CustomizationExplainer(
     val title: String,
     val description: String,
     val icon: ImageVector
 )
 
+/**
+ * Main Customization Hub: single unified interface with grouped navigation cards
+ * leading to dedicated sub-sheets: Appearance, Favorites, and Interface.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppearanceSubSheetContent(
+fun CustomizationSubSheetContent(
     themeMode: AppThemeMode,
-    onSetThemeMode: (AppThemeMode) -> Unit,
     layoutMode: WebStackLayoutMode,
-    onSetLayoutMode: (WebStackLayoutMode) -> Unit,
+    onOpenAppearance: () -> Unit,
+    onOpenFavorites: () -> Unit,
     fabShape: AppFabShape = AppFabShape.CIRCLE,
     onOpenFabShapePicker: () -> Unit = {},
-    showCardDomain: Boolean = true,
-    onToggleShowCardDomain: (Boolean) -> Unit = {},
-    showCardCategory: Boolean = true,
-    onToggleShowCardCategory: (Boolean) -> Unit = {},
     onOpenCardDetails: () -> Unit = {},
     onOpenCustomizeTags: () -> Unit = {},
     favoriteIconType: FavoriteIconType = FavoriteIconType.HEART,
-    onSetFavoriteIconType: (FavoriteIconType) -> Unit = {},
     favoriteBadgeShape: FavoriteBadgeShape = FavoriteBadgeShape.PURE_FLOAT,
-    onSetFavoriteBadgeShape: (FavoriteBadgeShape) -> Unit = {},
     favoriteColorPreset: FavoriteColorPreset = FavoriteColorPreset.CRIMSON_PINK,
-    onSetFavoriteColorPreset: (FavoriteColorPreset) -> Unit = {},
     onBack: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     val appColors = LocalAppColors.current
     val scrollState = rememberScrollState()
-    var activeExplainer by remember { mutableStateOf<AppearanceExplainer?>(null) }
+    var activeExplainer by remember { mutableStateOf<CustomizationExplainer?>(null) }
 
     Column(
         modifier = Modifier
@@ -127,7 +125,7 @@ fun AppearanceSubSheetContent(
         Spacer(modifier = Modifier.height(14.dp))
 
         // -------------------------------------------------------------
-        // CARD 1: APPEARANCE (Theme + Layout unified)
+        // CARD 1: APPEARANCE (Navigates to dedicated Theme & Layout page)
         // -------------------------------------------------------------
         Text(
             text = "APPEARANCE",
@@ -145,220 +143,201 @@ fun AppearanceSubSheetContent(
             border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
+            Surface(
+                color = Color.Transparent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp)
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onOpenAppearance()
+                        },
+                        onLongClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            activeExplainer = CustomizationExplainer(
+                                title = "Appearance",
+                                description = "Personalize your theme (Light, Dark, System) and switch between Large Cards, 2-Card Grid, or Compact List layouts.",
+                                icon = Icons.Outlined.Palette
+                            )
+                        }
+                    )
             ) {
-                // Section Subtitle: Theme
-                Text(
-                    text = "Theme",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.label
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Segmented Slider Pill (Black thumb on white theme, White thumb on black theme)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp)
-                        .padding(3.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val segmentWidth = maxWidth / 3
-                        val selectedIndex = when (themeMode) {
-                            AppThemeMode.SYSTEM -> 0
-                            AppThemeMode.LIGHT -> 1
-                            AppThemeMode.DARK -> 2
-                        }
-                        val targetOffset = segmentWidth * selectedIndex
-                        val animatedOffset by animateDpAsState(
-                            targetValue = targetOffset,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "theme_segment_slider"
-                        )
-
-                        val thumbColor by animateColorAsState(
-                            targetValue = appColors.label,
-                            animationSpec = tween(durationMillis = 200),
-                            label = "theme_thumb_color"
-                        )
-
-                        // Animated sliding thumb
-                        Box(
-                            modifier = Modifier
-                                .offset { IntOffset(x = animatedOffset.roundToPx(), y = 0) }
-                                .width(segmentWidth)
-                                .fillMaxHeight()
-                                .background(
-                                    color = thumbColor,
-                                    shape = RoundedCornerShape(9.dp)
-                                )
-                        )
-
-                        // Interactive touch segments
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            val modes = listOf(
-                                AppThemeMode.SYSTEM to "System",
-                                AppThemeMode.LIGHT to "Light",
-                                AppThemeMode.DARK to "Dark"
-                            )
-                            modes.forEach { (mode, title) ->
-                                val isSelected = themeMode == mode
-                                val textColor by animateColorAsState(
-                                    targetValue = if (isSelected) appColors.systemBackground else appColors.secondaryLabel,
-                                    animationSpec = tween(durationMillis = 200),
-                                    label = "theme_text_${mode.name}"
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
-                                            if (themeMode != mode) {
-                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                onSetThemeMode(mode)
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = title,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
-                                        color = textColor
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Section Subtitle: Layout
-                Text(
-                    text = "Layout",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.label
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val layoutOptions = listOf(
-                        Triple(WebStackLayoutMode.LARGE_CARDS, "Card", R.drawable.ic_layout_card),
-                        Triple(WebStackLayoutMode.GRID_CARDS, "Grid", R.drawable.ic_layout_grid),
-                        Triple(WebStackLayoutMode.COMPACT_LIST, "List", R.drawable.ic_layout_list)
-                    )
-
-                    layoutOptions.forEach { (mode, title, iconRes) ->
-                        val isSelected = layoutMode == mode
-                        val interactionSource = remember(mode) { MutableInteractionSource() }
-                        val isPressed by interactionSource.collectIsPressedAsState()
-                        val scale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.92f else 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "layout_bouncy_${mode.name}"
-                        )
-
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Surface(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onSetLayoutMode(mode)
-                            },
-                            interactionSource = interactionSource,
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
-                            border = BorderStroke(
-                                width = if (isSelected) 1.5.dp else 0.75.dp,
-                                color = if (isSelected) appColors.label else appColors.separator
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
+                            color = appColors.label,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 6.dp, vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(78.dp)
-                                        .background(
-                                            color = if (appColors.isDark) Color(0xFF141416) else Color(0xFFF7FAFE),
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
-                                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = iconRes),
-                                        contentDescription = "$title layout preview",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Fit
-                                    )
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Selected",
-                                            tint = appColors.label,
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-                                    Text(
-                                        text = title,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) appColors.label else appColors.secondaryLabel
-                                    )
-                                }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Palette,
+                                    contentDescription = null,
+                                    tint = appColors.systemBackground,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Appearance",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appColors.label
+                            )
+                            val layoutLabel = when (layoutMode) {
+                                WebStackLayoutMode.LARGE_CARDS -> "Card"
+                                WebStackLayoutMode.GRID_CARDS -> "Grid"
+                                WebStackLayoutMode.COMPACT_LIST -> "List"
+                            }
+                            Text(
+                                text = "${themeMode.title} Theme • $layoutLabel Layout",
+                                fontSize = 12.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
                     }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open appearance options",
+                        tint = appColors.tertiaryLabel,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // -------------------------------------------------------------
-        // CARD 2: INTERFACE (Button Shape, Card Details, Tags & Categories)
+        // CARD 2: FAVORITES (Navigates to dedicated Favorites page)
+        // -------------------------------------------------------------
+        Text(
+            text = "FAVORITES",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = appColors.secondaryGroupedBackground,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Surface(
+                color = Color.Transparent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onOpenFavorites()
+                        },
+                        onLongClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            activeExplainer = CustomizationExplainer(
+                                title = "Favorites",
+                                description = "Personalize your favorite indicator with custom symbols, expressive badge shapes, and vibrant color palettes.",
+                                icon = favoriteIconType.getFilledIcon()
+                            )
+                        }
+                    )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        val previewShape = favoriteBadgeShape.toComposeShape()
+                        if (favoriteBadgeShape == FavoriteBadgeShape.PURE_FLOAT) {
+                            Surface(
+                                color = favoriteColorPreset.color.copy(alpha = 0.15f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = favoriteIconType.getFilledIcon(),
+                                        contentDescription = null,
+                                        tint = favoriteColorPreset.color,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Surface(
+                                color = favoriteColorPreset.color.copy(alpha = 0.18f),
+                                shape = previewShape,
+                                border = BorderStroke(0.5.dp, favoriteColorPreset.color.copy(alpha = 0.4f)),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = favoriteIconType.getFilledIcon(),
+                                        contentDescription = null,
+                                        tint = favoriteColorPreset.color,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Favorites",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appColors.label
+                            )
+                            Text(
+                                text = "${favoriteIconType.displayName} • ${favoriteBadgeShape.displayName} • ${favoriteColorPreset.displayName}",
+                                fontSize = 12.sp,
+                                color = appColors.secondaryLabel
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open favorites options",
+                        tint = appColors.tertiaryLabel,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // -------------------------------------------------------------
+        // CARD 3: INTERFACE (Button Shape, Card Details, Tags & Categories)
         // -------------------------------------------------------------
         Text(
             text = "INTERFACE",
@@ -391,7 +370,7 @@ fun AppearanceSubSheetContent(
                             },
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                activeExplainer = AppearanceExplainer(
+                                activeExplainer = CustomizationExplainer(
                                     title = "Button Shape",
                                     description = "Choose from 12 expressive shapes for your quick-add floating action button on the home screen.",
                                     icon = Icons.Default.Add
@@ -470,7 +449,7 @@ fun AppearanceSubSheetContent(
                             },
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                activeExplainer = AppearanceExplainer(
+                                activeExplainer = CustomizationExplainer(
                                     title = "Card Details",
                                     description = "Configure bookmark card display options, including hiding domain URLs and category tags.",
                                     icon = Icons.Outlined.DashboardCustomize
@@ -549,7 +528,7 @@ fun AppearanceSubSheetContent(
                             },
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                activeExplainer = AppearanceExplainer(
+                                activeExplainer = CustomizationExplainer(
                                     title = "Tags & Categories",
                                     description = "Customize your category bar with drag-and-drop reordering, hide tags to keep your screen tidy, and set fallback tags.",
                                     icon = Icons.AutoMirrored.Outlined.Label
@@ -610,13 +589,88 @@ fun AppearanceSubSheetContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // -------------------------------------------------------------
-        // CARD 3: FAVORITES (Symbol, Badge Shape, Vibrant Colors)
-        // -------------------------------------------------------------
+        val doneInteractionSource = remember { MutableInteractionSource() }
+        val isDonePressed by doneInteractionSource.collectIsPressedAsState()
+        val doneScale by animateFloatAsState(
+            targetValue = if (isDonePressed) 0.94f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "customization_done_bouncy"
+        )
+
+        Button(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onBack()
+            },
+            interactionSource = doneInteractionSource,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = appColors.label,
+                contentColor = appColors.systemBackground
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .graphicsLayer {
+                    scaleX = doneScale
+                    scaleY = doneScale
+                }
+        ) {
+            Text("Done", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    activeExplainer?.let { exp ->
+        AppExplainerDialog(
+            title = exp.title,
+            description = exp.description,
+            icon = exp.icon,
+            onDismiss = { activeExplainer = null }
+        )
+    }
+}
+
+/**
+ * Dedicated Appearance Page: Shows Theme and Layout options with real-time feedback.
+ */
+@Composable
+fun ThemeLayoutSubSheetContent(
+    themeMode: AppThemeMode,
+    onSetThemeMode: (AppThemeMode) -> Unit,
+    layoutMode: WebStackLayoutMode,
+    onSetLayoutMode: (WebStackLayoutMode) -> Unit,
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    val appColors = LocalAppColors.current
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        AppSubSheetHeader(
+            title = "Appearance",
+            onBack = onBack,
+            onDismiss = onDismiss
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Section: THEME
         Text(
-            text = "FAVORITES",
+            text = "THEME",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = appColors.secondaryLabel,
@@ -624,6 +678,271 @@ fun AppearanceSubSheetContent(
         )
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        // Segmented Slider Pill (Black thumb on white theme, White thumb on black theme)
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(46.dp)
+                .padding(3.dp)
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val segmentWidth = maxWidth / 3
+                val selectedIndex = when (themeMode) {
+                    AppThemeMode.SYSTEM -> 0
+                    AppThemeMode.LIGHT -> 1
+                    AppThemeMode.DARK -> 2
+                }
+                val targetOffset = segmentWidth * selectedIndex
+                val animatedOffset by animateDpAsState(
+                    targetValue = targetOffset,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "theme_segment_slider"
+                )
+
+                val thumbColor by animateColorAsState(
+                    targetValue = appColors.label,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "theme_thumb_color"
+                )
+
+                // Animated sliding thumb
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(x = animatedOffset.roundToPx(), y = 0) }
+                        .width(segmentWidth)
+                        .fillMaxHeight()
+                        .background(
+                            color = thumbColor,
+                            shape = RoundedCornerShape(9.dp)
+                        )
+                )
+
+                // Interactive touch segments
+                Row(modifier = Modifier.fillMaxSize()) {
+                    val modes = listOf(
+                        AppThemeMode.SYSTEM to "System",
+                        AppThemeMode.LIGHT to "Light",
+                        AppThemeMode.DARK to "Dark"
+                    )
+                    modes.forEach { (mode, title) ->
+                        val isSelected = themeMode == mode
+                        val textColor by animateColorAsState(
+                            targetValue = if (isSelected) appColors.systemBackground else appColors.secondaryLabel,
+                            animationSpec = tween(durationMillis = 200),
+                            label = "theme_text_${mode.name}"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    if (themeMode != mode) {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSetThemeMode(mode)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = title,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp,
+                                color = textColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section: LAYOUT
+        Text(
+            text = "LAYOUT",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val layoutOptions = listOf(
+                Triple(WebStackLayoutMode.LARGE_CARDS, "Card", R.drawable.ic_layout_card),
+                Triple(WebStackLayoutMode.GRID_CARDS, "Grid", R.drawable.ic_layout_grid),
+                Triple(WebStackLayoutMode.COMPACT_LIST, "List", R.drawable.ic_layout_list)
+            )
+
+            layoutOptions.forEach { (mode, title, iconRes) ->
+                val isSelected = layoutMode == mode
+                val interactionSource = remember(mode) { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.92f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "layout_bouncy_${mode.name}"
+                )
+
+                Surface(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSetLayoutMode(mode)
+                    },
+                    interactionSource = interactionSource,
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 0.75.dp,
+                        color = if (isSelected) appColors.label else appColors.separator
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(78.dp)
+                                .background(
+                                    color = if (appColors.isDark) Color(0xFF141416) else Color(0xFFF7FAFE),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = "$title layout preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = appColors.label,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = title,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) appColors.label else appColors.secondaryLabel
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        val doneInteractionSource = remember { MutableInteractionSource() }
+        val isDonePressed by doneInteractionSource.collectIsPressedAsState()
+        val doneScale by animateFloatAsState(
+            targetValue = if (isDonePressed) 0.94f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "theme_layout_done_bouncy"
+        )
+
+        Button(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onBack()
+            },
+            interactionSource = doneInteractionSource,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = appColors.label,
+                contentColor = appColors.systemBackground
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .graphicsLayer {
+                    scaleX = doneScale
+                    scaleY = doneScale
+                }
+        ) {
+            Text("Done", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+/**
+ * Dedicated Favorites Customization Page: Shows Live Preview, Symbol Selection,
+ * Expressive Badge Shape Selection, and Vibrant Color Palettes.
+ */
+@Composable
+fun FavoritesCustomizationSubSheetContent(
+    favoriteIconType: FavoriteIconType = FavoriteIconType.HEART,
+    onSetFavoriteIconType: (FavoriteIconType) -> Unit = {},
+    favoriteBadgeShape: FavoriteBadgeShape = FavoriteBadgeShape.PURE_FLOAT,
+    onSetFavoriteBadgeShape: (FavoriteBadgeShape) -> Unit = {},
+    favoriteColorPreset: FavoriteColorPreset = FavoriteColorPreset.CRIMSON_PINK,
+    onSetFavoriteColorPreset: (FavoriteColorPreset) -> Unit = {},
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    val appColors = LocalAppColors.current
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        AppSubSheetHeader(
+            title = "Favorites",
+            onBack = onBack,
+            onDismiss = onDismiss
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -971,7 +1290,7 @@ fun AppearanceSubSheetContent(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessMediumLow
             ),
-            label = "done_bouncy"
+            label = "fav_done_bouncy"
         )
 
         Button(
@@ -998,13 +1317,49 @@ fun AppearanceSubSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+}
 
-    activeExplainer?.let { exp ->
-        AppExplainerDialog(
-            title = exp.title,
-            description = exp.description,
-            icon = exp.icon,
-            onDismiss = { activeExplainer = null }
-        )
-    }
+/**
+ * Backward-compatible alias for CustomizationSubSheetContent.
+ */
+@Composable
+fun AppearanceSubSheetContent(
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    onSetThemeMode: (AppThemeMode) -> Unit = {},
+    layoutMode: WebStackLayoutMode = WebStackLayoutMode.LARGE_CARDS,
+    onSetLayoutMode: (WebStackLayoutMode) -> Unit = {},
+    fabShape: AppFabShape = AppFabShape.CIRCLE,
+    onOpenFabShapePicker: () -> Unit = {},
+    showCardDomain: Boolean = true,
+    onToggleShowCardDomain: (Boolean) -> Unit = {},
+    showCardCategory: Boolean = true,
+    onToggleShowCardCategory: (Boolean) -> Unit = {},
+    onOpenCardDetails: () -> Unit = {},
+    onOpenCustomizeTags: () -> Unit = {},
+    onOpenAppearance: () -> Unit = {},
+    onOpenFavorites: () -> Unit = {},
+    favoriteIconType: FavoriteIconType = FavoriteIconType.HEART,
+    onSetFavoriteIconType: (FavoriteIconType) -> Unit = {},
+    favoriteBadgeShape: FavoriteBadgeShape = FavoriteBadgeShape.PURE_FLOAT,
+    onSetFavoriteBadgeShape: (FavoriteBadgeShape) -> Unit = {},
+    favoriteColorPreset: FavoriteColorPreset = FavoriteColorPreset.CRIMSON_PINK,
+    onSetFavoriteColorPreset: (FavoriteColorPreset) -> Unit = {},
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    CustomizationSubSheetContent(
+        themeMode = themeMode,
+        layoutMode = layoutMode,
+        onOpenAppearance = onOpenAppearance,
+        onOpenFavorites = onOpenFavorites,
+        fabShape = fabShape,
+        onOpenFabShapePicker = onOpenFabShapePicker,
+        onOpenCardDetails = onOpenCardDetails,
+        onOpenCustomizeTags = onOpenCustomizeTags,
+        favoriteIconType = favoriteIconType,
+        favoriteBadgeShape = favoriteBadgeShape,
+        favoriteColorPreset = favoriteColorPreset,
+        onBack = onBack,
+        onDismiss = onDismiss
+    )
 }

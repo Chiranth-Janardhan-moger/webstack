@@ -93,7 +93,9 @@ enum class SettingsSubScreen {
     FAB_SHAPE,
     CARD_DETAILS,
     APP_INFO,
-    PC_SHARE
+    PC_SHARE,
+    THEME_LAYOUT,
+    FAVORITES_CUSTOMIZE
 }
 
 private data class SettingsExplainer(
@@ -352,26 +354,43 @@ fun SettingsBottomSheetContent(
     when (currentSubScreen) {
         SettingsSubScreen.APPEARANCE -> {
             BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
-            AppearanceSubSheetContent(
+            CustomizationSubSheetContent(
+                themeMode = themeMode,
+                layoutMode = layoutMode,
+                onOpenAppearance = { navigateToSubScreen(SettingsSubScreen.THEME_LAYOUT) },
+                onOpenFavorites = { navigateToSubScreen(SettingsSubScreen.FAVORITES_CUSTOMIZE) },
+                fabShape = fabShape,
+                onOpenFabShapePicker = { navigateToSubScreen(SettingsSubScreen.FAB_SHAPE) },
+                onOpenCardDetails = { navigateToSubScreen(SettingsSubScreen.CARD_DETAILS) },
+                onOpenCustomizeTags = { navigateToSubScreen(SettingsSubScreen.CUSTOMIZE_TAGS) },
+                favoriteIconType = vmFavIcon,
+                favoriteBadgeShape = vmFavShape,
+                favoriteColorPreset = vmFavColor,
+                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
+                onDismiss = handleDismiss
+            )
+        }
+        SettingsSubScreen.THEME_LAYOUT -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.APPEARANCE) }
+            ThemeLayoutSubSheetContent(
                 themeMode = themeMode,
                 onSetThemeMode = onSetThemeMode,
                 layoutMode = layoutMode,
                 onSetLayoutMode = onSetLayoutMode,
-                fabShape = fabShape,
-                onOpenFabShapePicker = { navigateToSubScreen(SettingsSubScreen.FAB_SHAPE) },
-                showCardDomain = showCardDomain,
-                onToggleShowCardDomain = onToggleShowCardDomain,
-                showCardCategory = showCardCategory,
-                onToggleShowCardCategory = onToggleShowCardCategory,
-                onOpenCardDetails = { navigateToSubScreen(SettingsSubScreen.CARD_DETAILS) },
-                onOpenCustomizeTags = { navigateToSubScreen(SettingsSubScreen.CUSTOMIZE_TAGS) },
+                onBack = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
+                onDismiss = handleDismiss
+            )
+        }
+        SettingsSubScreen.FAVORITES_CUSTOMIZE -> {
+            BackHandler { navigateToSubScreen(SettingsSubScreen.APPEARANCE) }
+            FavoritesCustomizationSubSheetContent(
                 favoriteIconType = vmFavIcon,
                 onSetFavoriteIconType = { viewModel?.setFavoriteIconType(it) },
                 favoriteBadgeShape = vmFavShape,
                 onSetFavoriteBadgeShape = { viewModel?.setFavoriteBadgeShape(it) },
                 favoriteColorPreset = vmFavColor,
                 onSetFavoriteColorPreset = { viewModel?.setFavoriteColorPreset(it) },
-                onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
+                onBack = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
                 onDismiss = handleDismiss
             )
         }
