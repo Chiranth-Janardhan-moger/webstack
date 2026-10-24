@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -127,6 +129,8 @@ internal fun ActionTile(
 @Composable
 fun ItemOptionsBottomSheetContent(
     website: Website,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     onOpen: () -> Unit,
     onEdit: () -> Unit,
     onCopy: () -> Unit = {},
@@ -214,12 +218,23 @@ fun ItemOptionsBottomSheetContent(
                 }
             }
 
-            IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = appColors.secondaryLabel
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from Favorites" else "Mark as Favorite",
+                        tint = if (isFavorite) Color(0xFFFF2D55) else appColors.secondaryLabel,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = appColors.secondaryLabel
+                    )
+                }
             }
         }
 

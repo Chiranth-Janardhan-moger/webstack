@@ -216,6 +216,7 @@ fun WebStackScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
     val cachedScreenshotIds by viewModel.cachedScreenshotIds.collectAsState()
+    val favoriteIds by viewModel.favoriteWebsiteIds.collectAsState()
 
     var showAddSheet by remember { mutableStateOf(false) }
     var initialAddUrl by remember { mutableStateOf("") }
@@ -516,6 +517,7 @@ fun WebStackScreen(
                         ) { website ->
                             val refreshToken = refreshTokens[website.id] ?: 0L
                             val hasCachedImage = cachedScreenshotIds.contains(website.id)
+                            val isFavorite = favoriteIds.contains(website.id)
                             Box(
                                 modifier = Modifier.animateItem(
                                     placementSpec = null,
@@ -582,6 +584,7 @@ fun WebStackScreen(
                                         showDomain = showCardDomain,
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
+                                        isFavorite = isFavorite,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
@@ -596,6 +599,7 @@ fun WebStackScreen(
                                         showDomain = showCardDomain,
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
+                                        isFavorite = isFavorite,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
@@ -610,6 +614,7 @@ fun WebStackScreen(
                                         showDomain = showCardDomain,
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
+                                        isFavorite = isFavorite,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
@@ -827,9 +832,9 @@ fun WebStackScreen(
                         showAddTagDialog = true
                     },
                     onClearError = { viewModel.clearError() },
-                    onSave = { rawUrl, category ->
+                    onSave = { rawUrl, category, isFavorite ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.saveWebsite(rawUrl, category) {
+                        viewModel.saveWebsite(rawUrl, category, isFavorite = isFavorite) {
                             showAddSheet = false
                             viewModel.clearError()
                         }
@@ -848,6 +853,11 @@ fun WebStackScreen(
             AppBottomSheet(onDismissRequest = { websiteForOptions = null }) {
                 ItemOptionsBottomSheetContent(
                     website = targetWebsite,
+                    isFavorite = favoriteIds.contains(targetWebsite.id),
+                    onToggleFavorite = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.toggleFavorite(targetWebsite.id)
+                    },
                     onOpen = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         openWebsiteInBrowser(context, targetWebsite.url)
@@ -903,6 +913,11 @@ fun WebStackScreen(
                 EditWebsiteSheetContent(
                     website = targetWebsite,
                     categories = categoriesState,
+                    isFavorite = favoriteIds.contains(targetWebsite.id),
+                    onToggleFavorite = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.toggleFavorite(targetWebsite.id)
+                    },
                     onAddNewTag = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         showAddTagDialog = true

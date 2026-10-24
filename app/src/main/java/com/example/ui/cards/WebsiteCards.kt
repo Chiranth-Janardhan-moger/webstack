@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
@@ -128,6 +129,7 @@ fun WebsiteSnapshotImage(
     isCompact: Boolean = false,
     showRefreshButton: Boolean = true,
     hasCachedImage: Boolean = false,
+    isFavorite: Boolean = false,
     onImageSaved: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -318,6 +320,29 @@ fun WebsiteSnapshotImage(
             }
         }
 
+        // Top-Left Floating Favorite Heart Indicator
+        if (isFavorite) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(
+                        top = if (isCompact) 5.dp else if (isGrid) 8.dp else 10.dp,
+                        start = if (isCompact) 5.dp else if (isGrid) 8.dp else 10.dp
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = "Favorited",
+                    tint = Color(0xFFFF2D55),
+                    modifier = Modifier
+                        .size(if (isCompact) 13.dp else if (isGrid) 16.dp else 20.dp)
+                        .graphicsLayer {
+                            shadowElevation = 3f
+                        }
+                )
+            }
+        }
+
         // Top-Right Action: Refresh Snapshot
         if (showRefreshButton && (fetchWebPreviews || hasLocalImage)) {
             Box(
@@ -469,6 +494,7 @@ fun WebsiteCard(
     showDomain: Boolean = true,
     showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
+    isFavorite: Boolean = false,
     onImageSaved: () -> Unit = {},
     selectionIndex: Int? = null,
     isInSelectionMode: Boolean = false,
@@ -500,6 +526,7 @@ fun WebsiteCard(
                 topCornerRadius = 22.dp,
                 showRefreshButton = !isInSelectionMode,
                 hasCachedImage = hasCachedImage,
+                isFavorite = isFavorite,
                 onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )
@@ -578,6 +605,7 @@ fun GridWebsiteCard(
     showDomain: Boolean = true,
     showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
+    isFavorite: Boolean = false,
     onImageSaved: () -> Unit = {},
     selectionIndex: Int? = null,
     isInSelectionMode: Boolean = false,
@@ -610,6 +638,7 @@ fun GridWebsiteCard(
                 isGrid = true,
                 showRefreshButton = !isInSelectionMode,
                 hasCachedImage = hasCachedImage,
+                isFavorite = isFavorite,
                 onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )
@@ -677,6 +706,7 @@ fun CompactWebsiteRow(
     showDomain: Boolean = true,
     showCategory: Boolean = true,
     hasCachedImage: Boolean = false,
+    isFavorite: Boolean = false,
     onImageSaved: () -> Unit = {},
     selectionIndex: Int? = null,
     isInSelectionMode: Boolean = false,
@@ -711,6 +741,7 @@ fun CompactWebsiteRow(
                 isCompact = true,
                 showRefreshButton = false,
                 hasCachedImage = hasCachedImage,
+                isFavorite = isFavorite,
                 onImageSaved = onImageSaved,
                 onRefreshScreenshot = onRefreshScreenshot
             )

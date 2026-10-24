@@ -43,6 +43,9 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
 
+    private val _favoriteWebsiteIds = MutableStateFlow<Set<Long>>(emptySet())
+    val favoriteWebsiteIds: StateFlow<Set<Long>> = _favoriteWebsiteIds.asStateFlow()
+
     private val _settingsSubScreen = MutableStateFlow(com.example.ui.sheets.SettingsSubScreen.MAIN)
     val settingsSubScreen: StateFlow<com.example.ui.sheets.SettingsSubScreen> = _settingsSubScreen.asStateFlow()
 
@@ -137,6 +140,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
         loadCachedScreenshotIds()
+        loadFavorites()
     }
 
     private fun loadCachedScreenshotIds() {
@@ -152,6 +156,30 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
     fun onScreenshotSaved(id: Long) {
         _cachedScreenshotIds.value = _cachedScreenshotIds.value + id
+    }
+
+    private fun loadFavorites() {
+        val ids = prefs.getString("favorite_website_ids_csv", null)
+            ?.split(",")
+            ?.mapNotNull { it.trim().toLongOrNull() }
+            ?.toSet() ?: emptySet()
+        _favoriteWebsiteIds.value = ids
+    }
+
+    fun toggleFavorite(id: Long) {
+        val current = _favoriteWebsiteIds.value
+        val updated = if (current.contains(id)) current - id else current + id
+        _favoriteWebsiteIds.value = updated
+        prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+    }
+
+    fun setFavorite(id: Long, isFavorite: Boolean) {
+        val current = _favoriteWebsiteIds.value
+        val updated = if (isFavorite) current + id else current - id
+        if (updated != current) {
+            _favoriteWebsiteIds.value = updated
+            prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        }
     }
 
     private fun loadCategories() {
@@ -415,7 +443,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun saveWebsite(url: String, category: String? = null, onSuccess: () -> Unit) {
+    fun saveWebsite(url: String, category: String? = null, isFavorite: Boolean = false, onSuccess: () -> Unit) {
         val trimmed = url.trim()
         if (trimmed.isBlank()) {
             _saveError.value = "URL cannot be empty"
@@ -436,6 +464,9 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             _isSaving.value = false
             if (result.isSuccess) {
                 val savedWebsite = result.getOrThrow()
+                if (isFavorite) {
+                    setFavorite(savedWebsite.id, true)
+                }
                 onSuccess()
                 launch(Dispatchers.IO) {
                     repository.fetchTitleAsync(savedWebsite.id, savedWebsite.url, savedWebsite.domain)
@@ -470,6 +501,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.delete(id)
             refreshScreenshot(id)
+            setFavorite(id, false)
         }
     }
 
@@ -485,6 +517,12 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             }
             val idSet = ids.toHashSet()
             _cachedScreenshotIds.update { it - idSet }
+            val currentFavs = _favoriteWebsiteIds.value
+            val updatedFavs = currentFavs - idSet
+            if (updatedFavs != currentFavs) {
+                _favoriteWebsiteIds.value = updatedFavs
+                prefs.edit().putString("favorite_website_ids_csv", updatedFavs.joinToString(",")).apply()
+            }
         }
     }
 

@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
@@ -62,9 +64,10 @@ fun AddWebsiteSheetContent(
     saveError: String?,
     onAddNewTag: () -> Unit = {},
     onClearError: () -> Unit = {},
-    onSave: (String, String) -> Unit,
+    onSave: (String, String, Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var isFavorite by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val appColors = LocalAppColors.current
     val haptics = LocalHapticFeedback.current
@@ -105,16 +108,33 @@ fun AddWebsiteSheetContent(
                 letterSpacing = (-0.3).sp
             )
 
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Cancel and Close",
-                    tint = appColors.secondaryLabel,
-                    modifier = Modifier.size(20.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        isFavorite = !isFavorite
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from Favorites" else "Mark as Favorite",
+                        tint = if (isFavorite) Color(0xFFFF2D55) else appColors.secondaryLabel,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel and Close",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
@@ -196,7 +216,7 @@ fun AddWebsiteSheetContent(
             keyboardActions = KeyboardActions(
                 onDone = {
                     if (inputUrl.isNotBlank() && !isSaving) {
-                        onSave(inputUrl, selectedCategory)
+                        onSave(inputUrl, selectedCategory, isFavorite)
                     }
                 }
             )
@@ -254,7 +274,7 @@ fun AddWebsiteSheetContent(
 
         // Save CTA button
         Button(
-            onClick = { onSave(inputUrl, selectedCategory) },
+            onClick = { onSave(inputUrl, selectedCategory, isFavorite) },
             enabled = inputUrl.isNotBlank() && !isSaving,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
@@ -282,6 +302,8 @@ fun AddWebsiteSheetContent(
 fun EditWebsiteSheetContent(
     website: Website,
     categories: List<String>,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     onAddNewTag: () -> Unit,
     onSave: (Website) -> Unit,
     onDismiss: () -> Unit
@@ -321,13 +343,27 @@ fun EditWebsiteSheetContent(
                 )
             }
 
-            IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = appColors.secondaryLabel,
-                    modifier = Modifier.size(20.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from Favorites" else "Mark as Favorite",
+                        tint = if (isFavorite) Color(0xFFFF2D55) else appColors.secondaryLabel,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                IconButton(onClick = onDismiss, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = appColors.secondaryLabel,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
