@@ -1,7 +1,10 @@
 package com.example.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -50,6 +53,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -504,6 +508,7 @@ fun AppCategoryCapsuleBar(
     allWebsites: List<Website>,
     categories: List<String>,
     selectedCategory: String,
+    favoriteCount: Int = 0,
     onSelectCategory: (String) -> Unit,
     onTagLongPress: (String) -> Unit,
     onAddNewTag: () -> Unit
@@ -531,6 +536,32 @@ fun AppCategoryCapsuleBar(
                 onClick = { onSelectCategory("All") },
                 onLongClick = null
             )
+        }
+
+        // Heart / Favorites Capsule: [ ♥ (N) ] (Smooth expand/shrink right beside "All")
+        item {
+            AnimatedVisibility(
+                visible = favoriteCount > 0,
+                enter = expandHorizontally(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = shrinkHorizontally(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
+            ) {
+                val isFavSelected = selectedCategory.equals("Favorites", ignoreCase = true)
+                AppCapsule(
+                    text = "",
+                    count = favoriteCount,
+                    isSelected = isFavSelected,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Favorites",
+                            tint = if (isFavSelected) appColors.systemBackground else Color(0xFFFF2D55),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    },
+                    onClick = { onSelectCategory("Favorites") },
+                    onLongClick = null
+                )
+            }
         }
 
         // Category Capsules (Supports single-tap filter & long-press options)
@@ -588,6 +619,7 @@ fun AppCapsule(
     count: Int,
     isSelected: Boolean,
     customAccentColor: Color? = null,
+    leadingIcon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -621,26 +653,34 @@ fun AppCapsule(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .testTag("category_item_$text")
+            .testTag(if (text.isBlank()) "category_item_favorites" else "category_item_$text")
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(
+                horizontal = if (text.isBlank()) 10.dp else 12.dp,
+                vertical = 6.dp
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (customAccentColor != null) {
+            if (leadingIcon != null) {
+                leadingIcon()
+            }
+            if (customAccentColor != null && leadingIcon == null) {
                 Box(
                     modifier = Modifier
                         .size(7.dp)
                         .background(customAccentColor, CircleShape)
                 )
             }
-            Text(
-                text = text,
-                color = if (isSelected) appColors.systemBackground else appColors.label,
-                fontSize = 12.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            )
+            if (text.isNotBlank()) {
+                Text(
+                    text = text,
+                    color = if (isSelected) appColors.systemBackground else appColors.label,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
+            }
             if (count > 0) {
                 CapsuleCountBadge(
                     count = count,
@@ -733,10 +773,11 @@ fun AppEmptyState(
                         imageVector = when {
                             searchQuery.isNotBlank() -> Icons.Outlined.Search
                             selectedCategory == "All" -> Icons.Outlined.Layers
+                            selectedCategory == "Favorites" -> Icons.Filled.Favorite
                             else -> Icons.Default.FilterList
                         },
                         contentDescription = null,
-                        tint = appColors.secondaryLabel,
+                        tint = if (selectedCategory == "Favorites" && searchQuery.isBlank()) Color(0xFFFF2D55) else appColors.secondaryLabel,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -748,6 +789,7 @@ fun AppEmptyState(
                 text = when {
                     searchQuery.isNotBlank() -> "No Matching Bookmarks"
                     selectedCategory == "All" -> "No Links in Stack"
+                    selectedCategory == "Favorites" -> "No Favorite Bookmarks"
                     else -> "No Links in \"$selectedCategory\""
                 },
                 fontSize = 18.sp,
@@ -759,6 +801,7 @@ fun AppEmptyState(
             val descriptionText = when {
                 searchQuery.isNotBlank() -> "No bookmarks matched \"$searchQuery\". Try checking for typos or searching another term."
                 selectedCategory == "All" -> "Tap the '+' button below or share links from Chrome, Firefox, Brave, or any app."
+                selectedCategory == "Favorites" -> "Tap the heart on any bookmark card to add it to your favorites."
                 else -> null
             }
 

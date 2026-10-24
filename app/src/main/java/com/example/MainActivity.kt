@@ -356,17 +356,27 @@ fun WebStackScreen(
         }
     }
 
+    val favoriteCount = remember(websitesState, favoriteIds) {
+        websitesState?.count { favoriteIds.contains(it.id) } ?: 0
+    }
+
+    LaunchedEffect(favoriteCount) {
+        if (favoriteCount == 0 && selectedCategory.equals("Favorites", ignoreCase = true)) {
+            selectedCategory = "All"
+        }
+    }
+
     // Filter websites according to selected category, search query, and sort order
-    val filteredWebsites = remember(websitesState, selectedCategory, searchQuery, bookmarkSortOrder) {
+    val filteredWebsites = remember(websitesState, selectedCategory, searchQuery, bookmarkSortOrder, favoriteIds) {
         val current = websitesState ?: return@remember emptyList()
         val sorted = when (bookmarkSortOrder) {
             BookmarkSortOrder.NEWEST -> current
             BookmarkSortOrder.OLDEST -> current.asReversed()
         }
-        val categoryFiltered = if (selectedCategory == "All") {
-            sorted
-        } else {
-            sorted.filter {
+        val categoryFiltered = when {
+            selectedCategory.equals("All", ignoreCase = true) -> sorted
+            selectedCategory.equals("Favorites", ignoreCase = true) -> sorted.filter { favoriteIds.contains(it.id) }
+            else -> sorted.filter {
                 it.category.equals(selectedCategory, ignoreCase = true)
             }
         }
@@ -446,6 +456,7 @@ fun WebStackScreen(
                     allWebsites = websitesState ?: emptyList(),
                     categories = categoriesState,
                     selectedCategory = selectedCategory,
+                    favoriteCount = favoriteCount,
                     onSelectCategory = { cat ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         selectedCategory = cat

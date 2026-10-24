@@ -43,6 +43,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
 
+    private val favoriteLock = Any()
     private val _favoriteWebsiteIds = MutableStateFlow<Set<Long>>(emptySet())
     val favoriteWebsiteIds: StateFlow<Set<Long>> = _favoriteWebsiteIds.asStateFlow()
 
@@ -167,36 +168,44 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun toggleFavorite(id: Long) {
-        val current = _favoriteWebsiteIds.value
-        val updated = if (current.contains(id)) current - id else current + id
-        _favoriteWebsiteIds.value = updated
-        prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        synchronized(favoriteLock) {
+            val current = _favoriteWebsiteIds.value
+            val updated = if (current.contains(id)) current - id else current + id
+            _favoriteWebsiteIds.value = updated
+            prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        }
     }
 
     fun setFavorite(id: Long, isFavorite: Boolean) {
-        val current = _favoriteWebsiteIds.value
-        val updated = if (isFavorite) current + id else current - id
-        if (updated != current) {
-            _favoriteWebsiteIds.value = updated
-            prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        synchronized(favoriteLock) {
+            val current = _favoriteWebsiteIds.value
+            val updated = if (isFavorite) current + id else current - id
+            if (updated != current) {
+                _favoriteWebsiteIds.value = updated
+                prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+            }
         }
     }
 
     fun setWebsitesFavorite(ids: Collection<Long>, isFavorite: Boolean) {
         if (ids.isEmpty()) return
-        val current = _favoriteWebsiteIds.value
-        val updated = if (isFavorite) current + ids else current - ids.toSet()
-        if (updated != current) {
-            _favoriteWebsiteIds.value = updated
-            prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+        synchronized(favoriteLock) {
+            val current = _favoriteWebsiteIds.value
+            val updated = if (isFavorite) current + ids else current - ids.toSet()
+            if (updated != current) {
+                _favoriteWebsiteIds.value = updated
+                prefs.edit().putString("favorite_website_ids_csv", updated.joinToString(",")).apply()
+            }
         }
     }
 
     fun toggleWebsitesFavorite(ids: Collection<Long>) {
         if (ids.isEmpty()) return
-        val current = _favoriteWebsiteIds.value
-        val allFavorited = ids.all { current.contains(it) }
-        setWebsitesFavorite(ids, !allFavorited)
+        synchronized(favoriteLock) {
+            val current = _favoriteWebsiteIds.value
+            val allFavorited = ids.all { current.contains(it) }
+            setWebsitesFavorite(ids, !allFavorited)
+        }
     }
 
     private fun loadCategories() {
@@ -515,10 +524,10 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteWebsite(id: Long) {
+        setFavorite(id, false)
         viewModelScope.launch {
             repository.delete(id)
             refreshScreenshot(id)
-            setFavorite(id, false)
         }
     }
 
@@ -534,11 +543,13 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             }
             val idSet = ids.toHashSet()
             _cachedScreenshotIds.update { it - idSet }
-            val currentFavs = _favoriteWebsiteIds.value
-            val updatedFavs = currentFavs - idSet
-            if (updatedFavs != currentFavs) {
-                _favoriteWebsiteIds.value = updatedFavs
-                prefs.edit().putString("favorite_website_ids_csv", updatedFavs.joinToString(",")).apply()
+            synchronized(favoriteLock) {
+                val currentFavs = _favoriteWebsiteIds.value
+                val updatedFavs = currentFavs - idSet
+                if (updatedFavs != currentFavs) {
+                    _favoriteWebsiteIds.value = updatedFavs
+                    prefs.edit().putString("favorite_website_ids_csv", updatedFavs.joinToString(",")).apply()
+                }
             }
         }
     }
