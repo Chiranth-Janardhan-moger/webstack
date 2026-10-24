@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -65,6 +66,9 @@ fun AppFloatingActionButton(
     onDeleteSelected: () -> Unit,
     allSelectedAreFavorites: Boolean = false,
     onToggleFavoriteSelected: () -> Unit = {},
+    favoriteFilledIcon: ImageVector = Icons.Filled.Favorite,
+    favoriteOutlinedIcon: ImageVector = Icons.Outlined.FavoriteBorder,
+    favoriteColor: Color = Color(0xFFFF2D55),
     modifier: Modifier = Modifier
 ) {
     val appColors = LocalAppColors.current
@@ -202,7 +206,7 @@ fun AppFloatingActionButton(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = Color(0xFFFF2D55).copy(alpha = if (allSelectedAreFavorites) 0.28f else 0.15f),
+                                color = favoriteColor.copy(alpha = if (allSelectedAreFavorites) 0.28f else 0.15f),
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Box(
@@ -210,9 +214,9 @@ fun AppFloatingActionButton(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     Icon(
-                                        imageVector = if (allSelectedAreFavorites) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        imageVector = if (allSelectedAreFavorites) favoriteFilledIcon else favoriteOutlinedIcon,
                                         contentDescription = if (allSelectedAreFavorites) "Remove from Favorites" else "Mark as Favorite",
-                                        tint = Color(0xFFFF2D55),
+                                        tint = favoriteColor,
                                         modifier = Modifier.size(19.dp)
                                     )
                                 }

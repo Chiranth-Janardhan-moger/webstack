@@ -80,6 +80,9 @@ import java.util.Locale
 
 import com.example.ui.model.AppFabShape
 import com.example.ui.model.BookmarkSortOrder
+import com.example.ui.model.FavoriteBadgeShape
+import com.example.ui.model.FavoriteColorPreset
+import com.example.ui.model.FavoriteIconType
 
 enum class SettingsSubScreen {
     MAIN,
@@ -151,6 +154,9 @@ fun SettingsBottomSheetContent(
 
     val vmSubScreen = viewModel?.settingsSubScreen?.collectAsState()?.value
     val vmPreprocessResult = viewModel?.pendingPreprocessResult?.collectAsState()?.value
+    val vmFavIcon = viewModel?.favoriteIconType?.collectAsState()?.value ?: FavoriteIconType.HEART
+    val vmFavShape = viewModel?.favoriteBadgeShape?.collectAsState()?.value ?: FavoriteBadgeShape.PURE_FLOAT
+    val vmFavColor = viewModel?.favoriteColorPreset?.collectAsState()?.value ?: FavoriteColorPreset.CRIMSON_PINK
 
     val currentSubScreen = if (viewModel != null && vmSubScreen != null) vmSubScreen else localSubScreen
     val pendingPreprocessResult = if (viewModel != null) vmPreprocessResult else localPreprocessResult
@@ -359,6 +365,12 @@ fun SettingsBottomSheetContent(
                 onToggleShowCardCategory = onToggleShowCardCategory,
                 onOpenCardDetails = { navigateToSubScreen(SettingsSubScreen.CARD_DETAILS) },
                 onOpenCustomizeTags = { navigateToSubScreen(SettingsSubScreen.CUSTOMIZE_TAGS) },
+                favoriteIconType = vmFavIcon,
+                onSetFavoriteIconType = { viewModel?.setFavoriteIconType(it) },
+                favoriteBadgeShape = vmFavShape,
+                onSetFavoriteBadgeShape = { viewModel?.setFavoriteBadgeShape(it) },
+                favoriteColorPreset = vmFavColor,
+                onSetFavoriteColorPreset = { viewModel?.setFavoriteColorPreset(it) },
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
                 onDismiss = handleDismiss
             )
@@ -564,15 +576,15 @@ fun SettingsBottomSheetContent(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. Appearance
+                // 1. Customization
                 SettingsGroupedNavRow(
-                    title = "Appearance",
+                    title = "Customization",
                     iconPainter = painterResource(id = R.drawable.ic_appearance),
                     onClick = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
                     onLongClick = {
                         activeExplainer = SettingsExplainer(
-                            title = "Appearance",
-                            description = "Personalize your theme, card details, and switch between Grid, Card, or Compact layouts.",
+                            title = "Customization",
+                            description = "Personalize your theme, layouts, interface controls, and favorite indicators.",
                             icon = Icons.Outlined.Palette
                         )
                     }

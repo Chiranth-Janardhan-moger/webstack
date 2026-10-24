@@ -7,6 +7,9 @@ import com.example.data.Website
 import com.example.data.WebsiteDatabase
 import com.example.data.WebsiteRepository
 import com.example.ui.util.DEFAULT_CATEGORIES
+import com.example.ui.model.FavoriteBadgeShape
+import com.example.ui.model.FavoriteColorPreset
+import com.example.ui.model.FavoriteIconType
 import android.content.Context
 import com.example.data.BackupManager
 import com.example.ui.util.resolveDedupeKey
@@ -46,6 +49,15 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val favoriteLock = Any()
     private val _favoriteWebsiteIds = MutableStateFlow<Set<Long>>(emptySet())
     val favoriteWebsiteIds: StateFlow<Set<Long>> = _favoriteWebsiteIds.asStateFlow()
+
+    private val _favoriteIconType = MutableStateFlow(FavoriteIconType.HEART)
+    val favoriteIconType: StateFlow<FavoriteIconType> = _favoriteIconType.asStateFlow()
+
+    private val _favoriteBadgeShape = MutableStateFlow(FavoriteBadgeShape.PURE_FLOAT)
+    val favoriteBadgeShape: StateFlow<FavoriteBadgeShape> = _favoriteBadgeShape.asStateFlow()
+
+    private val _favoriteColorPreset = MutableStateFlow(FavoriteColorPreset.CRIMSON_PINK)
+    val favoriteColorPreset: StateFlow<FavoriteColorPreset> = _favoriteColorPreset.asStateFlow()
 
     private val _settingsSubScreen = MutableStateFlow(com.example.ui.sheets.SettingsSubScreen.MAIN)
     val settingsSubScreen: StateFlow<com.example.ui.sheets.SettingsSubScreen> = _settingsSubScreen.asStateFlow()
@@ -142,6 +154,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         loadCategories()
         loadCachedScreenshotIds()
         loadFavorites()
+        loadFavoriteCustomization()
     }
 
     private fun loadCachedScreenshotIds() {
@@ -157,6 +170,30 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
     fun onScreenshotSaved(id: Long) {
         _cachedScreenshotIds.value = _cachedScreenshotIds.value + id
+    }
+
+    private fun loadFavoriteCustomization() {
+        val iconId = prefs.getString("favorite_icon_type", FavoriteIconType.HEART.id)
+        val shapeId = prefs.getString("favorite_badge_shape", FavoriteBadgeShape.PURE_FLOAT.id)
+        val colorId = prefs.getString("favorite_color_preset", FavoriteColorPreset.CRIMSON_PINK.id)
+        _favoriteIconType.value = FavoriteIconType.fromId(iconId)
+        _favoriteBadgeShape.value = FavoriteBadgeShape.fromId(shapeId)
+        _favoriteColorPreset.value = FavoriteColorPreset.fromId(colorId)
+    }
+
+    fun setFavoriteIconType(icon: FavoriteIconType) {
+        _favoriteIconType.value = icon
+        prefs.edit().putString("favorite_icon_type", icon.id).apply()
+    }
+
+    fun setFavoriteBadgeShape(shape: FavoriteBadgeShape) {
+        _favoriteBadgeShape.value = shape
+        prefs.edit().putString("favorite_badge_shape", shape.id).apply()
+    }
+
+    fun setFavoriteColorPreset(color: FavoriteColorPreset) {
+        _favoriteColorPreset.value = color
+        prefs.edit().putString("favorite_color_preset", color.id).apply()
     }
 
     private fun loadFavorites() {

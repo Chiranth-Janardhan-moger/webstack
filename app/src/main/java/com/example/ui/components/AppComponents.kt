@@ -509,6 +509,8 @@ fun AppCategoryCapsuleBar(
     categories: List<String>,
     selectedCategory: String,
     favoriteCount: Int = 0,
+    favoriteIcon: ImageVector = Icons.Filled.Favorite,
+    favoriteColor: Color = Color(0xFFFF2D55),
     onSelectCategory: (String) -> Unit,
     onTagLongPress: (String) -> Unit,
     onAddNewTag: () -> Unit
@@ -552,9 +554,9 @@ fun AppCategoryCapsuleBar(
                     isSelected = isFavSelected,
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Filled.Favorite,
+                            imageVector = favoriteIcon,
                             contentDescription = "Favorites",
-                            tint = if (isFavSelected) appColors.systemBackground else Color(0xFFFF2D55),
+                            tint = if (isFavSelected) appColors.systemBackground else favoriteColor,
                             modifier = Modifier.size(13.dp)
                         )
                     },

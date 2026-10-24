@@ -155,5 +155,86 @@ class ThemeAndSettingsTest {
         vm.setCompanionCustomPin("123456789")
         assertEquals("123456", vm.companionCustomPin.value)
     }
-}
 
+    @Test
+    fun testFavoriteIconType_entriesAndFromIdFallback() {
+        val icons = com.example.ui.model.FavoriteIconType.entries
+        assertEquals(5, icons.size)
+        assertEquals("Heart", com.example.ui.model.FavoriteIconType.HEART.displayName)
+        assertEquals("Star", com.example.ui.model.FavoriteIconType.STAR.displayName)
+        assertEquals("Bookmark", com.example.ui.model.FavoriteIconType.BOOKMARK.displayName)
+        assertEquals("Diamond", com.example.ui.model.FavoriteIconType.DIAMOND.displayName)
+        assertEquals("Sparkle", com.example.ui.model.FavoriteIconType.SPARKLE.displayName)
+
+        assertEquals(com.example.ui.model.FavoriteIconType.STAR, com.example.ui.model.FavoriteIconType.fromId("star"))
+        assertEquals(com.example.ui.model.FavoriteIconType.HEART, com.example.ui.model.FavoriteIconType.fromId("unknown_id"))
+        assertEquals(com.example.ui.model.FavoriteIconType.HEART, com.example.ui.model.FavoriteIconType.fromId(null))
+    }
+
+    @Test
+    fun testFavoriteBadgeShape_entriesAndFromIdFallback() {
+        val shapes = com.example.ui.model.FavoriteBadgeShape.entries
+        assertEquals(6, shapes.size)
+        assertEquals("Pure Float", com.example.ui.model.FavoriteBadgeShape.PURE_FLOAT.displayName)
+        assertEquals("Circle", com.example.ui.model.FavoriteBadgeShape.CIRCLE.displayName)
+        assertEquals("Squircle", com.example.ui.model.FavoriteBadgeShape.SQUIRCLE.displayName)
+        assertEquals("4-Leaf Clover", com.example.ui.model.FavoriteBadgeShape.CLOVER.displayName)
+        assertEquals("Flower", com.example.ui.model.FavoriteBadgeShape.FLOWER.displayName)
+        assertEquals("Soft Burst", com.example.ui.model.FavoriteBadgeShape.SOFT_BURST.displayName)
+
+        // Backward compatibility fallbacks
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.FLOWER, com.example.ui.model.FavoriteBadgeShape.fromId("cookie"))
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.SOFT_BURST, com.example.ui.model.FavoriteBadgeShape.fromId("pentagon"))
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.PURE_FLOAT, com.example.ui.model.FavoriteBadgeShape.fromId("invalid_shape"))
+    }
+
+    @Test
+    fun testFavoriteColorPreset_entriesAndFromIdFallback() {
+        val colors = com.example.ui.model.FavoriteColorPreset.entries
+        assertEquals(6, colors.size)
+        assertEquals("Crimson Pink", com.example.ui.model.FavoriteColorPreset.CRIMSON_PINK.displayName)
+        assertEquals("Royal Gold", com.example.ui.model.FavoriteColorPreset.ROYAL_GOLD.displayName)
+        assertEquals("Electric Purple", com.example.ui.model.FavoriteColorPreset.ELECTRIC_PURPLE.displayName)
+        assertEquals("Sky Blue", com.example.ui.model.FavoriteColorPreset.SKY_BLUE.displayName)
+        assertEquals("Emerald Green", com.example.ui.model.FavoriteColorPreset.EMERALD_GREEN.displayName)
+        assertEquals("Sunset Orange", com.example.ui.model.FavoriteColorPreset.SUNSET_ORANGE.displayName)
+
+        // Hex colors
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFF2D55), com.example.ui.model.FavoriteColorPreset.CRIMSON_PINK.color)
+        
+        // Backward compatibility fallbacks
+        assertEquals(com.example.ui.model.FavoriteColorPreset.CRIMSON_PINK, com.example.ui.model.FavoriteColorPreset.fromId("crimson"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.ROYAL_GOLD, com.example.ui.model.FavoriteColorPreset.fromId("amber"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.ELECTRIC_PURPLE, com.example.ui.model.FavoriteColorPreset.fromId("purple"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.SKY_BLUE, com.example.ui.model.FavoriteColorPreset.fromId("blue"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.EMERALD_GREEN, com.example.ui.model.FavoriteColorPreset.fromId("green"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.SUNSET_ORANGE, com.example.ui.model.FavoriteColorPreset.fromId("teal"))
+        assertEquals(com.example.ui.model.FavoriteColorPreset.CRIMSON_PINK, com.example.ui.model.FavoriteColorPreset.fromId("unknown_color"))
+    }
+
+    @Test
+    fun testFavoriteCustomization_viewModelPersistenceAndState() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val vm = com.example.ui.viewmodel.WebsiteViewModel(app)
+
+        // Initial defaults
+        assertEquals(com.example.ui.model.FavoriteIconType.HEART, vm.favoriteIconType.value)
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.PURE_FLOAT, vm.favoriteBadgeShape.value)
+        assertEquals(com.example.ui.model.FavoriteColorPreset.CRIMSON_PINK, vm.favoriteColorPreset.value)
+
+        // Mutate and persist
+        vm.setFavoriteIconType(com.example.ui.model.FavoriteIconType.STAR)
+        vm.setFavoriteBadgeShape(com.example.ui.model.FavoriteBadgeShape.CLOVER)
+        vm.setFavoriteColorPreset(com.example.ui.model.FavoriteColorPreset.ROYAL_GOLD)
+
+        assertEquals(com.example.ui.model.FavoriteIconType.STAR, vm.favoriteIconType.value)
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.CLOVER, vm.favoriteBadgeShape.value)
+        assertEquals(com.example.ui.model.FavoriteColorPreset.ROYAL_GOLD, vm.favoriteColorPreset.value)
+
+        // Verify across new ViewModel instance loading from SharedPreferences
+        val vm2 = com.example.ui.viewmodel.WebsiteViewModel(app)
+        assertEquals(com.example.ui.model.FavoriteIconType.STAR, vm2.favoriteIconType.value)
+        assertEquals(com.example.ui.model.FavoriteBadgeShape.CLOVER, vm2.favoriteBadgeShape.value)
+        assertEquals(com.example.ui.model.FavoriteColorPreset.ROYAL_GOLD, vm2.favoriteColorPreset.value)
+    }
+}

@@ -217,6 +217,9 @@ fun WebStackScreen(
     val saveError by viewModel.saveError.collectAsState()
     val cachedScreenshotIds by viewModel.cachedScreenshotIds.collectAsState()
     val favoriteIds by viewModel.favoriteWebsiteIds.collectAsState()
+    val favoriteIconType by viewModel.favoriteIconType.collectAsState()
+    val favoriteBadgeShape by viewModel.favoriteBadgeShape.collectAsState()
+    val favoriteColorPreset by viewModel.favoriteColorPreset.collectAsState()
 
     var showAddSheet by remember { mutableStateOf(false) }
     var initialAddUrl by remember { mutableStateOf("") }
@@ -415,7 +418,10 @@ fun WebStackScreen(
                     allSelectedAreFavorites = selectedWebsiteIds.isNotEmpty() && selectedWebsiteIds.all { favoriteIds.contains(it) },
                     onToggleFavoriteSelected = {
                         viewModel.toggleWebsitesFavorite(selectedWebsiteIds.toList())
-                    }
+                    },
+                    favoriteFilledIcon = favoriteIconType.getFilledIcon(),
+                    favoriteOutlinedIcon = favoriteIconType.getOutlinedIcon(),
+                    favoriteColor = favoriteColorPreset.color
                 )
             }
         },
@@ -457,6 +463,8 @@ fun WebStackScreen(
                     categories = categoriesState,
                     selectedCategory = selectedCategory,
                     favoriteCount = favoriteCount,
+                    favoriteIcon = favoriteIconType.getFilledIcon(),
+                    favoriteColor = favoriteColorPreset.color,
                     onSelectCategory = { cat ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         selectedCategory = cat
@@ -600,6 +608,9 @@ fun WebStackScreen(
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         isFavorite = isFavorite,
+                                        favoriteIconType = favoriteIconType,
+                                        favoriteBadgeShape = favoriteBadgeShape,
+                                        favoriteColorPreset = favoriteColorPreset,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
@@ -615,6 +626,9 @@ fun WebStackScreen(
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         isFavorite = isFavorite,
+                                        favoriteIconType = favoriteIconType,
+                                        favoriteBadgeShape = favoriteBadgeShape,
+                                        favoriteColorPreset = favoriteColorPreset,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
@@ -630,6 +644,9 @@ fun WebStackScreen(
                                         showCategory = showCardCategory,
                                         hasCachedImage = hasCachedImage,
                                         isFavorite = isFavorite,
+                                        favoriteIconType = favoriteIconType,
+                                        favoriteBadgeShape = favoriteBadgeShape,
+                                        favoriteColorPreset = favoriteColorPreset,
                                         onImageSaved = onImageSaved,
                                         selectionIndex = selIndex,
                                         isInSelectionMode = isSelectionMode,
