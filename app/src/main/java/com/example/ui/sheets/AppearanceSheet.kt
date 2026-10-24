@@ -126,212 +126,7 @@ fun CustomizationSubSheetContent(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // -------------------------------------------------------------
-        // CARD 1: APPEARANCE (Navigates to dedicated Theme & Layout page)
-        // -------------------------------------------------------------
-        Text(
-            text = "APPEARANCE",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = appColors.secondaryGroupedBackground,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Surface(
-                color = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onOpenAppearance()
-                        },
-                        onLongClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            activeExplainer = CustomizationExplainer(
-                                title = "Appearance",
-                                description = "Personalize your theme (Light, Dark, System) and switch between Large Cards, 2-Card Grid, or Compact List layouts.",
-                                icon = Icons.Outlined.Palette
-                            )
-                        }
-                    )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Surface(
-                            color = appColors.label,
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Palette,
-                                    contentDescription = null,
-                                    tint = appColors.systemBackground,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "Appearance",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                color = appColors.label
-                            )
-                            val layoutLabel = when (layoutMode) {
-                                WebStackLayoutMode.LARGE_CARDS -> "Card"
-                                WebStackLayoutMode.GRID_CARDS -> "Grid"
-                                WebStackLayoutMode.COMPACT_LIST -> "List"
-                            }
-                            Text(
-                                text = "${themeMode.title} Theme • $layoutLabel Layout",
-                                fontSize = 12.sp,
-                                color = appColors.secondaryLabel
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Open appearance options",
-                        tint = appColors.tertiaryLabel,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // -------------------------------------------------------------
-        // CARD 2: FAVORITES (Navigates to dedicated Favorites page)
-        // -------------------------------------------------------------
-        Text(
-            text = "FAVORITES",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = appColors.secondaryGroupedBackground,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Surface(
-                color = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onOpenFavorites()
-                        },
-                        onLongClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            activeExplainer = CustomizationExplainer(
-                                title = "Favorites",
-                                description = "Personalize your favorite indicator with custom symbols and vibrant color palettes.",
-                                icon = favoriteIconType.getFilledIcon()
-                            )
-                        }
-                    )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Surface(
-                            color = favoriteColorPreset.color.copy(alpha = 0.15f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = favoriteIconType.getFilledIcon(),
-                                    contentDescription = null,
-                                    tint = favoriteColorPreset.color,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "Favorites",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                color = appColors.label
-                            )
-                            Text(
-                                text = "${favoriteIconType.displayName} • ${favoriteColorPreset.displayName}",
-                                fontSize = 12.sp,
-                                color = appColors.secondaryLabel
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Open favorites options",
-                        tint = appColors.tertiaryLabel,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // -------------------------------------------------------------
-        // CARD 3: INTERFACE (Button Shape, Card Details, Tags & Categories)
-        // -------------------------------------------------------------
-        Text(
-            text = "INTERFACE",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = appColors.secondaryLabel,
-            letterSpacing = 1.4.sp
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
+        // Single Unified Interface Card (Merged Appearance, Favorites, Button Shape, Card Details, Tags & Categories)
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = appColors.secondaryGroupedBackground,
@@ -339,7 +134,170 @@ fun CustomizationSubSheetContent(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. Button Shape
+                // 1. Appearance (Theme & Layout)
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onOpenAppearance()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = CustomizationExplainer(
+                                    title = "Appearance",
+                                    description = "Personalize your theme (Light, Dark, System) and switch between Large Cards, 2-Card Grid, or Compact List layouts.",
+                                    icon = Icons.Outlined.Palette
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                color = appColors.label,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Palette,
+                                        contentDescription = null,
+                                        tint = appColors.systemBackground,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Appearance",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = appColors.label
+                                )
+                                val layoutLabel = when (layoutMode) {
+                                    WebStackLayoutMode.LARGE_CARDS -> "Card"
+                                    WebStackLayoutMode.GRID_CARDS -> "Grid"
+                                    WebStackLayoutMode.COMPACT_LIST -> "List"
+                                }
+                                Text(
+                                    text = "${themeMode.title} Theme • $layoutLabel Layout",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Open appearance options",
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 2. Favorites (Symbols & Colors)
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onOpenFavorites()
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = CustomizationExplainer(
+                                    title = "Favorites",
+                                    description = "Personalize your favorite indicator with custom symbols and vibrant color palettes.",
+                                    icon = favoriteIconType.getFilledIcon()
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                color = favoriteColorPreset.color.copy(alpha = 0.15f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = favoriteIconType.getFilledIcon(),
+                                        contentDescription = null,
+                                        tint = favoriteColorPreset.color,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Favorites",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                    color = appColors.label
+                                )
+                                Text(
+                                    text = "${favoriteIconType.displayName} • ${favoriteColorPreset.displayName}",
+                                    fontSize = 12.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Open favorites options",
+                            tint = appColors.tertiaryLabel,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 3. Action Button Shape
                 Surface(
                     color = Color.Transparent,
                     modifier = Modifier
@@ -418,7 +376,7 @@ fun CustomizationSubSheetContent(
                     color = appColors.separator
                 )
 
-                // 2. Card Details
+                // 4. Card Details
                 Surface(
                     color = Color.Transparent,
                     modifier = Modifier
@@ -497,7 +455,7 @@ fun CustomizationSubSheetContent(
                     color = appColors.separator
                 )
 
-                // 3. Tags & Categories
+                // 5. Tags & Categories
                 Surface(
                     color = Color.Transparent,
                     modifier = Modifier
@@ -554,7 +512,7 @@ fun CustomizationSubSheetContent(
                                     color = appColors.label
                                 )
                                 Text(
-                                    text = "Reorder, hide, and organize category tags",
+                                    text = "Organize categories and ordering",
                                     fontSize = 12.sp,
                                     color = appColors.secondaryLabel
                                 )
@@ -571,7 +529,6 @@ fun CustomizationSubSheetContent(
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(28.dp))
 
         val doneInteractionSource = remember { MutableInteractionSource() }
@@ -894,8 +851,8 @@ fun ThemeLayoutSubSheetContent(
 }
 
 /**
- * Dedicated Favorites Customization Page: Shows Live Preview, Color Accent Selection,
- * and Symbol Selection (both arranged 2 in a row).
+ * Dedicated Favorites Customization Page: Shows Live Preview, Color Palette (6 in a row),
+ * and Symbol Selection (4 in a row).
  */
 @Composable
 fun FavoritesCustomizationSubSheetContent(
@@ -928,7 +885,7 @@ fun FavoritesCustomizationSubSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // -------------------------------------------------------------
-        // LIVE INTERACTIVE PREVIEW TILE
+        // LIVE PREVIEW TILE
         // -------------------------------------------------------------
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -988,9 +945,9 @@ fun FavoritesCustomizationSubSheetContent(
                     }
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Indicator Preview",
+                        text = "Preview",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
                         color = appColors.label
@@ -1001,11 +958,6 @@ fun FavoritesCustomizationSubSheetContent(
                         fontWeight = FontWeight.Medium,
                         color = favoriteColorPreset.color
                     )
-                    Text(
-                        text = "Shows on all favorited cards",
-                        fontSize = 11.sp,
-                        color = appColors.secondaryLabel
-                    )
                 }
             }
         }
@@ -1013,106 +965,77 @@ fun FavoritesCustomizationSubSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         // -------------------------------------------------------------
-        // SECTION 1: COLOR ACCENT (Above symbols, 2 in a row)
+        // SECTION 1: COLOR (All 6 in a single row, no names)
         // -------------------------------------------------------------
         Text(
-            text = "COLOR ACCENT",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.padding(start = 4.dp)
+            text = "Color",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = appColors.label,
+            modifier = Modifier.padding(start = 2.dp)
         )
         Spacer(modifier = Modifier.height(10.dp))
 
-        val colorRows = listOf(
-            listOf(FavoriteColorPreset.CRIMSON_PINK, FavoriteColorPreset.ROYAL_GOLD),
-            listOf(FavoriteColorPreset.ELECTRIC_PURPLE, FavoriteColorPreset.SKY_BLUE),
-            listOf(FavoriteColorPreset.EMERALD_GREEN, FavoriteColorPreset.SUNSET_ORANGE)
-        )
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = appColors.secondaryGroupedBackground,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FavoriteColorPreset.entries.forEach { preset ->
+                    val isSelected = favoriteColorPreset == preset
+                    val interactionSource = remember(preset) { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.88f else if (isSelected) 1.15f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        label = "fav_color_${preset.id}"
+                    )
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            colorRows.forEach { colorPair ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    colorPair.forEach { preset ->
-                        val isSelected = favoriteColorPreset == preset
-                        val interactionSource = remember(preset) { MutableInteractionSource() }
-                        val isPressed by interactionSource.collectIsPressedAsState()
-                        val scale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.94f else 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "fav_color_${preset.id}"
-                        )
-
-                        Surface(
-                            onClick = {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
                                 if (favoriteColorPreset != preset) {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onSetFavoriteColorPreset(preset)
                                 }
                             },
-                            interactionSource = interactionSource,
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
-                            border = BorderStroke(
-                                width = if (isSelected) 1.5.dp else 0.75.dp,
-                                color = if (isSelected) preset.color else appColors.separator
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(54.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
-                        ) {
-                            Row(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.weight(1f, fill = false)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(22.dp)
-                                            .background(color = preset.color, shape = CircleShape)
-                                            .border(
-                                                width = if (isSelected) 1.5.dp else 0.5.dp,
-                                                color = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.15f),
-                                                shape = CircleShape
-                                            )
+                                    .size(40.dp)
+                                    .border(
+                                        width = 2.dp,
+                                        color = preset.color,
+                                        shape = CircleShape
                                     )
-                                    Text(
-                                        text = preset.displayName,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = appColors.label,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = "Selected",
-                                        tint = preset.color,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
+                            )
                         }
+                        Box(
+                            modifier = Modifier
+                                .size(if (isSelected) 28.dp else 34.dp)
+                                .background(color = preset.color, shape = CircleShape)
+                        )
                     }
                 }
             }
@@ -1123,110 +1046,67 @@ fun FavoritesCustomizationSubSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         // -------------------------------------------------------------
-        // SECTION 2: FAVORITE SYMBOL (Below colors, 2 in a row)
+        // SECTION 2: SYMBOL (All 4 in a single row)
         // -------------------------------------------------------------
         Text(
-            text = "FAVORITE SYMBOL",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            color = appColors.secondaryLabel,
-            modifier = Modifier.padding(start = 4.dp)
+            text = "Symbol",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = appColors.label,
+            modifier = Modifier.padding(start = 2.dp)
         )
         Spacer(modifier = Modifier.height(10.dp))
 
-        val symbolRows = listOf(
-            listOf(FavoriteIconType.HEART, FavoriteIconType.STAR),
-            listOf(FavoriteIconType.BOOKMARK, FavoriteIconType.SPARKLE)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FavoriteIconType.entries.forEach { iconType ->
+                val isSelected = favoriteIconType == iconType
+                val interactionSource = remember(iconType) { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.92f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "fav_symbol_${iconType.id}"
+                )
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            symbolRows.forEach { symbolPair ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    symbolPair.forEach { symbol ->
-                        val isSelected = favoriteIconType == symbol
-                        val interactionSource = remember(symbol) { MutableInteractionSource() }
-                        val isPressed by interactionSource.collectIsPressedAsState()
-                        val scale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.94f else 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "fav_symbol_${symbol.id}"
-                        )
-
-                        Surface(
-                            onClick = {
-                                if (favoriteIconType != symbol) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onSetFavoriteIconType(symbol)
-                                }
-                            },
-                            interactionSource = interactionSource,
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
-                            border = BorderStroke(
-                                width = if (isSelected) 1.5.dp else 0.75.dp,
-                                color = if (isSelected) favoriteColorPreset.color else appColors.separator
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.weight(1f, fill = false)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(34.dp)
-                                            .background(
-                                                color = if (isSelected) favoriteColorPreset.color.copy(alpha = 0.16f)
-                                                        else (if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)),
-                                                shape = RoundedCornerShape(10.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = symbol.getFilledIcon(),
-                                            contentDescription = symbol.displayName,
-                                            tint = if (isSelected) favoriteColorPreset.color else appColors.secondaryLabel,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                    Text(
-                                        text = symbol.displayName,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = appColors.label
-                                    )
-                                }
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = "Selected",
-                                        tint = favoriteColorPreset.color,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
+                Surface(
+                    onClick = {
+                        if (favoriteIconType != iconType) {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSetFavoriteIconType(iconType)
                         }
+                    },
+                    interactionSource = interactionSource,
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 0.75.dp,
+                        color = if (isSelected) favoriteColorPreset.color else appColors.separator
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = iconType.getFilledIcon(),
+                            contentDescription = iconType.displayName,
+                            tint = if (isSelected) favoriteColorPreset.color else appColors.secondaryLabel,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
