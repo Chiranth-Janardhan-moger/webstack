@@ -326,48 +326,18 @@ fun WebsiteSnapshotImage(
             }
         }
 
-        // Top-Left Floating Favorite Indicator (pure vector icon or expressive shaped badge)
+        // Top-Left Floating Favorite Indicator (pure vector icon)
         if (isFavorite) {
-            val iconSize = if (isCompact) 11.dp else if (isGrid) 14.dp else 17.dp
             val paddingVal = if (isCompact) 5.dp else if (isGrid) 8.dp else 10.dp
-            val badgeShape = favoriteBadgeShape.toComposeShape()
-
-            if (favoriteBadgeShape == FavoriteBadgeShape.PURE_FLOAT) {
-                Icon(
-                    imageVector = favoriteIconType.getFilledIcon(),
-                    contentDescription = "Favorited",
-                    tint = favoriteColorPreset.color,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = paddingVal, start = paddingVal)
-                        .size(if (isCompact) 13.dp else if (isGrid) 16.dp else 20.dp)
-                )
-            } else {
-                val containerSize = if (isCompact) 20.dp else if (isGrid) 25.dp else 28.dp
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(top = paddingVal, start = paddingVal)
-                        .size(containerSize)
-                        .background(
-                            color = if (appColors.isDark) Color(0xCC1C1C1E) else Color(0xEBFFFFFF),
-                            shape = badgeShape
-                        )
-                        .border(
-                            width = 0.5.dp,
-                            color = favoriteColorPreset.color.copy(alpha = 0.35f),
-                            shape = badgeShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = favoriteIconType.getFilledIcon(),
-                        contentDescription = "Favorited",
-                        tint = favoriteColorPreset.color,
-                        modifier = Modifier.size(iconSize)
-                    )
-                }
-            }
+            Icon(
+                imageVector = favoriteIconType.getFilledIcon(),
+                contentDescription = "Favorited",
+                tint = favoriteColorPreset.color,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = paddingVal, start = paddingVal)
+                    .size(if (isCompact) 13.dp else if (isGrid) 16.dp else 20.dp)
+            )
         }
 
         // Top-Right Action: Refresh Snapshot

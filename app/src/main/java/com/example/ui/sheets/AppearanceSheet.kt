@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Palette
@@ -62,6 +63,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -257,7 +259,7 @@ fun CustomizationSubSheetContent(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             activeExplainer = CustomizationExplainer(
                                 title = "Favorites",
-                                description = "Personalize your favorite indicator with custom symbols, expressive badge shapes, and vibrant color palettes.",
+                                description = "Personalize your favorite indicator with custom symbols and vibrant color palettes.",
                                 icon = favoriteIconType.getFilledIcon()
                             )
                         }
@@ -275,37 +277,18 @@ fun CustomizationSubSheetContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        val previewShape = favoriteBadgeShape.toComposeShape()
-                        if (favoriteBadgeShape == FavoriteBadgeShape.PURE_FLOAT) {
-                            Surface(
-                                color = favoriteColorPreset.color.copy(alpha = 0.15f),
-                                shape = CircleShape,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = favoriteIconType.getFilledIcon(),
-                                        contentDescription = null,
-                                        tint = favoriteColorPreset.color,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Surface(
-                                color = favoriteColorPreset.color.copy(alpha = 0.18f),
-                                shape = previewShape,
-                                border = BorderStroke(0.5.dp, favoriteColorPreset.color.copy(alpha = 0.4f)),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = favoriteIconType.getFilledIcon(),
-                                        contentDescription = null,
-                                        tint = favoriteColorPreset.color,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                        Surface(
+                            color = favoriteColorPreset.color.copy(alpha = 0.15f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = favoriteIconType.getFilledIcon(),
+                                    contentDescription = null,
+                                    tint = favoriteColorPreset.color,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
 
@@ -317,7 +300,7 @@ fun CustomizationSubSheetContent(
                                 color = appColors.label
                             )
                             Text(
-                                text = "${favoriteIconType.displayName} • ${favoriteBadgeShape.displayName} • ${favoriteColorPreset.displayName}",
+                                text = "${favoriteIconType.displayName} • ${favoriteColorPreset.displayName}",
                                 fontSize = 12.sp,
                                 color = appColors.secondaryLabel
                             )
@@ -911,8 +894,8 @@ fun ThemeLayoutSubSheetContent(
 }
 
 /**
- * Dedicated Favorites Customization Page: Shows Live Preview, Symbol Selection,
- * Expressive Badge Shape Selection, and Vibrant Color Palettes.
+ * Dedicated Favorites Customization Page: Shows Live Preview, Color Accent Selection,
+ * and Symbol Selection (both arranged 2 in a row).
  */
 @Composable
 fun FavoritesCustomizationSubSheetContent(
@@ -944,336 +927,305 @@ fun FavoritesCustomizationSubSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // -------------------------------------------------------------
+        // LIVE INTERACTIVE PREVIEW TILE
+        // -------------------------------------------------------------
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = appColors.secondaryGroupedBackground,
             border = BorderStroke(0.75.dp, appColors.separator),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Interactive Mini Card Preview Tile
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 68.dp, height = 50.dp)
-                            .background(
-                                color = if (appColors.isDark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF),
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = appColors.separator,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                    ) {
-                        val badgeShape = favoriteBadgeShape.toComposeShape()
-                        if (favoriteBadgeShape == FavoriteBadgeShape.PURE_FLOAT) {
-                            Icon(
-                                imageVector = favoriteIconType.getFilledIcon(),
-                                contentDescription = "Preview Favorite",
-                                tint = favoriteColorPreset.color,
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(top = 6.dp, start = 6.dp)
-                                    .size(16.dp)
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(top = 5.dp, start = 5.dp)
-                                    .size(24.dp)
-                                    .background(
-                                        color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7),
-                                        shape = badgeShape
-                                    )
-                                    .border(
-                                        width = 0.5.dp,
-                                        color = favoriteColorPreset.color.copy(alpha = 0.4f),
-                                        shape = badgeShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = favoriteIconType.getFilledIcon(),
-                                    contentDescription = "Preview Favorite",
-                                    tint = favoriteColorPreset.color,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
-                        }
-
-                        // Simulated miniature card lines
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 8.dp, bottom = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 32.dp, height = 4.dp)
-                                    .background(appColors.tertiaryLabel, RoundedCornerShape(2.dp))
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 20.dp, height = 3.dp)
-                                    .background(appColors.separator, RoundedCornerShape(2.dp))
-                            )
-                        }
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = "Indicator Preview",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = appColors.label
+                // Miniature bookmark card preview
+                Box(
+                    modifier = Modifier
+                        .size(width = 80.dp, height = 56.dp)
+                        .background(
+                            color = if (appColors.isDark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF),
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        Text(
-                            text = "${favoriteIconType.displayName} • ${favoriteBadgeShape.displayName} • ${favoriteColorPreset.displayName}",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
+                        .border(
+                            width = 1.dp,
+                            color = appColors.separator,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    // Clean floating favorite icon in top-left
+                    Icon(
+                        imageVector = favoriteIconType.getFilledIcon(),
+                        contentDescription = "Preview Favorite",
+                        tint = favoriteColorPreset.color,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = 8.dp, start = 8.dp)
+                            .size(18.dp)
+                    )
+
+                    // Simulated bookmark title and domain lines
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 10.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 42.dp, height = 4.dp)
+                                .background(appColors.label.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(width = 24.dp, height = 3.dp)
+                                .background(appColors.tertiaryLabel, RoundedCornerShape(2.dp))
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-                Spacer(modifier = Modifier.height(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = "Indicator Preview",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = appColors.label
+                    )
+                    Text(
+                        text = "${favoriteIconType.displayName} • ${favoriteColorPreset.displayName}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = favoriteColorPreset.color
+                    )
+                    Text(
+                        text = "Shows on all favorited cards",
+                        fontSize = 11.sp,
+                        color = appColors.secondaryLabel
+                    )
+                }
+            }
+        }
 
-                // 1. Symbol Selection
-                Text(
-                    text = "Symbol",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.label
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
+        // -------------------------------------------------------------
+        // SECTION 1: COLOR ACCENT (Above symbols, 2 in a row)
+        // -------------------------------------------------------------
+        Text(
+            text = "COLOR ACCENT",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = appColors.secondaryLabel,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        val colorRows = listOf(
+            listOf(FavoriteColorPreset.CRIMSON_PINK, FavoriteColorPreset.ROYAL_GOLD),
+            listOf(FavoriteColorPreset.ELECTRIC_PURPLE, FavoriteColorPreset.SKY_BLUE),
+            listOf(FavoriteColorPreset.EMERALD_GREEN, FavoriteColorPreset.SUNSET_ORANGE)
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            colorRows.forEach { colorPair ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    FavoriteIconType.entries.forEach { iconType ->
-                        val isSelected = favoriteIconType == iconType
-                        val interactionSource = remember(iconType) { MutableInteractionSource() }
+                    colorPair.forEach { preset ->
+                        val isSelected = favoriteColorPreset == preset
+                        val interactionSource = remember(preset) { MutableInteractionSource() }
                         val isPressed by interactionSource.collectIsPressedAsState()
                         val scale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.90f else 1f,
+                            targetValue = if (isPressed) 0.94f else 1f,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
                                 stiffness = Spring.StiffnessMediumLow
                             ),
-                            label = "fav_icon_${iconType.id}"
+                            label = "fav_color_${preset.id}"
                         )
 
                         Surface(
                             onClick = {
-                                if (favoriteIconType != iconType) {
+                                if (favoriteColorPreset != preset) {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onSetFavoriteIconType(iconType)
+                                    onSetFavoriteColorPreset(preset)
                                 }
                             },
                             interactionSource = interactionSource,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
                             border = BorderStroke(
                                 width = if (isSelected) 1.5.dp else 0.75.dp,
-                                color = if (isSelected) appColors.label else appColors.separator
+                                color = if (isSelected) preset.color else appColors.separator
                             ),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(46.dp)
+                                .height(54.dp)
                                 .graphicsLayer {
                                     scaleX = scale
                                     scaleY = scale
                                 }
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Icon(
-                                    imageVector = iconType.getFilledIcon(),
-                                    contentDescription = iconType.displayName,
-                                    tint = if (isSelected) favoriteColorPreset.color else appColors.secondaryLabel,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // 2. Expressive Badge Shape Selection
-                Text(
-                    text = "Badge Shape",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.label
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val shapeRows = listOf(
-                    listOf(FavoriteBadgeShape.PURE_FLOAT, FavoriteBadgeShape.CIRCLE, FavoriteBadgeShape.SQUIRCLE),
-                    listOf(FavoriteBadgeShape.CLOVER, FavoriteBadgeShape.FLOWER, FavoriteBadgeShape.SOFT_BURST)
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    shapeRows.forEach { rowShapes ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowShapes.forEach { shapeOption ->
-                                val isSelected = favoriteBadgeShape == shapeOption
-                                val interactionSource = remember(shapeOption) { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isPressed) 0.92f else 1f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    ),
-                                    label = "fav_shape_${shapeOption.id}"
-                                )
-
-                                Surface(
-                                    onClick = {
-                                        if (favoriteBadgeShape != shapeOption) {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onSetFavoriteBadgeShape(shapeOption)
-                                        }
-                                    },
-                                    interactionSource = interactionSource,
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
-                                    border = BorderStroke(
-                                        width = if (isSelected) 1.5.dp else 0.75.dp,
-                                        color = if (isSelected) appColors.label else appColors.separator
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(54.dp)
-                                        .graphicsLayer {
-                                            scaleX = scale
-                                            scaleY = scale
-                                        }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        val optShape = shapeOption.toComposeShape()
-                                        if (shapeOption == FavoriteBadgeShape.PURE_FLOAT) {
-                                            Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                tint = if (isSelected) favoriteColorPreset.color else appColors.tertiaryLabel,
-                                                modifier = Modifier.size(16.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .background(color = preset.color, shape = CircleShape)
+                                            .border(
+                                                width = if (isSelected) 1.5.dp else 0.5.dp,
+                                                color = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.15f),
+                                                shape = CircleShape
                                             )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(20.dp)
-                                                    .background(
-                                                        color = if (isSelected) favoriteColorPreset.color else appColors.secondaryLabel.copy(alpha = 0.4f),
-                                                        shape = optShape
-                                                    )
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(
-                                            text = shapeOption.displayName,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) appColors.label else appColors.secondaryLabel
-                                        )
-                                    }
+                                    )
+                                    Text(
+                                        text = preset.displayName,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                        color = appColors.label,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = "Selected",
+                                        tint = preset.color,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-                Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+        HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
+        Spacer(modifier = Modifier.height(20.dp))
 
-                // 3. Vibrant Color Palettes Selection
-                Text(
-                    text = "Color Accent",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = appColors.label
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+        // -------------------------------------------------------------
+        // SECTION 2: FAVORITE SYMBOL (Below colors, 2 in a row)
+        // -------------------------------------------------------------
+        Text(
+            text = "FAVORITE SYMBOL",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = appColors.secondaryLabel,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
 
+        val symbolRows = listOf(
+            listOf(FavoriteIconType.HEART, FavoriteIconType.STAR),
+            listOf(FavoriteIconType.BOOKMARK, FavoriteIconType.SPARKLE)
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            symbolRows.forEach { symbolPair ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    FavoriteColorPreset.entries.forEach { colorPreset ->
-                        val isSelected = favoriteColorPreset == colorPreset
-                        val interactionSource = remember(colorPreset) { MutableInteractionSource() }
+                    symbolPair.forEach { symbol ->
+                        val isSelected = favoriteIconType == symbol
+                        val interactionSource = remember(symbol) { MutableInteractionSource() }
                         val isPressed by interactionSource.collectIsPressedAsState()
                         val scale by animateFloatAsState(
-                            targetValue = if (isPressed) 0.88f else if (isSelected) 1.15f else 1f,
+                            targetValue = if (isPressed) 0.94f else 1f,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
                                 stiffness = Spring.StiffnessMediumLow
                             ),
-                            label = "fav_color_${colorPreset.id}"
+                            label = "fav_symbol_${symbol.id}"
                         )
 
-                        Box(
+                        Surface(
+                            onClick = {
+                                if (favoriteIconType != symbol) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onSetFavoriteIconType(symbol)
+                                }
+                            },
+                            interactionSource = interactionSource,
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isSelected) appColors.surface else (if (appColors.isDark) Color(0xFF1E1E20) else Color(0xFFECECEE)),
+                            border = BorderStroke(
+                                width = if (isSelected) 1.5.dp else 0.75.dp,
+                                color = if (isSelected) favoriteColorPreset.color else appColors.separator
+                            ),
                             modifier = Modifier
-                                .size(40.dp)
+                                .weight(1f)
+                                .height(56.dp)
                                 .graphicsLayer {
                                     scaleX = scale
                                     scaleY = scale
                                 }
-                                .clickable(
-                                    interactionSource = interactionSource,
-                                    indication = null
-                                ) {
-                                    if (favoriteColorPreset != colorPreset) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onSetFavoriteColorPreset(colorPreset)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
                         ) {
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .border(
-                                            width = 2.dp,
-                                            color = colorPreset.color,
-                                            shape = CircleShape
-                                        )
-                                )
-                            }
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(if (isSelected) 26.dp else 30.dp)
-                                    .background(color = colorPreset.color, shape = CircleShape)
-                            )
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .background(
+                                                color = if (isSelected) favoriteColorPreset.color.copy(alpha = 0.16f)
+                                                        else (if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = symbol.getFilledIcon(),
+                                            contentDescription = symbol.displayName,
+                                            tint = if (isSelected) favoriteColorPreset.color else appColors.secondaryLabel,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = symbol.displayName,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                        color = appColors.label
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = "Selected",
+                                        tint = favoriteColorPreset.color,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

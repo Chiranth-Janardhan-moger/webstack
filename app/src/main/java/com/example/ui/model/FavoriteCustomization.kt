@@ -5,12 +5,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Diamond
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -27,14 +25,12 @@ enum class FavoriteIconType(val id: String, val displayName: String) {
     HEART("heart", "Heart"),
     STAR("star", "Star"),
     BOOKMARK("bookmark", "Bookmark"),
-    DIAMOND("diamond", "Diamond"),
     SPARKLE("sparkle", "Sparkle");
 
     fun getFilledIcon(): ImageVector = when (this) {
         HEART -> Icons.Filled.Favorite
         STAR -> Icons.Filled.Star
         BOOKMARK -> Icons.Filled.Bookmark
-        DIAMOND -> Icons.Filled.Diamond
         SPARKLE -> Icons.Filled.AutoAwesome
     }
 
@@ -42,13 +38,17 @@ enum class FavoriteIconType(val id: String, val displayName: String) {
         HEART -> Icons.Outlined.FavoriteBorder
         STAR -> Icons.Outlined.StarBorder
         BOOKMARK -> Icons.Outlined.BookmarkBorder
-        DIAMOND -> Icons.Outlined.Diamond
         SPARKLE -> Icons.Outlined.AutoAwesome
     }
 
     companion object {
         fun fromId(id: String?): FavoriteIconType =
-            entries.firstOrNull { it.id == id } ?: HEART
+            when (id) {
+                "star" -> STAR
+                "bookmark" -> BOOKMARK
+                "sparkle" -> SPARKLE
+                else -> HEART
+            }
     }
 }
 

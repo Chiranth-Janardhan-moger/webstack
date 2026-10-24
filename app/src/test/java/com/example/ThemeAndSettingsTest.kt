@@ -165,14 +165,14 @@ class ThemeAndSettingsTest {
     @Test
     fun testFavoriteIconType_entriesAndFromIdFallback() {
         val icons = com.example.ui.model.FavoriteIconType.entries
-        assertEquals(5, icons.size)
+        assertEquals(4, icons.size)
         assertEquals("Heart", com.example.ui.model.FavoriteIconType.HEART.displayName)
         assertEquals("Star", com.example.ui.model.FavoriteIconType.STAR.displayName)
         assertEquals("Bookmark", com.example.ui.model.FavoriteIconType.BOOKMARK.displayName)
-        assertEquals("Diamond", com.example.ui.model.FavoriteIconType.DIAMOND.displayName)
         assertEquals("Sparkle", com.example.ui.model.FavoriteIconType.SPARKLE.displayName)
 
         assertEquals(com.example.ui.model.FavoriteIconType.STAR, com.example.ui.model.FavoriteIconType.fromId("star"))
+        assertEquals(com.example.ui.model.FavoriteIconType.HEART, com.example.ui.model.FavoriteIconType.fromId("diamond"))
         assertEquals(com.example.ui.model.FavoriteIconType.HEART, com.example.ui.model.FavoriteIconType.fromId("unknown_id"))
         assertEquals(com.example.ui.model.FavoriteIconType.HEART, com.example.ui.model.FavoriteIconType.fromId(null))
     }
