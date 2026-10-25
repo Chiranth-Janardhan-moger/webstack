@@ -82,6 +82,7 @@ fun AppInfoBottomSheetContent(
     val versionName = BuildConfig.VERSION_NAME
 
     var showFeedbackOptionsDialog by remember { mutableStateOf(false) }
+    var showSponsorGoalDialog by remember { mutableStateOf(false) }
             if (onBack != null) {
                 BackHandler {
                     onBack()
@@ -290,8 +291,7 @@ fun AppInfoBottomSheetContent(
                             iconBgColor = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPONSOR_URL))
-                                context.startActivity(intent)
+                                showSponsorGoalDialog = true
                             }
                         ) {
                             Icon(
@@ -327,6 +327,12 @@ fun AppInfoBottomSheetContent(
         FeedbackOptionsDialog(
             versionName = versionName,
             onDismiss = { showFeedbackOptionsDialog = false }
+        )
+    }
+
+    if (showSponsorGoalDialog) {
+        SponsorGoalDialog(
+            onDismiss = { showSponsorGoalDialog = false }
         )
     }
 }
@@ -655,6 +661,140 @@ private fun FeedbackOptionsDialog(
                 Text(
                     text = "Cancel",
                     color = appColors.secondaryLabel,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Modal dialog displaying the Google Play Developer account fee sponsor goal.
+ */
+@Composable
+private fun SponsorGoalDialog(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val appColors = LocalAppColors.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = appColors.secondaryGroupedBackground,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.border(BorderStroke(0.75.dp, appColors.separator), RoundedCornerShape(24.dp)),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    color = Color(0xFFFF2D55).copy(alpha = if (appColors.isDark) 0.22f else 0.12f),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = null,
+                            tint = Color(0xFFFF2D55),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = "Help Bring WebStack to Google Play",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        lineHeight = 22.sp,
+                        color = appColors.label
+                    )
+                    Surface(
+                        color = appColors.fill,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(0.5.dp, appColors.separator)
+                    ) {
+                        Text(
+                            text = "Goal: $25 Developer Registration Fee",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = appColors.secondaryLabel,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "WebStack is built as a 100% free, open-source, and offline-first bookmark manager with zero ads, tracking, or cloud lock-in.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = appColors.secondaryLabel
+                )
+                Text(
+                    text = "To make WebStack easily accessible to everyone without manual APK downloads, I am working to publish it directly on the Google Play Store. Google requires a mandatory, one-time $25 developer account fee.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = appColors.secondaryLabel
+                )
+                Text(
+                    text = "Every sponsorship directly funds this registration fee. Once the account is activated, WebStack will be available on Google Play for automated updates and seamless 1-tap installation.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = appColors.secondaryLabel
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SPONSOR_URL))
+                    context.startActivity(intent)
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = Color(0xFFFF2D55),
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = "Sponsor on GitHub",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = appColors.secondaryLabel)
+            ) {
+                Text(
+                    text = "Maybe Later",
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp
                 )
