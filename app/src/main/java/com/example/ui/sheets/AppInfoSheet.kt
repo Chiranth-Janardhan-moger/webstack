@@ -1,5 +1,6 @@
 package com.example.ui.sheets
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -84,8 +85,17 @@ fun AppInfoBottomSheetContent(
     val appColors = LocalAppColors.current
     val versionName = BuildConfig.VERSION_NAME
 
+    val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     var showFeedbackOptionsDialog by remember { mutableStateOf(false) }
-    var showSponsorGoalDialog by remember { mutableStateOf(false) }
+    var showSponsorGoalDialog by remember {
+        val hasSeen = prefs.getBoolean("has_seen_sponsor_goal", false)
+        if (!hasSeen) {
+            prefs.edit().putBoolean("has_seen_sponsor_goal", true).apply()
+            mutableStateOf(true)
+        } else {
+            mutableStateOf(false)
+        }
+    }
 
     if (onBack != null) {
         BackHandler {
