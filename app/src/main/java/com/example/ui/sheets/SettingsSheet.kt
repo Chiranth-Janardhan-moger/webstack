@@ -249,6 +249,31 @@ fun SettingsBottomSheetContent(
         }
     }
 
+    val exportTxtLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        if (uri != null && viewModel != null) {
+            coroutineScope.launch {
+                try {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
+                        val result = viewModel.exportPlainText(outputStream)
+                        result.onSuccess { count ->
+                            val now = System.currentTimeMillis()
+                            prefs.edit().putLong("last_backup_timestamp", now).apply()
+                            lastBackupTimestamp = now
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            Toast.makeText(context, "Exported $count links (.txt)", Toast.LENGTH_SHORT).show()
+                        }.onFailure { err ->
+                            Toast.makeText(context, "Plain Text Export failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Plain Text Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -270,13 +295,14 @@ fun SettingsBottomSheetContent(
 
             val isHtmlExt = displayName.endsWith(".html", ignoreCase = true) || displayName.endsWith(".htm", ignoreCase = true)
             val isJsonExt = displayName.endsWith(".webstack", ignoreCase = true) || displayName.endsWith(".json", ignoreCase = true)
-            val isSupportedExt = isHtmlExt || isJsonExt
+            val isTxtExt = displayName.endsWith(".txt", ignoreCase = true)
+            val isSupportedExt = isHtmlExt || isJsonExt || isTxtExt
 
             if (!isSupportedExt && displayName.isNotEmpty() && displayName.contains(".")) {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 Toast.makeText(
                     context,
-                    "Invalid format. Please select a .webstack, .json, .html, or .htm backup",
+                    "Invalid format. Please select a .webstack, .json, .html, .htm, or .txt file",
                     Toast.LENGTH_LONG
                 ).show()
                 return@rememberLauncherForActivityResult
@@ -301,12 +327,14 @@ fun SettingsBottomSheetContent(
                                 (sniffedFormat == com.example.bookmarks.DetectedBackupFormat.UNKNOWN && isHtmlExt)
                         val isJson = sniffedFormat == com.example.bookmarks.DetectedBackupFormat.JSON_BACKUP ||
                                 (sniffedFormat == com.example.bookmarks.DetectedBackupFormat.UNKNOWN && isJsonExt)
+                        val isTxt = sniffedFormat == com.example.bookmarks.DetectedBackupFormat.PLAIN_TEXT_URLS ||
+                                (sniffedFormat == com.example.bookmarks.DetectedBackupFormat.UNKNOWN && isTxtExt)
 
-                        if (!isHtml && !isJson) {
+                        if (!isHtml && !isJson && !isTxt) {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             Toast.makeText(
                                 context,
-                                "Invalid format. Please select a valid backup or bookmark export file (.webstack, .json, .html, or .htm)",
+                                "Invalid format. Please select a valid backup or bookmark export file (.webstack, .json, .html, .htm, or .txt)",
                                 Toast.LENGTH_LONG
                             ).show()
                             return@launch
@@ -328,6 +356,19 @@ fun SettingsBottomSheetContent(
                                 }
                             }.onFailure { err ->
                                 Toast.makeText(context, "Failed to parse bookmarks: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        } else if (isTxt) {
+                            val result = viewModel.restorePlainText(bufferedStream)
+                            result.onSuccess { (imported, _) ->
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                val msg = if (imported > 0) {
+                                    "Restored $imported bookmarks (.txt)"
+                                } else {
+                                    "All URLs in file are already in your stack"
+                                }
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }.onFailure { err ->
+                                Toast.makeText(context, "Restore failed: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
                             }
                         } else {
                             val result = viewModel.restoreBackup(bufferedStream)
@@ -431,6 +472,10 @@ fun SettingsBottomSheetContent(
                 onExportHtml = {
                     val fileName = com.example.bookmarks.BookmarkDelivery.formatExportFileName()
                     exportHtmlLauncher.launch(fileName)
+                },
+                onExportTxt = {
+                    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                    exportTxtLauncher.launch("webstack_links_$timeStamp.txt")
                 },
                 onRestore = {
                     restoreLauncher.launch(

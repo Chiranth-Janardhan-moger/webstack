@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
@@ -1285,6 +1286,13 @@ fun BackupFormatsExplainerDialog(
                             title = "Plain JSON",
                             description = "Plain structured data. Ideal for developers, custom scripts, or data tools.",
                             icon = Icons.Outlined.Code
+                        )
+
+                        BackupFormatCard(
+                            ext = ".txt",
+                            title = "Plain Text URLs",
+                            description = "Simple list of links, one per line. Perfect for copying into notes, sharing via chat or email, or raw URL lists.",
+                            icon = Icons.Outlined.Description
                         )
                     }
 

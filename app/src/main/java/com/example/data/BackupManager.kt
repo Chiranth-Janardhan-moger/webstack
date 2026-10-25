@@ -100,4 +100,64 @@ object BackupManager {
             Result.failure(e)
         }
     }
+
+    const val MAX_PLAIN_TEXT_IMPORT_LIMIT = 50_000
+
+    /**
+     * Serializes saved bookmarks into a plain text URL list, one URL per line.
+     */
+    fun exportToPlainText(websites: List<Website>): String {
+        return websites.joinToString("\n") { it.url }
+    }
+
+    /**
+     * Parses plain text URLs from an input stream.
+     * Capped at MAX_PLAIN_TEXT_IMPORT_LIMIT to prevent mobile OOM/ANR.
+     */
+    fun parsePlainTextUrls(inputStream: java.io.InputStream): List<Website> {
+        val websites = mutableListOf<Website>()
+        val seenDedupeKeys = HashSet<String>()
+        val now = System.currentTimeMillis()
+
+        inputStream.bufferedReader().useLines { lines ->
+            for (rawLine in lines) {
+                if (websites.size >= MAX_PLAIN_TEXT_IMPORT_LIMIT) break
+                val line = rawLine.trim()
+                if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue
+
+                val urlCandidate = extractUrlFromLine(line) ?: continue
+                val dedupe = com.example.bookmarks.BookmarkNormalizer.dedupeKey(urlCandidate) ?: continue
+                if (!seenDedupeKeys.add(dedupe)) continue
+
+                val domain = com.example.ui.util.extractDomain(urlCandidate)
+                val title = if (domain.isNotBlank()) domain else urlCandidate
+
+                websites.add(
+                    Website(
+                        id = 0,
+                        url = urlCandidate,
+                        title = title,
+                        category = "Personal",
+                        dedupeKey = dedupe,
+                        createdAtMs = now
+                    )
+                )
+            }
+        }
+        return websites
+    }
+
+    private fun extractUrlFromLine(line: String): String? {
+        val tokens = line.split("\\s+".toRegex())
+        for (token in tokens) {
+            val trimmed = token.trim().trim('(', ')', '[', ']', '<', '>', ',', ';')
+            if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+                return trimmed
+            }
+        }
+        if (tokens.size == 1 && line.contains(".") && !line.contains(" ") && !line.contains("@")) {
+            return "https://$line"
+        }
+        return null
+    }
 }

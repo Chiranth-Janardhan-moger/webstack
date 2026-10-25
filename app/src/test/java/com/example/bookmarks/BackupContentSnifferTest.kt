@@ -52,4 +52,12 @@ class BackupContentSnifferTest {
         val format = BackupContentSniffer.sniff(bytes, 0)
         assertEquals(DetectedBackupFormat.UNKNOWN, format)
     }
+
+    @Test
+    fun testSniffPlainTextUrls() {
+        val text = "https://github.com\nhttps://stackoverflow.com\nhttps://developer.mozilla.org"
+        val bytes = text.toByteArray(StandardCharsets.UTF_8)
+        val format = BackupContentSniffer.sniff(bytes, bytes.size)
+        assertEquals(DetectedBackupFormat.PLAIN_TEXT_URLS, format)
+    }
 }

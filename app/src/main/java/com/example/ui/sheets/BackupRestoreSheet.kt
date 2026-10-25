@@ -68,7 +68,8 @@ import com.example.ui.theme.LocalAppColors
 enum class ExportFormat {
     WEBSTACK,
     JSON,
-    HTML
+    HTML,
+    TXT
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -78,6 +79,7 @@ fun BackupRestoreSubSheetContent(
     onExportWebstack: () -> Unit,
     onExportJson: () -> Unit,
     onExportHtml: () -> Unit = {},
+    onExportTxt: () -> Unit = {},
     onRestore: () -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit
@@ -183,11 +185,12 @@ fun BackupRestoreSubSheetContent(
                         .padding(3.dp)
                 ) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val segmentWidth = maxWidth / 3
+                        val segmentWidth = maxWidth / 4
                         val targetOffset = when (selectedFormat) {
                             ExportFormat.WEBSTACK -> 0.dp
                             ExportFormat.JSON -> segmentWidth
                             ExportFormat.HTML -> segmentWidth * 2
+                            ExportFormat.TXT -> segmentWidth * 3
                         }
                         val animatedOffset by animateDpAsState(
                             targetValue = targetOffset,
@@ -298,6 +301,35 @@ fun BackupRestoreSubSheetContent(
                                     color = if (selectedFormat == ExportFormat.HTML) appColors.systemBackground else appColors.secondaryLabel
                                 )
                             }
+
+                            // Option: .txt
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            if (selectedFormat != ExportFormat.TXT) {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedFormat = ExportFormat.TXT
+                                            }
+                                        },
+                                        onLongClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            showFormatsExplainer = true
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = ".txt",
+                                    fontWeight = if (selectedFormat == ExportFormat.TXT) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    color = if (selectedFormat == ExportFormat.TXT) appColors.systemBackground else appColors.secondaryLabel
+                                )
+                            }
                         }
                     }
                 }
@@ -323,6 +355,7 @@ fun BackupRestoreSubSheetContent(
                             ExportFormat.WEBSTACK -> onExportWebstack()
                             ExportFormat.JSON -> onExportJson()
                             ExportFormat.HTML -> onExportHtml()
+                            ExportFormat.TXT -> onExportTxt()
                         }
                     },
                     interactionSource = exportInteractionSource,
@@ -356,6 +389,7 @@ fun BackupRestoreSubSheetContent(
                                     ExportFormat.WEBSTACK -> "Export .webstack"
                                     ExportFormat.JSON -> "Export .json"
                                     ExportFormat.HTML -> "Export .html"
+                                    ExportFormat.TXT -> "Export .txt"
                                 },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,

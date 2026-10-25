@@ -160,4 +160,38 @@ class BackupManagerTest {
         assertEquals(1, backupData.websites.size)
         assertEquals("https://valid.com", backupData.websites[0].url)
     }
+
+    @Test
+    fun testExportToPlainText_writesOneUrlPerLine() {
+        val websites = listOf(
+            Website(id = 1, url = "https://github.com", title = "GitHub", category = "Personal", dedupeKey = "https://github.com"),
+            Website(id = 2, url = "https://stackoverflow.com", title = "StackOverflow", category = "Personal", dedupeKey = "https://stackoverflow.com")
+        )
+        val text = BackupManager.exportToPlainText(websites)
+        assertEquals("https://github.com\nhttps://stackoverflow.com", text)
+    }
+
+    @Test
+    fun testParsePlainTextUrls_extractsUrlsAndIgnoresComments() {
+        val raw = """
+            # My Bookmark List
+            https://github.com
+            // Comment
+            
+            https://stackoverflow.com
+            https://developer.mozilla.org
+            https://github.com
+        """.trimIndent()
+
+        val stream = raw.byteInputStream(Charsets.UTF_8)
+        val websites = BackupManager.parsePlainTextUrls(stream)
+
+        // 3 unique valid URLs
+        assertEquals(3, websites.size)
+        assertEquals("https://github.com", websites[0].url)
+        assertEquals("github.com", websites[0].title)
+        assertEquals("Personal", websites[0].category)
+        assertEquals("https://stackoverflow.com", websites[1].url)
+        assertEquals("https://developer.mozilla.org", websites[2].url)
+    }
 }

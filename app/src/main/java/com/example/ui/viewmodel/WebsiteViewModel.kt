@@ -669,6 +669,42 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    suspend fun exportPlainText(outputStream: OutputStream): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val websites = repository.getAllWebsitesList()
+            val text = BackupManager.exportToPlainText(websites)
+            outputStream.bufferedWriter().use { writer ->
+                writer.write(text)
+                writer.flush()
+            }
+            Result.success(websites.size)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun restorePlainText(inputStream: InputStream): Result<Pair<Int, Int>> = withContext(Dispatchers.IO) {
+        try {
+            val parsedWebsites = BackupManager.parsePlainTextUrls(inputStream)
+            if (parsedWebsites.isEmpty()) {
+                return@withContext Result.failure(Exception("No valid URLs found in file"))
+            }
+
+            val existingWebsites = repository.getAllWebsitesList()
+            val existingKeys = existingWebsites.map { it.dedupeKey }.toSet()
+
+            val toInsert = parsedWebsites.filter { !existingKeys.contains(it.dedupeKey) }
+
+            if (toInsert.isNotEmpty()) {
+                repository.insertWebsites(toInsert)
+            }
+
+            Result.success(Pair(toInsert.size, 0))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun preprocessHtmlBookmarks(inputStream: InputStream): Result<com.example.bookmarks.ImportPreprocessResult> = withContext(Dispatchers.IO) {
         try {
             val taxonomyMap = try {

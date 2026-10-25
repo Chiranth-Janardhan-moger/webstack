@@ -6,6 +6,7 @@ import java.util.Locale
 enum class DetectedBackupFormat {
     HTML_BOOKMARKS,
     JSON_BACKUP,
+    PLAIN_TEXT_URLS,
     UNKNOWN
 }
 
@@ -40,6 +41,12 @@ object BackupContentSniffer {
             upper.contains("<TITLE>BOOKMARKS</TITLE>") ||
             upper.contains("<TITLE>FAVORITES</TITLE>")) {
             return DetectedBackupFormat.HTML_BOOKMARKS
+        }
+
+        // 3. Plain text URLs check
+        val lowerPreview = preview.lowercase(Locale.ROOT)
+        if (lowerPreview.contains("http://") || lowerPreview.contains("https://") || lowerPreview.contains("://")) {
+            return DetectedBackupFormat.PLAIN_TEXT_URLS
         }
 
         return DetectedBackupFormat.UNKNOWN
