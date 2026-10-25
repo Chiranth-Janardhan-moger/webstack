@@ -591,6 +591,14 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun moveWebsitesToCategory(ids: List<Long>, newCategory: String) {
+        if (ids.isEmpty() || newCategory.isBlank()) return
+        val trimmed = newCategory.trim()
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateWebsitesCategory(ids, trimmed)
+        }
+    }
+
     fun clearError() {
         _saveError.value = null
     }

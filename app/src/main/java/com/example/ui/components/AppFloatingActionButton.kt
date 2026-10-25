@@ -28,7 +28,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,6 +66,8 @@ fun AppFloatingActionButton(
     onAddClick: () -> Unit,
     onCancelSelection: () -> Unit,
     onDeleteSelected: () -> Unit,
+    onShareSelected: () -> Unit = {},
+    onMoveSelected: () -> Unit = {},
     allSelectedAreFavorites: Boolean = false,
     onToggleFavoriteSelected: () -> Unit = {},
     favoriteFilledIcon: ImageVector = Icons.Filled.Favorite,
@@ -78,7 +82,7 @@ fun AppFloatingActionButton(
 
     // Smooth animated width for continuous expansion from FAB into floating action bar
     val barWidth by animateDpAsState(
-        targetValue = if (isSelectionMode) 268.dp else 58.dp,
+        targetValue = if (isSelectionMode) 324.dp else 58.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -194,20 +198,74 @@ fun AppFloatingActionButton(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        // Bulk Favorite / Heart Action Button
+                        // 1. Bulk Share Button
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onShareSelected()
+                            },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (appColors.isDark) Color(0x22FFFFFF) else Color(0x18000000),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = "Share Selected",
+                                        tint = appColors.systemBackground,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 2. Bulk Move / Reassign Category Button
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onMoveSelected()
+                            },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF007AFF).copy(alpha = 0.22f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.DriveFileMove,
+                                        contentDescription = "Move Category",
+                                        tint = if (appColors.isDark) Color(0xFF0A84FF) else Color(0xFF007AFF),
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 3. Bulk Favorite / Heart Action Button
                         IconButton(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onToggleFavoriteSelected()
                             },
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Surface(
                                 shape = CircleShape,
                                 color = favoriteColor.copy(alpha = if (allSelectedAreFavorites) 0.28f else 0.15f),
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -217,24 +275,24 @@ fun AppFloatingActionButton(
                                         imageVector = if (allSelectedAreFavorites) favoriteFilledIcon else favoriteOutlinedIcon,
                                         contentDescription = if (allSelectedAreFavorites) "Remove from Favorites" else "Mark as Favorite",
                                         tint = favoriteColor,
-                                        modifier = Modifier.size(19.dp)
+                                        modifier = Modifier.size(17.dp)
                                     )
                                 }
                             }
                         }
 
-                        // Bulk Delete Action Button (Apple red destructive circle)
+                        // 4. Bulk Delete Action Button (Apple red destructive circle)
                         IconButton(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onDeleteSelected()
                             },
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Surface(
                                 shape = CircleShape,
                                 color = Color(0xFFFF3B30).copy(alpha = 0.18f),
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -244,7 +302,7 @@ fun AppFloatingActionButton(
                                         imageVector = Icons.Outlined.Delete,
                                         contentDescription = "Delete Selected",
                                         tint = Color(0xFFFF453A),
-                                        modifier = Modifier.size(19.dp)
+                                        modifier = Modifier.size(17.dp)
                                     )
                                 }
                             }

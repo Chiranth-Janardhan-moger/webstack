@@ -41,6 +41,11 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
         websiteDao.deleteWebsites(ids)
     }
 
+    suspend fun updateWebsitesCategory(ids: List<Long>, category: String) = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext
+        websiteDao.updateCategoryForWebsites(ids, category)
+    }
+
     suspend fun renameCategory(oldCategory: String, newCategory: String) {
         websiteDao.renameCategory(oldCategory, newCategory)
     }

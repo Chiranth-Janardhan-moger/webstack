@@ -88,6 +88,71 @@ fun shareWebsiteLink(context: Context, website: Website) {
     }
 }
 
+/**
+ * Formats a list of websites in a category for sharing via plain text.
+ * Built defensively to handle massive scales (10k, 100k, 1M items):
+ * - Caps formatted individual links at [maxDetailedLinks] (default 500) and [maxChars] (default 150,000)
+ *   to strictly prevent Android Binder TransactionTooLargeException (~1MB IPC limit).
+ * - Appends a summary line indicating the total count when capped.
+ */
+fun formatTagBookmarksForSharing(
+    tagName: String,
+    websites: List<Website>,
+    maxDetailedLinks: Int = 500,
+    maxChars: Int = 150_000
+): String {
+    if (websites.isEmpty()) {
+        return "$tagName (0 bookmarks)"
+    }
+    val count = websites.size
+    val sb = StringBuilder()
+    sb.append("$tagName ($count ${if (count == 1) "link" else "links"})\n\n")
+
+    val limit = minOf(count, maxDetailedLinks)
+    var itemsIncluded = 0
+
+    for (i in 0 until limit) {
+        val site = websites[i]
+        val title = site.title.ifBlank { site.domain }
+        val entry = "${i + 1}. $title\n${site.url}\n\n"
+        if (sb.length + entry.length > maxChars) {
+            break
+        }
+        sb.append(entry)
+        itemsIncluded++
+    }
+
+    if (itemsIncluded < count) {
+        val remaining = count - itemsIncluded
+        sb.append("...and $remaining more $tagName links ($count total)")
+    } else {
+        if (sb.endsWith("\n\n")) {
+            sb.setLength(sb.length - 1)
+        }
+    }
+
+    return sb.toString().trimEnd()
+}
+
+fun shareTagWebsites(context: Context, tagName: String, websites: List<Website>) {
+    if (websites.isEmpty()) {
+        Toast.makeText(context, "No bookmarks to share in $tagName", Toast.LENGTH_SHORT).show()
+        return
+    }
+    try {
+        val shareText = formatTagBookmarksForSharing(tagName, websites)
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "$tagName Bookmarks (${websites.size})")
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "Share $tagName links"))
+    } catch (e: Exception) {
+        Toast.makeText(context, "Could not share links", Toast.LENGTH_SHORT).show()
+    }
+}
+
 fun copyWebsiteLink(context: Context, url: String) {
     try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Public
@@ -69,10 +68,7 @@ import com.example.ui.SPONSOR_URL
 import com.example.ui.components.AppSubSheetHeader
 import com.example.ui.theme.LocalAppColors
 
-enum class AppInfoSubScreen {
-    MAIN,
-    FEATURES
-}
+
 
 @Composable
 fun AppInfoBottomSheetContent(
@@ -85,11 +81,7 @@ fun AppInfoBottomSheetContent(
     val appColors = LocalAppColors.current
     val versionName = BuildConfig.VERSION_NAME
 
-    var currentSubScreen by remember { mutableStateOf(AppInfoSubScreen.MAIN) }
     var showFeedbackOptionsDialog by remember { mutableStateOf(false) }
-
-    when (currentSubScreen) {
-        AppInfoSubScreen.MAIN -> {
             if (onBack != null) {
                 BackHandler {
                     onBack()
@@ -268,27 +260,7 @@ fun AppInfoBottomSheetContent(
                             )
                         }
 
-                        InfoGroupedRow(
-                            title = "WebStack Features",
-                            subtitle = "How to access & use all features",
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                currentSubScreen = AppInfoSubScreen.FEATURES
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.DashboardCustomize,
-                                contentDescription = null,
-                                tint = appColors.label,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = appColors.separator
-                        )
 
                         InfoGroupedRow(
                             title = "Feedback & Support",
@@ -350,14 +322,6 @@ fun AppInfoBottomSheetContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
-        }
-        AppInfoSubScreen.FEATURES -> {
-            WebStackFeaturesSubSheetContent(
-                onBack = { currentSubScreen = AppInfoSubScreen.MAIN },
-                onDismiss = onDismiss
-            )
-        }
-    }
 
     if (showFeedbackOptionsDialog) {
         FeedbackOptionsDialog(

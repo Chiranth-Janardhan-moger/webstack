@@ -108,6 +108,7 @@ import com.example.ui.sheets.EditWebsiteSheetContent
 import com.example.ui.sheets.ItemOptionsBottomSheetContent
 import com.example.ui.sheets.SettingsBottomSheetContent
 import com.example.ui.sheets.TagOptionsBottomSheetContent
+import com.example.ui.sheets.MoveToCategoryBottomSheetContent
 import com.example.ui.sheets.VersionUpdateScreen
 import com.example.ui.sheets.WhatsNewBottomSheetContent
 import com.example.ui.theme.LocalAppColors
@@ -116,6 +117,7 @@ import com.example.ui.util.copyWebsiteLink
 import com.example.ui.util.extractUrlFromText
 import com.example.ui.util.openWebsiteInBrowser
 import com.example.ui.util.shareWebsiteLink
+import com.example.ui.util.shareTagWebsites
 import com.example.ui.viewmodel.WebsiteViewModel
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -213,6 +215,7 @@ fun WebStackScreen(
     val viewModel: WebsiteViewModel = viewModel()
     val websitesState by viewModel.websitesList.collectAsState()
     val categoriesState by viewModel.categories.collectAsState()
+    val parkedCategoriesState by viewModel.parkedCategories.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
     val cachedScreenshotIds by viewModel.cachedScreenshotIds.collectAsState()
@@ -258,6 +261,7 @@ fun WebStackScreen(
     var websiteToDelete by remember { mutableStateOf<Website?>(null) }
     val selectedWebsiteIds = remember { mutableStateListOf<Long>() }
     var showBulkDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showBulkMoveSheet by remember { mutableStateOf(false) }
 
     // Intercept system back press when bulk selection is active
     BackHandler(enabled = selectedWebsiteIds.isNotEmpty()) {
@@ -415,6 +419,15 @@ fun WebStackScreen(
                     onDeleteSelected = {
                         showBulkDeleteConfirmDialog = true
                     },
+                    onShareSelected = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val selected = (websitesState ?: emptyList()).filter { selectedWebsiteIds.contains(it.id) }
+                        shareTagWebsites(context, "Selected", selected)
+                    },
+                    onMoveSelected = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showBulkMoveSheet = true
+                    },
                     allSelectedAreFavorites = selectedWebsiteIds.isNotEmpty() && selectedWebsiteIds.all { favoriteIds.contains(it) },
                     onToggleFavoriteSelected = {
                         viewModel.toggleWebsitesFavorite(selectedWebsiteIds.toList())
@@ -516,6 +529,7 @@ fun WebStackScreen(
                             else -> GridCells.Fixed(1)
                         }
                     }
+                    val selectedIdsSet = remember(selectedWebsiteIds.size) { selectedWebsiteIds.toHashSet() }
                     LazyVerticalGrid(
                         state = gridState,
                         columns = gridColumns,
@@ -549,7 +563,8 @@ fun WebStackScreen(
                                 )
                             ) {
                                 val isSelectionMode = selectedWebsiteIds.isNotEmpty()
-                                val selIndex = if (isSelectionMode) {
+                                val isSelected = isSelectionMode && selectedIdsSet.contains(website.id)
+                                val selIndex = if (isSelected) {
                                     val idx = selectedWebsiteIds.indexOf(website.id)
                                     if (idx != -1) idx + 1 else null
                                 } else null
@@ -558,7 +573,7 @@ fun WebStackScreen(
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         if (isSelectionMode) {
-                                            if (selectedWebsiteIds.contains(website.id)) {
+                                            if (selectedIdsSet.contains(website.id)) {
                                                 selectedWebsiteIds.remove(website.id)
                                             } else {
                                                 selectedWebsiteIds.add(website.id)
@@ -573,7 +588,7 @@ fun WebStackScreen(
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         if (isSelectionMode) {
-                                            if (selectedWebsiteIds.contains(website.id)) {
+                                            if (selectedIdsSet.contains(website.id)) {
                                                 selectedWebsiteIds.remove(website.id)
                                             } else {
                                                 selectedWebsiteIds.add(website.id)
@@ -665,20 +680,61 @@ fun WebStackScreen(
         // Tag Options Sheet
         if (categoryForOptions != null) {
             val targetTag = categoryForOptions!!
+            val tagWebsites = remember(targetTag, websitesState) {
+                (websitesState ?: emptyList()).filter { it.category.equals(targetTag, ignoreCase = true) }
+            }
+            val isParked = parkedCategoriesState.any { it.equals(targetTag, ignoreCase = true) }
+
             AppBottomSheet(onDismissRequest = { categoryForOptions = null }) {
                 TagOptionsBottomSheetContent(
                     tagName = targetTag,
+                    bookmarkCount = tagWebsites.size,
+                    isParked = isParked,
                     onEdit = {
                         categoryToEdit = targetTag
                         categoryForOptions = null
                     },
-                    onDelete = {
-                        categoryToDelete = targetTag
+                    onToggleHide = {
+                        if (targetTag.equals("Personal", ignoreCase = true)) {
+                            Toast.makeText(context, "Personal is the default category and cannot be hidden", Toast.LENGTH_SHORT).show()
+                        } else if (isParked) {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.unparkCategory(targetTag)
+                            Toast.makeText(context, "Showing \"$targetTag\" on Home", Toast.LENGTH_SHORT).show()
+                            categoryForOptions = null
+                        } else {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.parkCategory(targetTag)
+                            Toast.makeText(context, "Hidden \"$targetTag\" from Home", Toast.LENGTH_SHORT).show()
+                            if (selectedCategory.equals(targetTag, ignoreCase = true)) {
+                                selectedCategory = "All"
+                            }
+                            categoryForOptions = null
+                        }
+                    },
+                    onSelectAll = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (tagWebsites.isEmpty()) {
+                            Toast.makeText(context, "No bookmarks to select in $targetTag", Toast.LENGTH_SHORT).show()
+                        } else {
+                            selectedWebsiteIds.clear()
+                            selectedWebsiteIds.addAll(tagWebsites.map { it.id })
+                            selectedCategory = targetTag
+                        }
                         categoryForOptions = null
+                    },
+                    onShareLinks = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        categoryForOptions = null
+                        shareTagWebsites(context, targetTag, tagWebsites)
                     },
                     onCustomizeAll = {
                         categoryForOptions = null
                         showCustomizeTagsSheet = true
+                    },
+                    onDelete = {
+                        categoryToDelete = targetTag
+                        categoryForOptions = null
                     },
                     onDismiss = { categoryForOptions = null }
                 )
@@ -1021,6 +1077,26 @@ fun WebStackScreen(
                     }
                 }
             )
+        }
+
+        // Bulk Move Category Bottom Sheet
+        if (showBulkMoveSheet) {
+            AppBottomSheet(onDismissRequest = { showBulkMoveSheet = false }) {
+                MoveToCategoryBottomSheetContent(
+                    selectedCount = selectedWebsiteIds.size,
+                    categories = categoriesState,
+                    allWebsites = websitesState,
+                    onSelectCategory = { targetCategory ->
+                        val toMove = selectedWebsiteIds.toList()
+                        val count = toMove.size
+                        viewModel.moveWebsitesToCategory(toMove, targetCategory)
+                        selectedWebsiteIds.clear()
+                        showBulkMoveSheet = false
+                        Toast.makeText(context, "Moved $count ${if (count == 1) "bookmark" else "bookmarks"} to $targetCategory", Toast.LENGTH_SHORT).show()
+                    },
+                    onDismiss = { showBulkMoveSheet = false }
+                )
+            }
         }
 
         // Bulk Delete Confirmation Alert

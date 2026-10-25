@@ -39,6 +39,17 @@ interface WebsiteDao : ExportDao {
         }
     }
 
+    @Query("UPDATE websites SET category = :category WHERE id IN (:ids)")
+    suspend fun updateCategoryForWebsitesChunk(ids: List<Long>, category: String): Int
+
+    @Transaction
+    suspend fun updateCategoryForWebsites(ids: List<Long>, category: String) {
+        if (ids.isEmpty()) return
+        ids.chunked(500).forEach { chunk ->
+            updateCategoryForWebsitesChunk(chunk, category)
+        }
+    }
+
     @Query("UPDATE websites SET title = :title WHERE id = :id")
     suspend fun updateTitle(id: Long, title: String)
 

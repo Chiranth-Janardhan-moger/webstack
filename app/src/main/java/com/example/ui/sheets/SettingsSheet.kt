@@ -585,6 +585,9 @@ fun SettingsBottomSheetContent(
             )
         }
 
+        val serverStatus = viewModel?.serverStatus?.collectAsState()?.value
+        val isServerLive = serverStatus?.isRunning == true
+
         Spacer(modifier = Modifier.height(18.dp))
 
         // Single Unified Grouped Settings Card
@@ -615,7 +618,39 @@ fun SettingsBottomSheetContent(
                     color = appColors.separator
                 )
 
-                // 2. Fetch Web Previews
+                // 2. PC Companion
+                SettingsGroupedNavRow(
+                    title = "PC Companion",
+                    subtitle = if (isServerLive) "Online on local Wi-Fi" else "Browse & send links from desktop browser",
+                    icon = Icons.Outlined.DesktopWindows,
+                    iconBackground = if (isServerLive) appColors.label else null,
+                    iconTint = if (isServerLive) appColors.systemBackground else null,
+                    titleSuffix = if (isServerLive) {
+                        {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF34C759), CircleShape)
+                            )
+                        }
+                    } else null,
+                    onClick = { navigateToSubScreen(SettingsSubScreen.PC_SHARE) },
+                    onLongClick = {
+                        activeExplainer = SettingsExplainer(
+                            title = "PC Companion",
+                            description = "Connect your computer or tablet over local Wi-Fi to browse, search, and instantly save bookmarks to your phone.",
+                            icon = Icons.Outlined.DesktopWindows
+                        )
+                    }
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 3. Fetch Web Previews
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -710,7 +745,7 @@ fun SettingsBottomSheetContent(
                     color = appColors.separator
                 )
 
-                // 4. App Info
+                // 5. App Info
                 SettingsGroupedNavRow(
                     title = "App Info",
                     icon = Icons.Outlined.Info,
@@ -722,101 +757,6 @@ fun SettingsBottomSheetContent(
                             icon = Icons.Outlined.Info
                         )
                     }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Standalone High-Prominence Card: PC Companion
-        val serverStatus = viewModel?.serverStatus?.collectAsState()?.value
-        val isServerLive = serverStatus?.isRunning == true
-
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        navigateToSubScreen(SettingsSubScreen.PC_SHARE)
-                    },
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        activeExplainer = SettingsExplainer(
-                            title = "PC Companion",
-                            description = "Connect your computer or tablet over local Wi-Fi to browse, search, and instantly save bookmarks to your phone.",
-                            icon = Icons.Outlined.DesktopWindows
-                        )
-                    }
-                )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        color = if (isServerLive) appColors.label else appColors.fill,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.DesktopWindows,
-                                contentDescription = null,
-                                tint = if (isServerLive) appColors.systemBackground else appColors.label,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "PC Companion",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                color = appColors.label
-                            )
-                            if (isServerLive) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(Color(0xFF34C759), CircleShape)
-                                )
-                            }
-                        }
-                        Text(
-                            text = if (isServerLive) "Online on local Wi-Fi" else "Browse & send links from desktop browser",
-                            fontSize = 12.sp,
-                            color = appColors.secondaryLabel
-                        )
-                    }
-                }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = appColors.secondaryLabel,
-                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -859,6 +799,9 @@ private fun SettingsGroupedNavRow(
     subtitle: String? = null,
     icon: ImageVector? = null,
     iconPainter: Painter? = null,
+    iconBackground: Color? = null,
+    iconTint: Color? = null,
+    titleSuffix: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -895,23 +838,24 @@ private fun SettingsGroupedNavRow(
                 modifier = Modifier.weight(1f)
             ) {
                 Surface(
-                    color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                    color = iconBackground ?: if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
+                        val resolvedTint = iconTint ?: appColors.label
                         if (icon != null) {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = appColors.label,
+                                tint = resolvedTint,
                                 modifier = Modifier.size(19.dp)
                             )
                         } else if (iconPainter != null) {
                             Icon(
                                 painter = iconPainter,
                                 contentDescription = null,
-                                tint = appColors.label,
+                                tint = resolvedTint,
                                 modifier = Modifier.size(19.dp)
                             )
                         }
@@ -919,12 +863,18 @@ private fun SettingsGroupedNavRow(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = appColors.label
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = appColors.label
+                        )
+                        titleSuffix?.invoke()
+                    }
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
