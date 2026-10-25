@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +23,8 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OfflineBolt
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -59,7 +56,7 @@ fun WhatsNewBottomSheetContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Header: Logo + "What's New" + Version Pill + Close Button
+        // Header: Logo + "What's New" + v2.0.0 Pill + Close Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -82,113 +79,83 @@ fun WhatsNewBottomSheetContent(
                     color = appColors.label,
                     letterSpacing = (-0.4).sp
                 )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
                 Surface(
                     color = appColors.fill,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(6.dp),
                     border = BorderStroke(0.5.dp, appColors.separator)
                 ) {
                     Text(
-                        text = "v2.0.0 • Latest",
+                        text = "v2.0.0",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = appColors.secondaryLabel,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = appColors.secondaryLabel,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }
             }
+
+            IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = appColors.secondaryLabel,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Complete release changelog and version history across all updates.",
-            fontSize = 13.sp,
-            color = appColors.secondaryLabel,
-            lineHeight = 18.sp
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         // ==========================================
         // VERSION 2.0.0 (FLAGSHIP)
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 2.0.0",
-            theme = "PC COMPANION & LOCAL SYNC",
-            isLatest = true
-        )
+        VersionSectionHeader(version = "v2.0.0")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = appColors.surface,
-            border = BorderStroke(0.75.dp, appColors.separator),
+            border = BorderStroke(1.dp, if (appColors.isDark) Color.White else Color.Black),
             shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 WhatsNewRichRow(
                     icon = Icons.Outlined.DesktopWindows,
                     title = "PC Companion Mode",
-                    description = "Browse and push links between phone and computer over local Wi-Fi.",
-                    tag = "NEW"
+                    description = "Browse and push links between phone and computer over local Wi-Fi."
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator.copy(alpha = 0.5f))
                 WhatsNewRichRow(
                     icon = Icons.Outlined.DesktopWindows,
                     title = "Dedicated Desktop Client",
-                    description = "Lightweight native Windows & Linux client with quick keyboard navigation.",
-                    tag = "NATIVE"
+                    description = "Lightweight native Windows & Linux client with quick keyboard navigation."
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator.copy(alpha = 0.5f))
                 WhatsNewRichRow(
                     icon = Icons.Outlined.Lock,
                     title = "6-Digit PIN & Permanent Security",
-                    description = "Secure access with option to keep a persistent PIN across reconnects.",
-                    tag = "AUTH"
+                    description = "Secure access with option to keep a persistent PIN across reconnects."
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator.copy(alpha = 0.5f))
                 WhatsNewRichRow(
                     icon = Icons.Outlined.Language,
                     title = "Zero-Install Browser Mode",
-                    description = "Open directly in Chrome, Edge, or Brave via local URL without extra setup.",
-                    tag = "CHROME"
+                    description = "Open directly in Chrome, Edge, or Brave via local URL without extra setup."
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = appColors.separator.copy(alpha = 0.5f))
                 WhatsNewRichRow(
                     icon = Icons.Outlined.OfflineBolt,
                     title = "Offline PC Vault Access",
-                    description = "Search cached bookmarks on PC even when phone is turned off or disconnected.",
-                    tag = "OFFLINE"
+                    description = "Search cached bookmarks on PC even when phone is turned off or disconnected."
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         // ==========================================
         // VERSION 1.2.0
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.2.0",
-            theme = "CUSTOMIZATION & TRIAGE"
-        )
+        VersionSectionHeader(version = "v1.2.0")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -228,10 +195,7 @@ fun WhatsNewBottomSheetContent(
         // ==========================================
         // VERSION 1.1.2
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.1.2",
-            theme = "FOLDABLES & REFINEMENTS"
-        )
+        VersionSectionHeader(version = "v1.1.2")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -263,10 +227,7 @@ fun WhatsNewBottomSheetContent(
         // ==========================================
         // VERSION 1.1.1
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.1.1",
-            theme = "BROWSER MIGRATION"
-        )
+        VersionSectionHeader(version = "v1.1.1")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -298,10 +259,7 @@ fun WhatsNewBottomSheetContent(
         // ==========================================
         // VERSION 1.1.0
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.1.0",
-            theme = "BACKUP & STABILITY"
-        )
+        VersionSectionHeader(version = "v1.1.0")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -331,12 +289,9 @@ fun WhatsNewBottomSheetContent(
         Spacer(modifier = Modifier.height(22.dp))
 
         // ==========================================
-        // VERSION 1.0.1 / 1.0.2
+        // VERSION 1.0.2
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.0.1 & 1.0.2",
-            theme = "GRID & THEMES"
-        )
+        VersionSectionHeader(version = "v1.0.2")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -368,10 +323,7 @@ fun WhatsNewBottomSheetContent(
         // ==========================================
         // VERSION 1.0.0
         // ==========================================
-        VersionSectionHeader(
-            version = "VERSION 1.0.0",
-            theme = "INITIAL FOUNDATION"
-        )
+        VersionSectionHeader(version = "v1.0.0")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -425,64 +377,23 @@ fun WhatsNewBottomSheetContent(
 
 @Composable
 private fun VersionSectionHeader(
-    version: String,
-    theme: String,
-    isLatest: Boolean = false
+    version: String
 ) {
     val appColors = LocalAppColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = version,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isLatest) appColors.label else appColors.secondaryLabel,
-                letterSpacing = 1.2.sp
-            )
-            Text(
-                text = "•",
-                fontSize = 11.sp,
-                color = appColors.tertiaryLabel
-            )
-            Text(
-                text = theme,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = appColors.secondaryLabel,
-                letterSpacing = 0.8.sp
-            )
-        }
-
-        if (isLatest) {
-            Surface(
-                color = appColors.label,
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    text = "CURRENT",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appColors.systemBackground,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-        }
-    }
+    Text(
+        text = version,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = appColors.label,
+        letterSpacing = 0.5.sp
+    )
 }
 
 @Composable
 private fun WhatsNewRichRow(
     icon: ImageVector,
     title: String,
-    description: String,
-    tag: String
+    description: String
 ) {
     val appColors = LocalAppColors.current
     Row(
@@ -519,20 +430,6 @@ private fun WhatsNewRichRow(
                 fontSize = 12.sp,
                 color = appColors.secondaryLabel,
                 lineHeight = 16.sp
-            )
-        }
-
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = appColors.fill,
-            border = BorderStroke(0.5.dp, appColors.separator)
-        ) {
-            Text(
-                text = tag,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = appColors.secondaryLabel,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
             )
         }
     }

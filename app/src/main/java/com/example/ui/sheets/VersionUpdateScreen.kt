@@ -250,11 +250,6 @@ fun VersionUpdateScreen(
                                         )
                                     }
 
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = appColors.separator.copy(alpha = 0.5f)
-                                    )
-
                                     // Point 2: Zero-Install Browser Mode
                                     VersionFeatureTile(
                                         title = "Zero-Install Browser Mode",
@@ -268,11 +263,6 @@ fun VersionUpdateScreen(
                                         )
                                     }
 
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = appColors.separator.copy(alpha = 0.5f)
-                                    )
-
                                     // Point 3: Fast PIN & Permanent Mode
                                     VersionFeatureTile(
                                         title = "Fast PIN & Permanent Mode",
@@ -285,11 +275,6 @@ fun VersionUpdateScreen(
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
-
-                                    HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = appColors.separator.copy(alpha = 0.5f)
-                                    )
 
                                     // Point 4: Offline Vault Access
                                     VersionFeatureTile(
