@@ -1042,8 +1042,6 @@ fun FavoritesCustomizationSubSheetContent(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-        HorizontalDivider(thickness = 0.5.dp, color = appColors.separator)
-        Spacer(modifier = Modifier.height(20.dp))
 
         // -------------------------------------------------------------
         // SECTION 2: SYMBOL (All 4 in a single row)
@@ -1149,49 +1147,4 @@ fun FavoritesCustomizationSubSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
-
-/**
- * Backward-compatible alias for CustomizationSubSheetContent.
- */
-@Composable
-fun AppearanceSubSheetContent(
-    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
-    onSetThemeMode: (AppThemeMode) -> Unit = {},
-    layoutMode: WebStackLayoutMode = WebStackLayoutMode.LARGE_CARDS,
-    onSetLayoutMode: (WebStackLayoutMode) -> Unit = {},
-    fabShape: AppFabShape = AppFabShape.CIRCLE,
-    onOpenFabShapePicker: () -> Unit = {},
-    showCardDomain: Boolean = true,
-    onToggleShowCardDomain: (Boolean) -> Unit = {},
-    showCardCategory: Boolean = true,
-    onToggleShowCardCategory: (Boolean) -> Unit = {},
-    onOpenCardDetails: () -> Unit = {},
-    onOpenCustomizeTags: () -> Unit = {},
-    onOpenAppearance: () -> Unit = {},
-    onOpenFavorites: () -> Unit = {},
-    favoriteIconType: FavoriteIconType = FavoriteIconType.HEART,
-    onSetFavoriteIconType: (FavoriteIconType) -> Unit = {},
-    favoriteBadgeShape: FavoriteBadgeShape = FavoriteBadgeShape.PURE_FLOAT,
-    onSetFavoriteBadgeShape: (FavoriteBadgeShape) -> Unit = {},
-    favoriteColorPreset: FavoriteColorPreset = FavoriteColorPreset.CRIMSON_PINK,
-    onSetFavoriteColorPreset: (FavoriteColorPreset) -> Unit = {},
-    onBack: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    CustomizationSubSheetContent(
-        themeMode = themeMode,
-        layoutMode = layoutMode,
-        onOpenAppearance = onOpenAppearance,
-        onOpenFavorites = onOpenFavorites,
-        fabShape = fabShape,
-        onOpenFabShapePicker = onOpenFabShapePicker,
-        onOpenCardDetails = onOpenCardDetails,
-        onOpenCustomizeTags = onOpenCustomizeTags,
-        favoriteIconType = favoriteIconType,
-        favoriteBadgeShape = favoriteBadgeShape,
-        favoriteColorPreset = favoriteColorPreset,
-        onBack = onBack,
-        onDismiss = onDismiss
-    )
 }
