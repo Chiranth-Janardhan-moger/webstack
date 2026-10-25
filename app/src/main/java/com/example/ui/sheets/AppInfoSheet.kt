@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -70,6 +71,11 @@ import com.example.ui.theme.LocalAppColors
 
 
 
+enum class AppInfoSubScreen {
+    MAIN,
+    ROADMAP
+}
+
 @Composable
 fun AppInfoBottomSheetContent(
     onDismiss: () -> Unit,
@@ -81,8 +87,12 @@ fun AppInfoBottomSheetContent(
     val appColors = LocalAppColors.current
     val versionName = BuildConfig.VERSION_NAME
 
+    var currentSubScreen by remember { mutableStateOf(AppInfoSubScreen.MAIN) }
     var showFeedbackOptionsDialog by remember { mutableStateOf(false) }
     var showSponsorGoalDialog by remember { mutableStateOf(false) }
+
+    when (currentSubScreen) {
+        AppInfoSubScreen.MAIN -> {
             if (onBack != null) {
                 BackHandler {
                     onBack()
@@ -264,6 +274,28 @@ fun AppInfoBottomSheetContent(
 
 
                         InfoGroupedRow(
+                            title = "Roadmap",
+                            subtitle = "Planned features & ideas",
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                currentSubScreen = AppInfoSubScreen.ROADMAP
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Lightbulb,
+                                contentDescription = "Roadmap",
+                                tint = appColors.label,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 0.5.dp,
+                            color = appColors.separator
+                        )
+
+                        InfoGroupedRow(
                             title = "Feedback & Support",
                             subtitle = "Report issues or request features",
                             onClick = {
@@ -322,6 +354,14 @@ fun AppInfoBottomSheetContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+        AppInfoSubScreen.ROADMAP -> {
+            RoadmapSubSheetContent(
+                onBack = { currentSubScreen = AppInfoSubScreen.MAIN },
+                onDismiss = onDismiss
+            )
+        }
+    }
 
     if (showFeedbackOptionsDialog) {
         FeedbackOptionsDialog(
