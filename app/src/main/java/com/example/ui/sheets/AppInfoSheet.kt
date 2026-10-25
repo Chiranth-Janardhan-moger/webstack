@@ -33,7 +33,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.DashboardCustomize
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -73,7 +73,7 @@ import com.example.ui.theme.LocalAppColors
 
 enum class AppInfoSubScreen {
     MAIN,
-    ROADMAP
+    FEATURES
 }
 
 @Composable
@@ -274,16 +274,16 @@ fun AppInfoBottomSheetContent(
 
 
                         InfoGroupedRow(
-                            title = "Roadmap",
-                            subtitle = "Planned features & ideas",
+                            title = "WebStack Features",
+                            subtitle = "Features across all versions",
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                currentSubScreen = AppInfoSubScreen.ROADMAP
+                                currentSubScreen = AppInfoSubScreen.FEATURES
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Lightbulb,
-                                contentDescription = "Roadmap",
+                                imageVector = Icons.Outlined.DashboardCustomize,
+                                contentDescription = "WebStack Features",
                                 tint = appColors.label,
                                 modifier = Modifier.size(19.dp)
                             )
@@ -355,8 +355,8 @@ fun AppInfoBottomSheetContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        AppInfoSubScreen.ROADMAP -> {
-            RoadmapSubSheetContent(
+        AppInfoSubScreen.FEATURES -> {
+            WebStackFeaturesSubSheetContent(
                 onBack = { currentSubScreen = AppInfoSubScreen.MAIN },
                 onDismiss = onDismiss
             )
