@@ -16,6 +16,12 @@ interface WebsiteDao : ExportDao {
     @Query("SELECT * FROM websites ORDER BY createdAtMs DESC")
     suspend fun getAllWebsitesList(): List<Website>
 
+    @Query("SELECT * FROM websites WHERE dedupeKey = :dedupeKey LIMIT 1")
+    suspend fun findByDedupeKey(dedupeKey: String): Website?
+
+    @Query("SELECT COUNT(*) FROM websites")
+    suspend fun getCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWebsite(website: Website): Long
 
@@ -23,7 +29,17 @@ interface WebsiteDao : ExportDao {
     suspend fun insertAll(items: List<Website>): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWebsites(websites: List<Website>): List<Long>
+    suspend fun insertWebsitesChunk(websites: List<Website>): List<Long>
+
+    @Transaction
+    suspend fun insertWebsites(websites: List<Website>): List<Long> {
+        if (websites.isEmpty()) return emptyList()
+        val result = ArrayList<Long>(websites.size)
+        websites.chunked(250).forEach { chunk ->
+            result.addAll(insertWebsitesChunk(chunk))
+        }
+        return result
+    }
 
     @Query("DELETE FROM websites WHERE id = :id")
     suspend fun deleteWebsite(id: Long)

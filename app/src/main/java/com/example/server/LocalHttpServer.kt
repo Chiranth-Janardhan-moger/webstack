@@ -331,7 +331,7 @@ class LocalHttpServer(
                             put("status", "online")
                             put("authenticated", isAuth)
                             put("device", Build.MODEL ?: "Android Device")
-                            put("bookmarksCount", repository.getAllWebsitesList().size)
+                            put("bookmarksCount", repository.getCount())
                             put("offlineExpiryHours", getOfflineExpiryHours())
                         }
                         sendJsonResponse(output, 200, json.toString())

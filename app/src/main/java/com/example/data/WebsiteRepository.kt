@@ -23,10 +23,11 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
     suspend fun findDuplicate(inputUrl: String, excludeId: Long? = null): Website? {
         val targetKey = resolveDedupeKey(inputUrl)
         if (targetKey.isBlank()) return null
-        return getAllWebsitesList().firstOrNull {
-            it.id != excludeId && it.dedupeKey == targetKey
-        }
+        val match = websiteDao.findByDedupeKey(targetKey) ?: return null
+        return if (excludeId != null && match.id == excludeId) null else match
     }
+
+    suspend fun getCount(): Int = websiteDao.getCount()
 
     suspend fun update(website: Website) {
         websiteDao.insertWebsite(website)

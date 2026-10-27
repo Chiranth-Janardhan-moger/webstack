@@ -3,3 +3,4 @@
 - Push Links from PC: Send links from computer browser directly to phone Room database
 - Real-Time Local Sync: Instant search and category filtering directly in desktop browser
 - Dedicated Companion Page: Dedicated settings page with live connection QR and IP credentials
+- Plain Text Backup & Restore: Import and export clean URL lists (.txt) with fast streaming

@@ -465,7 +465,7 @@ fun BackupRestoreSubSheetContent(
                             color = appColors.label
                         )
                         Text(
-                            text = "Restore from .webstack, .json, or .html file",
+                            text = "Restore from .webstack, .json, .html, or .txt file",
                             fontSize = 13.sp,
                             color = appColors.secondaryLabel
                         )
