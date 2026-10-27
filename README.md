@@ -45,17 +45,21 @@ Modern web navigation often leads to tab clutter and lost links buried deep with
 
 ## Screenshots
 
-| Home Screen | Settings Sheet | Appearance & Themes |
+| Home Screen | PC Companion Mode | Add Bookmark Sheet |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" width="260" alt="Home Screen" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" width="260" alt="Settings Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" width="260" alt="Appearance and Themes" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" width="260" alt="Home Screen" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_home.png" width="260" alt="PC Companion Mode" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" width="260" alt="Add Bookmark Sheet" /> |
 
-| Button Shape Picker | Card Details & Sort Order | Customize Tags |
+| Settings Sheet | Customization Hub | Appearance & Themes |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" width="260" alt="Button Shape Picker" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpeg" width="260" alt="Card Details and Sort Order" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpeg" width="260" alt="Customize Tags" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_save_link.png" width="260" alt="Settings Sheet" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" width="260" alt="Customization Hub" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_settings.png" width="260" alt="Appearance and Themes" /> |
 
-| Backup & Restore | App Info & Features | Multi-Select & Bulk Delete |
+| Favorites Customization | 12 Action Button Shapes | Customize Tags |
 | :---: | :---: | :---: |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.jpeg" width="260" alt="Backup and Restore" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.jpeg" width="260" alt="App Info and Features" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.jpeg" width="260" alt="Multi-Select and Bulk Delete" /> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" width="260" alt="Favorites Customization" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpeg" width="260" alt="12 Action Button Shapes" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpeg" width="260" alt="Customize Tags" /> |
+
+| Card Details & Sort Order | Backup & Restore (.txt / .json / .html) | App Info & What's New |
+| :---: | :---: | :---: |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.jpeg" width="260" alt="Card Details and Sort Order" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.jpeg" width="260" alt="Backup and Restore" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/9.jpeg" width="260" alt="App Info and What's New" /> |
 
 ---
 
