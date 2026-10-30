@@ -171,10 +171,13 @@ WebStack is officially published in the upstream F-Droid repository:
 
 ## Star History
 
-<img width="600" height="600" alt="star-history-20261028" src="https://github.com/user-attachments/assets/5ba48ca3-01dd-4853-ada3-0e4f0f3a34c2" />
-
-
-
+<a href="https://www.star-history.com/?repos=chiranth-janardhan-moger%2Fwebstack&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=chiranth-janardhan-moger/webstack&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=chiranth-janardhan-moger/webstack&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=chiranth-janardhan-moger/webstack&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ---
 
