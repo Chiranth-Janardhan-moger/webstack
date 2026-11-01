@@ -168,7 +168,7 @@ WebStack is officially published in the upstream F-Droid repository:
 - Package ID: `com.chiranth7.webstack`
 - Recipe file: [`metadata/com.chiranth7.webstack.yml`](metadata/com.chiranth7.webstack.yml)
 
-
+  
 ## Star History
 
 <a href="https://www.star-history.com/?repos=chiranth-janardhan-moger%2Fwebstack&type=date&legend=top-left">
