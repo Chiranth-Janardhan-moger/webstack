@@ -1,6 +1,7 @@
 package com.example.ui.theme
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -108,10 +109,14 @@ fun MyApplicationTheme(
             val activity = currentContext as? Activity
             if (activity != null) {
                 val window = activity.window
-                val statusBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
-                val navBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
-                window.statusBarColor = statusBarColor
-                window.navigationBarColor = navBarColor
+                if (Build.VERSION.SDK_INT < 35) {
+                    val statusBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
+                    val navBarColor = (if (darkTheme) AppSystemBackgroundDark else AppSecondaryBackgroundLight).toArgb()
+                    @Suppress("DEPRECATION")
+                    window.statusBarColor = statusBarColor
+                    @Suppress("DEPRECATION")
+                    window.navigationBarColor = navBarColor
+                }
                 val windowInsetsController = WindowCompat.getInsetsController(window, view)
                 windowInsetsController.isAppearanceLightStatusBars = !darkTheme
                 windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
