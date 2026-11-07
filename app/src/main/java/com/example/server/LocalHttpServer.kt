@@ -17,6 +17,7 @@ import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
+import java.util.zip.GZIPOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
@@ -51,9 +52,15 @@ class LocalHttpServer(
     private val _status = MutableStateFlow(ServerStatus())
     val status: StateFlow<ServerStatus> = _status.asStateFlow()
 
-    private var activePin: String = ""
-    private var activeSessionToken: String = ""
+    @Volatile private var activePin: String = ""
+    @Volatile private var activeSessionToken: String = ""
     private val activeSessions = ConcurrentHashMap<String, Long>()
+
+    private data class AuthAttempt(
+        var failureCount: Int = 0,
+        var lockedUntilMs: Long = 0L
+    )
+    private val authAttempts = ConcurrentHashMap<String, AuthAttempt>()
 
     private val serverPrefs by lazy {
         context.getSharedPreferences("webstack_companion_server_prefs", Context.MODE_PRIVATE)
@@ -205,19 +212,35 @@ class LocalHttpServer(
         serverJob?.cancel()
         serverJob = null
         activeSessions.clear()
+        authAttempts.clear()
         _status.value = ServerStatus(isRunning = false, connectedClients = 0)
     }
 
     @Synchronized
     fun revokeSession() {
-        serverPrefs.edit()
-            .remove("active_session_token")
-            .remove("active_session_token_timestamp")
-            .remove("active_pin")
-            .apply()
-        activeSessionToken = ""
-        activePin = ""
+        val isRunning = _status.value.isRunning
+        val newPin = if (isRunning) generatePin() else ""
+        val newToken = if (isRunning) generateToken() else ""
+        if (isRunning) {
+            serverPrefs.edit()
+                .putString("active_session_token", newToken)
+                .putLong("active_session_token_timestamp", System.currentTimeMillis())
+                .putString("active_pin", newPin)
+                .apply()
+        } else {
+            serverPrefs.edit()
+                .remove("active_session_token")
+                .remove("active_session_token_timestamp")
+                .remove("active_pin")
+                .apply()
+        }
+        activeSessionToken = newToken
+        activePin = newPin
         activeSessions.clear()
+        authAttempts.clear()
+        if (isRunning) {
+            _status.value = _status.value.copy(pin = newPin, connectedClients = 0)
+        }
     }
 
     private fun generatePin(): String {
@@ -237,8 +260,12 @@ class LocalHttpServer(
     }
 
     private fun cleanupOldSessions() {
-        val cutoff = System.currentTimeMillis() - 25_000L
+        val now = System.currentTimeMillis()
+        val cutoff = now - 25_000L
         activeSessions.entries.removeIf { it.value < cutoff }
+        authAttempts.entries.removeIf { (_, attempt) ->
+            (attempt.lockedUntilMs in 1..now) || (attempt.lockedUntilMs == 0L && now - cutoff > 60_000L)
+        }
         val count = activeSessions.size
         val freshIp = WifiUtils.getLocalIpAddress()
         if (_status.value.isRunning && (_status.value.connectedClients != count || (freshIp != null && freshIp != _status.value.ipAddress))) {
@@ -292,9 +319,10 @@ class LocalHttpServer(
 
                 val uriPath = if (rawPath.contains("?")) rawPath.substringBefore("?") else rawPath
                 val queryParams = parseQueryParams(rawPath)
+                val origin = headers["origin"]
 
                 if (method == "OPTIONS") {
-                    sendCorsResponse(output)
+                    sendCorsResponse(output, origin)
                     return
                 }
 
@@ -324,44 +352,64 @@ class LocalHttpServer(
                             recordClientActivity(remoteIp)
                         }
                         if (hasToken && !isAuth) {
-                            sendJsonResponse(output, 401, """{"error":"Unauthorized: Invalid or expired session token","status":"online","authenticated":false}""")
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized: Invalid or expired session token","status":"online","authenticated":false}""", origin)
                             return
                         }
                         val json = JSONObject().apply {
                             put("status", "online")
                             put("authenticated", isAuth)
-                            put("device", Build.MODEL ?: "Android Device")
-                            put("bookmarksCount", repository.getCount())
+                            if (isAuth) {
+                                put("device", Build.MODEL ?: "Android Device")
+                                put("bookmarksCount", repository.getCount())
+                            } else {
+                                put("device", "WebStack Device")
+                                put("bookmarksCount", 0)
+                            }
                             put("offlineExpiryHours", getOfflineExpiryHours())
                         }
-                        sendJsonResponse(output, 200, json.toString())
+                        sendJsonResponse(output, 200, json.toString(), origin)
                     }
                     uriPath == "/api/auth" && method == "POST" -> {
-                        handleAuth(body, output, remoteIp)
+                        handleAuth(body, output, remoteIp, origin)
                     }
                     uriPath == "/api/disconnect" && method == "POST" -> {
+                        if (!isAuthorized(headers, queryParams)) {
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""", origin)
+                            return
+                        }
                         activeSessions.remove(remoteIp)
                         cleanupOldSessions()
+                        val newPin = generatePin()
+                        val newToken = generateToken()
                         serverPrefs.edit()
-                            .remove("active_session_token")
-                            .remove("active_session_token_timestamp")
-                            .remove("active_pin")
+                            .putString("active_session_token", newToken)
+                            .putLong("active_session_token_timestamp", System.currentTimeMillis())
+                            .putString("active_pin", newPin)
                             .apply()
-                        sendJsonResponse(output, 200, """{"success":true}""")
+                        synchronized(this@LocalHttpServer) {
+                            activeSessionToken = newToken
+                            activePin = newPin
+                            _status.value = _status.value.copy(
+                                pin = newPin,
+                                connectedClients = activeSessions.size
+                            )
+                        }
+                        sendJsonResponse(output, 200, """{"success":true}""", origin)
                     }
                     uriPath == "/api/categories" -> {
                         if (!isAuthorized(headers, queryParams)) {
-                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""", origin)
                             return
                         }
                         recordClientActivity(remoteIp)
                         val categories = getCategories()
                         val jsonArray = JSONArray(categories)
-                        sendJsonResponse(output, 200, jsonArray.toString())
+                        val acceptGzip = headers["accept-encoding"]?.contains("gzip", ignoreCase = true) == true
+                        sendJsonResponse(output, 200, jsonArray.toString(), origin, acceptGzip = acceptGzip)
                     }
                     uriPath == "/api/bookmarks" && method == "GET" -> {
                         if (!isAuthorized(headers, queryParams)) {
-                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""", origin)
                             return
                         }
                         recordClientActivity(remoteIp)
@@ -378,18 +426,19 @@ class LocalHttpServer(
                             }
                             array.put(obj)
                         }
-                        sendJsonResponse(output, 200, array.toString())
+                        val acceptGzip = headers["accept-encoding"]?.contains("gzip", ignoreCase = true) == true
+                        sendJsonResponse(output, 200, array.toString(), origin, acceptGzip = acceptGzip)
                     }
                     uriPath == "/api/bookmarks" && method == "POST" -> {
                         if (!isAuthorized(headers, queryParams)) {
-                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""")
+                            sendJsonResponse(output, 401, """{"error":"Unauthorized"}""", origin)
                             return
                         }
                         recordClientActivity(remoteIp)
-                        handleCreateBookmark(body, output)
+                        handleCreateBookmark(body, output, origin)
                     }
                     else -> {
-                        sendJsonResponse(output, 404, """{"error":"Not Found"}""")
+                        sendJsonResponse(output, 404, """{"error":"Not Found"}""", origin)
                     }
                 }
             }
@@ -397,11 +446,20 @@ class LocalHttpServer(
         }
     }
 
-    private fun handleAuth(body: String, output: OutputStream, remoteIp: String) {
+    private suspend fun handleAuth(body: String, output: OutputStream, remoteIp: String, origin: String? = null) {
+        val now = System.currentTimeMillis()
+        val attempt = authAttempts[remoteIp]
+        if (attempt != null && attempt.lockedUntilMs > now) {
+            val remainingSec = ((attempt.lockedUntilMs - now) / 1000L).coerceAtLeast(1)
+            sendJsonResponse(output, 429, """{"error":"Too many failed attempts. Locked out for $remainingSec seconds."}""", origin)
+            return
+        }
+
         try {
             val json = JSONObject(body)
             val submittedPin = json.optString("pin", "").trim()
             if (submittedPin.isNotBlank() && submittedPin == activePin) {
+                authAttempts.remove(remoteIp)
                 recordClientActivity(remoteIp)
                 serverPrefs.edit()
                     .putLong("active_session_token_timestamp", System.currentTimeMillis())
@@ -411,23 +469,35 @@ class LocalHttpServer(
                     put("success", true)
                     put("offlineExpiryHours", getOfflineExpiryHours())
                 }
-                sendJsonResponse(output, 200, resp.toString())
+                sendJsonResponse(output, 200, resp.toString(), origin)
             } else {
-                sendJsonResponse(output, 403, """{"error":"Invalid PIN. Please check your phone screen."}""")
+                val updated = authAttempts.compute(remoteIp) { _, existing ->
+                    val isExpired = existing != null && existing.lockedUntilMs > 0L && now >= existing.lockedUntilMs
+                    val count = if (existing == null || isExpired) 1 else existing.failureCount + 1
+                    val lockout = if (count >= 5) System.currentTimeMillis() + 60_000L else 0L
+                    AuthAttempt(failureCount = count, lockedUntilMs = lockout)
+                }
+                delay(400)
+                if (updated != null && updated.failureCount >= 5) {
+                    sendJsonResponse(output, 429, """{"error":"Too many failed attempts. Locked out for 60 seconds."}""", origin)
+                } else {
+                    sendJsonResponse(output, 403, """{"error":"Invalid PIN. Please check your phone screen."}""", origin)
+                }
             }
-        } catch (_: Exception) {
-            sendJsonResponse(output, 400, """{"error":"Malformed JSON"}""")
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            sendJsonResponse(output, 400, """{"error":"Malformed JSON"}""", origin)
         }
     }
 
-    private suspend fun handleCreateBookmark(body: String, output: OutputStream) {
+    private suspend fun handleCreateBookmark(body: String, output: OutputStream, origin: String? = null) {
         try {
             val json = JSONObject(body)
             val rawUrl = json.optString("url", "").trim()
             val category = json.optString("category", "Personal").trim()
 
             if (rawUrl.isBlank()) {
-                sendJsonResponse(output, 400, """{"error":"URL cannot be empty"}""")
+                sendJsonResponse(output, 400, """{"error":"URL cannot be empty"}""", origin)
                 return
             }
 
@@ -442,16 +512,16 @@ class LocalHttpServer(
                     put("category", site.category)
                     put("createdAtMs", site.createdAtMs)
                 }
-                sendJsonResponse(output, 201, resp.toString())
+                sendJsonResponse(output, 201, resp.toString(), origin)
                 scope.launch {
                     repository.fetchTitleAsync(site.id, site.url, site.domain)
                 }
             }.onFailure { err ->
                 val errorMsg = err.localizedMessage ?: "Failed to save bookmark"
-                sendJsonResponse(output, 422, """{"error":${JSONObject.quote(errorMsg)}}""")
+                sendJsonResponse(output, 422, """{"error":${JSONObject.quote(errorMsg)}}""", origin)
             }
         } catch (_: Exception) {
-            sendJsonResponse(output, 400, """{"error":"Invalid JSON payload"}""")
+            sendJsonResponse(output, 400, """{"error":"Invalid JSON payload"}""", origin)
         }
     }
 
@@ -606,7 +676,40 @@ class LocalHttpServer(
         }
     }
 
-    private fun sendJsonResponse(output: OutputStream, statusCode: Int, json: String) {
+    private fun isAllowedOrigin(origin: String?): Boolean {
+        if (origin.isNullOrBlank()) return true
+        val lower = origin.lowercase().trim()
+        val uri = try { java.net.URI(lower) } catch (_: Exception) { return false }
+        val host = uri.host ?: return false
+        val scheme = uri.scheme ?: return false
+        if (scheme != "http" && scheme != "https") return false
+        if (host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]") return true
+        val parts = host.split(".")
+        if (parts.size != 4) return false
+        val octets = parts.map { it.toIntOrNull() ?: return false }
+        if (octets.any { it !in 0..255 }) return false
+        return (octets[0] == 192 && octets[1] == 168) ||
+                (octets[0] == 10) ||
+                (octets[0] == 172 && octets[1] in 16..31)
+    }
+
+    private fun getCorsHeaders(origin: String?): String {
+        if (origin.isNullOrBlank() || !isAllowedOrigin(origin)) {
+            return ""
+        }
+        return "Access-Control-Allow-Origin: $origin\r\n" +
+                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
+                "Access-Control-Allow-Headers: *\r\n" +
+                "Access-Control-Allow-Private-Network: true\r\n"
+    }
+
+    private fun sendJsonResponse(
+        output: OutputStream,
+        statusCode: Int,
+        json: String,
+        origin: String? = null,
+        acceptGzip: Boolean = false
+    ) {
         val statusText = when (statusCode) {
             200 -> "OK"
             201 -> "Created"
@@ -616,28 +719,43 @@ class LocalHttpServer(
             403 -> "Forbidden"
             404 -> "Not Found"
             422 -> "Unprocessable Entity"
+            429 -> "Too Many Requests"
             else -> "Error"
         }
-        val bytes = json.toByteArray(Charsets.UTF_8)
+        val rawBytes = json.toByteArray(Charsets.UTF_8)
+        val shouldGzip = acceptGzip && rawBytes.size > 512
+        val (payloadBytes, encodingHeader) = if (shouldGzip) {
+            val byteStream = ByteArrayOutputStream()
+            GZIPOutputStream(byteStream).use { gzipStream ->
+                gzipStream.write(rawBytes)
+            }
+            Pair(byteStream.toByteArray(), "Content-Encoding: gzip\r\n")
+        } else {
+            Pair(rawBytes, "")
+        }
+
+        val corsHeader = getCorsHeaders(origin)
         val header = "HTTP/1.1 $statusCode $statusText\r\n" +
                 "Content-Type: application/json; charset=utf-8\r\n" +
-                "Content-Length: ${bytes.size}\r\n" +
-                "Access-Control-Allow-Origin: *\r\n" +
-                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: *\r\n" +
-                "Access-Control-Allow-Private-Network: true\r\n" +
+                encodingHeader +
+                "Content-Length: ${payloadBytes.size}\r\n" +
+                corsHeader +
                 "Connection: close\r\n\r\n"
         output.write(header.toByteArray(Charsets.UTF_8))
-        output.write(bytes)
+        output.write(payloadBytes)
         output.flush()
     }
 
-    private fun sendCorsResponse(output: OutputStream) {
+    private fun sendCorsResponse(output: OutputStream, origin: String?) {
+        if (!origin.isNullOrBlank() && !isAllowedOrigin(origin)) {
+            val error = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            output.write(error.toByteArray(Charsets.UTF_8))
+            output.flush()
+            return
+        }
+        val corsHeader = getCorsHeaders(origin)
         val header = "HTTP/1.1 204 No Content\r\n" +
-                "Access-Control-Allow-Origin: *\r\n" +
-                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-                "Access-Control-Allow-Headers: *\r\n" +
-                "Access-Control-Allow-Private-Network: true\r\n" +
+                corsHeader +
                 "Access-Control-Max-Age: 86400\r\n" +
                 "Content-Length: 0\r\n" +
                 "Connection: close\r\n\r\n"

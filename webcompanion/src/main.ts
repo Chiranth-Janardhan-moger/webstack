@@ -46,13 +46,6 @@ import {
 } from './ui';
 import { decryptPayload } from './crypto';
 
-// Global bridges for inline HTML onclick handlers
-(window as any).webstackShowToast = showToast;
-(window as any).webstackCopyLink = (url: string) => {
-  copyToClipboard(url);
-  showToast('Copied link!');
-};
-
 let allBookmarks: Bookmark[] = [];
 let availableCategories: string[] = ['Personal', 'Work', 'Social', 'Reading'];
 let currentCategory = 'ALL';

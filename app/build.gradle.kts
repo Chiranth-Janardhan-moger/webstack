@@ -17,8 +17,8 @@ android {
     applicationId = "com.chiranth7.webstack"
     minSdk = 24
     targetSdk = 36
-    versionCode = 8
-    versionName = "2.0.0"
+    versionCode = 9
+    versionName = "2.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -26,10 +26,13 @@ android {
   signingConfigs {
     create("release") {
       val customKeystore = System.getenv("KEYSTORE_PATH")
-      storeFile = if (customKeystore != null) file(customKeystore) else file("${rootDir}/release.keystore")
-      storePassword = System.getenv("STORE_PASSWORD") ?: "webstack123"
-      keyAlias = System.getenv("KEY_ALIAS") ?: "webstack"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: "webstack123"
+      val keystoreFile = if (customKeystore != null) file(customKeystore) else file("${rootDir}/release.keystore")
+      if (keystoreFile.exists()) {
+        storeFile = keystoreFile
+        storePassword = System.getenv("STORE_PASSWORD") ?: "webstack123"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "webstack"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "webstack123"
+      }
       enableV1Signing = true
       enableV2Signing = true
       enableV3Signing = false
@@ -144,3 +147,4 @@ tasks.register<JacocoReport>("jacocoTestReport") {
   classDirectories.setFrom(classDirectoriesTree)
   executionData.setFrom(files("${project.layout.buildDirectory.get()}/outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec"))
 }
+

@@ -194,4 +194,50 @@ class BackupManagerTest {
         assertEquals("https://stackoverflow.com", websites[1].url)
         assertEquals("https://developer.mozilla.org", websites[2].url)
     }
+
+    @Test
+    fun testParsePlainTextUrls_withMarkdownLinks_preservesTitles() {
+        val raw = """
+            # Curated Markdown Bookmarks
+            - [Karpathy Blog](https://karpathy.github.io)
+            * [React Documentation](https://react.dev)
+            [GitHub Profile](https://github.com/torvalds)
+            https://rawlink.org
+        """.trimIndent()
+
+        val stream = raw.byteInputStream(Charsets.UTF_8)
+        val websites = BackupManager.parsePlainTextUrls(stream)
+
+        assertEquals(4, websites.size)
+        assertEquals("https://karpathy.github.io", websites[0].url)
+        assertEquals("Karpathy Blog", websites[0].title)
+
+        assertEquals("https://react.dev", websites[1].url)
+        assertEquals("React Documentation", websites[1].title)
+
+        assertEquals("https://github.com/torvalds", websites[2].url)
+        assertEquals("GitHub Profile", websites[2].title)
+
+        assertEquals("https://rawlink.org", websites[3].url)
+        assertEquals("rawlink.org", websites[3].title)
+    }
+
+    @Test
+    fun testIsPlaceholderTitle_correctlyIdentifiesPlaceholdersAndCustomTitles() {
+        val domain = "github.com"
+        val url = "https://github.com/torvalds/linux"
+
+        // Placeholders: empty, raw URL, exact domain, capitalized base domain
+        assertTrue(com.example.ui.util.isPlaceholderTitle("", domain, url))
+        assertTrue(com.example.ui.util.isPlaceholderTitle("   ", domain, url))
+        assertTrue(com.example.ui.util.isPlaceholderTitle("github.com", domain, url))
+        assertTrue(com.example.ui.util.isPlaceholderTitle("GITHUB.COM", domain, url))
+        assertTrue(com.example.ui.util.isPlaceholderTitle("Github", domain, url))
+        assertTrue(com.example.ui.util.isPlaceholderTitle("https://github.com/torvalds/linux", domain, url))
+
+        // Non-placeholders: real custom titles
+        assertFalse(com.example.ui.util.isPlaceholderTitle("Linux Kernel Notes", domain, url))
+        assertFalse(com.example.ui.util.isPlaceholderTitle("torvalds/linux: Linux kernel source tree", domain, url))
+        assertFalse(com.example.ui.util.isPlaceholderTitle("My Awesome Project", domain, url))
+    }
 }

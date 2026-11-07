@@ -91,4 +91,25 @@ class BookmarkExporterTest {
         assertTrue("Dev folder must appear in output", devFolderIdx != -1)
         assertTrue("Dev folder must close before root uncategorized link", devCloseIdx < uncatLinkIdx)
     }
+
+    @Test
+    fun testNonHttpSchemes_areOmittedFromExport() = runBlocking {
+        val dao = FakeExportDao(
+            categories = listOf("Dev"),
+            sitesByCategory = mapOf(
+                "Dev" to listOf(
+                    Website(1, "javascript:alert(1)", "Evil Script", "Dev", "javascript:alert(1)", null, 1710000000000L),
+                    Website(2, "data:text/html,<script>alert(1)</script>", "Evil Data", "Dev", "data:text/html...", null, 1710000000000L),
+                    Website(3, "https://legit.com", "Legit Site", "Dev", "https://legit.com", null, 1710000000000L)
+                )
+            )
+        )
+        val out = ByteArrayOutputStream()
+        BookmarkExporter.exportBookmarks(out, dao, 1710000000000L)
+
+        val html = out.toString(StandardCharsets.UTF_8.name())
+        org.junit.Assert.assertFalse("javascript: scheme must be omitted", html.contains("javascript:"))
+        org.junit.Assert.assertFalse("data: scheme must be omitted", html.contains("data:text/html"))
+        assertTrue("Legit https link must be included", html.contains("https://legit.com"))
+    }
 }

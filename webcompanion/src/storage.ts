@@ -251,4 +251,8 @@ export function clearSession(): void {
   cachedOfflineBookmarks = null;
   cachedOfflineQueue = null;
   removeLocalItem('webstack_last_connected');
+  removeLocalItem('webstack_offline_bookmarks');
+  removeLocalItem('webstack_offline_categories');
+  removeLocalItem('webstack_offline_queue');
+  removeLocalItem('webstack_offline_expiry_hours');
 }

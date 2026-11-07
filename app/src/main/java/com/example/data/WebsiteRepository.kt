@@ -12,6 +12,8 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(3, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
 
     val allWebsites = websiteDao.getAllWebsites()
@@ -94,33 +96,87 @@ class WebsiteRepository(val websiteDao: WebsiteDao) {
         Result.success(website.copy(id = id))
     }
 
-    suspend fun fetchTitleAsync(id: Long, url: String, domain: String) = withContext(Dispatchers.IO) {
-        var title = ""
-        try {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0")
-                .build()
+    private fun isInternalOrPrivateUrl(rawUrl: String): Boolean {
+        val uri = try { java.net.URI(rawUrl) } catch (_: Exception) { return true }
+        val host = uri.host?.lowercase()?.trim() ?: return true
+        val scheme = uri.scheme?.lowercase() ?: return true
+        if (scheme != "http" && scheme != "https") return true
 
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val source = response.body?.source()
-                    val html = source?.let { s ->
-                        val buffer = okio.Buffer()
-                        s.read(buffer, 64 * 1024L)
-                        buffer.readUtf8()
-                    } ?: ""
-                    title = extractTitleFromHtml(html) ?: ""
-                }
-            }
-        } catch (_: Exception) {}
-
-        val finalTitle = if (title.isNotBlank()) {
-            title
-        } else {
-            domain.substringBefore(".").replaceFirstChar { it.uppercaseChar() }
+        if (host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]") return true
+        if (!host.contains(".") || host.endsWith(".local") || host.endsWith(".internal") || host.endsWith(".lan")) {
+            return true
         }
-        websiteDao.updateTitle(id, finalTitle)
+
+        return try {
+            val addresses = java.net.InetAddress.getAllByName(host)
+            addresses.any { addr ->
+                addr.isLoopbackAddress ||
+                addr.isSiteLocalAddress ||
+                addr.isLinkLocalAddress ||
+                addr.isAnyLocalAddress ||
+                (addr is java.net.Inet6Address && addr.isIPv4CompatibleAddress)
+            }
+        } catch (_: Exception) {
+            true // Block on resolution failure
+        }
+    }
+
+    suspend fun fetchTitleAsync(
+        id: Long,
+        url: String,
+        domain: String,
+        fallbackToDomainOnFailure: Boolean = true
+    ) = withContext(Dispatchers.IO) {
+        var title = ""
+        var currentUrl = url
+        var redirectHops = 0
+
+        while (redirectHops < 3) {
+            if (isInternalOrPrivateUrl(currentUrl)) break
+            try {
+                val request = Request.Builder()
+                    .url(currentUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0")
+                    .build()
+
+                var nextUrl: String? = null
+                var handled = false
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isRedirect) {
+                        val location = response.header("Location")
+                        if (!location.isNullOrBlank()) {
+                            nextUrl = response.request.url.resolve(location)?.toString()
+                        }
+                    } else if (response.isSuccessful) {
+                        val source = response.body?.source()
+                        val html = source?.let { s ->
+                            val buffer = okio.Buffer()
+                            s.read(buffer, 64 * 1024L)
+                            buffer.readUtf8()
+                        } ?: ""
+                        title = extractTitleFromHtml(html) ?: ""
+                        handled = true
+                    } else {
+                        handled = true
+                    }
+                }
+
+                if (handled || nextUrl == null) break
+                currentUrl = nextUrl!!
+                redirectHops++
+            } catch (_: Exception) {
+                break
+            }
+        }
+
+        val cleanTitle = title.replace(Regex("""\s+"""), " ").trim().take(300)
+        if (cleanTitle.isNotBlank()) {
+            websiteDao.updateTitle(id, cleanTitle)
+        } else if (fallbackToDomainOnFailure) {
+            val fallbackTitle = domain.substringBefore(".").replaceFirstChar { it.uppercaseChar() }
+            websiteDao.updateTitle(id, fallbackTitle)
+        }
     }
 
     private fun inferCategory(domain: String, title: String, url: String): String {

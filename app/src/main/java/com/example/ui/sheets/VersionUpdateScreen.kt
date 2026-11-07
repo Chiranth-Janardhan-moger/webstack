@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OfflineBolt
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,20 +76,14 @@ fun VersionUpdateScreen(
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
-    // Odometer digits: 1.2.0 -> 1.0.0 -> 2.0.0
-    var majorDigit by remember { mutableStateOf("1") }
-    var minorDigit by remember { mutableStateOf("2") }
+    // Odometer digits: 2.0.0 -> 2.0.1
+    var patchDigit by remember { mutableStateOf("0") }
 
     LaunchedEffect(Unit) {
-        // Step 1: Start at 1.2.0
+        // Step 1: Start at 2.0.0
         delay(400)
-        // Step 2: Minor digit rolls down 2 -> 0 (becomes 1.0.0)
-        minorDigit = "0"
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-
-        delay(450)
-        // Step 3: Major digit springs up 1 -> 2 (becomes 2.0.0)
-        majorDigit = "2"
+        // Step 2: Patch digit springs up 0 -> 1 (becomes 2.0.1)
+        patchDigit = "1"
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
@@ -124,7 +119,7 @@ fun VersionUpdateScreen(
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Screen 1: Pure Giant 2.0.0 Odometer (1.2.0 -> 1.0.0 -> 2.0.0)
+                        // Screen 1: Pure Giant 2.0.1 Odometer (2.0.0 -> 2.0.1)
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -133,9 +128,17 @@ fun VersionUpdateScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                // Major digit: 1 -> 2 (springs upward)
+                                Text(
+                                    text = "2.0.",
+                                    fontSize = 72.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = appColors.label,
+                                    letterSpacing = (-2).sp
+                                )
+
+                                // Patch digit: 0 -> 1 (springs upward)
                                 AnimatedContent(
-                                    targetState = majorDigit,
+                                    targetState = patchDigit,
                                     transitionSpec = {
                                         (slideInVertically(
                                             animationSpec = spring(
@@ -150,7 +153,7 @@ fun VersionUpdateScreen(
                                                     )
                                                 ) { height -> -height } + fadeOut())
                                     },
-                                    label = "major_odometer_digit"
+                                    label = "patch_odometer_digit"
                                 ) { digit ->
                                     Text(
                                         text = digit,
@@ -160,56 +163,12 @@ fun VersionUpdateScreen(
                                         letterSpacing = (-2).sp
                                     )
                                 }
-
-                                Text(
-                                    text = ".",
-                                    fontSize = 72.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = appColors.label,
-                                    letterSpacing = (-2).sp
-                                )
-
-                                // Minor digit: 2 -> 0 (rolls downward)
-                                AnimatedContent(
-                                    targetState = minorDigit,
-                                    transitionSpec = {
-                                        (slideInVertically(
-                                            animationSpec = spring(
-                                                dampingRatio = 0.72f,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        ) { height -> -height } + fadeIn()) togetherWith
-                                                (slideOutVertically(
-                                                    animationSpec = spring(
-                                                        dampingRatio = 0.72f,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    )
-                                                ) { height -> height } + fadeOut())
-                                    },
-                                    label = "minor_odometer_digit"
-                                ) { digit ->
-                                    Text(
-                                        text = digit,
-                                        fontSize = 72.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = appColors.label,
-                                        letterSpacing = (-2).sp
-                                    )
-                                }
-
-                                Text(
-                                    text = ".0",
-                                    fontSize = 72.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = appColors.label,
-                                    letterSpacing = (-2).sp
-                                )
                             }
                         }
                     }
 
                     1 -> {
-                        // Screen 2: PC Companion Features Card
+                        // Screen 2: Features Card
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -218,7 +177,7 @@ fun VersionUpdateScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "PC Companion & Wi-Fi Sync",
+                                text = "What's New in 2.0.1",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = appColors.label,
@@ -237,52 +196,26 @@ fun VersionUpdateScreen(
                                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                                     verticalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    // Point 1: Dedicated Desktop App
+                                    // Point 1: Title & Snapshot Refresh
                                     VersionFeatureTile(
-                                        title = "Dedicated Desktop App",
-                                        description = "Native Windows & Linux client with shortcuts."
+                                        title = "Title & Snapshot Refresh",
+                                        description = "Tap refresh on any card to update live webpage titles and snapshots."
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.DesktopWindows,
+                                            imageVector = Icons.Outlined.Refresh,
                                             contentDescription = null,
                                             tint = appColors.label,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
 
-                                    // Point 2: Zero-Install Browser Mode
+                                    // Point 2: Added Security
                                     VersionFeatureTile(
-                                        title = "Zero-Install Browser Mode",
-                                        description = "Browse directly in Chrome or Edge via URL."
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Language,
-                                            contentDescription = null,
-                                            tint = appColors.label,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-
-                                    // Point 3: Fast PIN & Permanent Mode
-                                    VersionFeatureTile(
-                                        title = "Fast PIN & Permanent Mode",
-                                        description = "6-digit security; keep the same PIN permanently."
+                                        title = "Added Security",
+                                        description = "Continuous SSRF and internal network protection across multi-hop redirects."
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Lock,
-                                            contentDescription = null,
-                                            tint = appColors.label,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-
-                                    // Point 4: Offline Vault Access
-                                    VersionFeatureTile(
-                                        title = "Offline Vault Access",
-                                        description = "Search cached bookmarks on PC without phone."
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.OfflineBolt,
                                             contentDescription = null,
                                             tint = appColors.label,
                                             modifier = Modifier.size(18.dp)

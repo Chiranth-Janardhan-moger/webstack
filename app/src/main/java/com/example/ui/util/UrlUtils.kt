@@ -256,3 +256,17 @@ fun resolveDedupeKey(raw: String): String {
     }
     return BookmarkNormalizer.dedupeKey(withScheme) ?: withScheme
 }
+
+/**
+ * Determines whether a website title is missing or a placeholder derived from its domain or URL,
+ * indicating that the genuine webpage title has not yet been fetched.
+ */
+fun isPlaceholderTitle(title: String, domain: String, url: String): Boolean {
+    val t = title.trim()
+    if (t.isBlank()) return true
+    if (t.equals(url.trim(), ignoreCase = true)) return true
+    if (t.equals(domain.trim(), ignoreCase = true)) return true
+    val baseDomain = domain.removePrefix("www.").substringBefore(".")
+    if (baseDomain.isNotBlank() && t.equals(baseDomain, ignoreCase = true)) return true
+    return false
+}

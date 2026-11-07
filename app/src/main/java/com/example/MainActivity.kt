@@ -72,6 +72,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -233,7 +237,7 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 8) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 9) }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -315,6 +319,10 @@ fun WebStackScreen(
         }
     }
 
+    val coroutineScope = rememberCoroutineScope()
+    var pendingRestoreDialogUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingRestoreDisplayName by remember { mutableStateOf("") }
+
     // Handle incoming .webstack backup file opened from external apps / file manager
     LaunchedEffect(incomingBackupUri) {
         incomingBackupUri?.let { uri ->
@@ -341,26 +349,74 @@ fun WebStackScreen(
                 return@LaunchedEffect
             }
 
-            try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    val result = viewModel.restoreBackup(stream)
-                    result.onSuccess { (imported, newCats) ->
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val msg = if (imported > 0) {
-                            "Restored $imported bookmarks ($newCats new categories)"
-                        } else {
-                            "All bookmarks in backup are already in your stack"
-                        }
-                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-                    }.onFailure { err ->
-                        android.widget.Toast.makeText(context, "Restore failed: ${err.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: Exception) {
-                android.widget.Toast.makeText(context, "Could not open backup file", android.widget.Toast.LENGTH_SHORT).show()
-            }
-            onClearIncomingBackupUri()
+            pendingRestoreDialogUri = uri
+            pendingRestoreDisplayName = displayName.ifBlank { "backup.webstack" }
         }
+    }
+
+    if (pendingRestoreDialogUri != null) {
+        AlertDialog(
+            onDismissRequest = {
+                pendingRestoreDialogUri = null
+                onClearIncomingBackupUri()
+            },
+            title = {
+                Text("Restore Bookmarks?")
+            },
+            text = {
+                Text("Do you want to restore bookmarks from $pendingRestoreDisplayName into your WebStack library?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val uriToRestore = pendingRestoreDialogUri
+                        pendingRestoreDialogUri = null
+                        if (uriToRestore != null) {
+                            coroutineScope.launch {
+                                try {
+                                    val stream = withContext(Dispatchers.IO) {
+                                        context.contentResolver.openInputStream(uriToRestore)
+                                    }
+                                    if (stream == null) {
+                                        android.widget.Toast.makeText(context, "Could not open backup file", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@launch
+                                    }
+                                    stream.use { s ->
+                                        val result = viewModel.restoreBackup(s)
+                                        result.onSuccess { (imported, newCats) ->
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            val msg = if (imported > 0) {
+                                                "Restored $imported bookmarks ($newCats new categories)"
+                                            } else {
+                                                "All bookmarks in backup are already in your stack"
+                                            }
+                                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                        }.onFailure { err ->
+                                            android.widget.Toast.makeText(context, "Restore failed: ${err.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                    android.widget.Toast.makeText(context, "Could not open backup file", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        onClearIncomingBackupUri()
+                    }
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreDialogUri = null
+                        onClearIncomingBackupUri()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     val favoriteCount = remember(websitesState, favoriteIds) {
@@ -569,11 +625,11 @@ fun WebStackScreen(
                                     if (idx != -1) idx + 1 else null
                                 } else null
 
-                                val onCardClick: () -> Unit = remember(isSelectionMode, website.url, website.id, selectedWebsiteIds.size) {
+                                val onCardClick: () -> Unit = remember(website.id, website.url) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        if (isSelectionMode) {
-                                            if (selectedIdsSet.contains(website.id)) {
+                                        if (selectedWebsiteIds.isNotEmpty()) {
+                                            if (selectedWebsiteIds.contains(website.id)) {
                                                 selectedWebsiteIds.remove(website.id)
                                             } else {
                                                 selectedWebsiteIds.add(website.id)
@@ -584,11 +640,11 @@ fun WebStackScreen(
                                         Unit
                                     }
                                 }
-                                val onCardLongClick: () -> Unit = remember(isSelectionMode, website, selectedWebsiteIds.size) {
+                                val onCardLongClick: () -> Unit = remember(website) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (isSelectionMode) {
-                                            if (selectedIdsSet.contains(website.id)) {
+                                        if (selectedWebsiteIds.isNotEmpty()) {
+                                            if (selectedWebsiteIds.contains(website.id)) {
                                                 selectedWebsiteIds.remove(website.id)
                                             } else {
                                                 selectedWebsiteIds.add(website.id)
@@ -599,15 +655,21 @@ fun WebStackScreen(
                                         Unit
                                     }
                                 }
-                                val onCardRefresh = remember(website.id, website.title, fetchWebPreviews) {
+                                val onCardRefresh = remember(website.id, website.title, website.domain, website.url, fetchWebPreviews) {
                                     {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         if (!fetchWebPreviews) {
                                             Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                                         } else {
-                                            viewModel.refreshScreenshot(website.id)
+                                            val isPlaceholder = com.example.ui.util.isPlaceholderTitle(website.title, website.domain, website.url)
+                                            viewModel.refreshWebsite(website)
                                             refreshTokens[website.id] = System.currentTimeMillis()
-                                            Toast.makeText(context, "Updating snapshot for ${website.title}...", Toast.LENGTH_SHORT).show()
+                                            val msg = if (isPlaceholder) {
+                                                "Refreshing snapshot and title for ${website.domain}..."
+                                            } else {
+                                                "Updating snapshot for ${website.title}..."
+                                            }
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
@@ -966,9 +1028,15 @@ fun WebStackScreen(
                         if (!fetchWebPreviews) {
                             Toast.makeText(context, "Enable web previews in Settings to refresh", Toast.LENGTH_LONG).show()
                         } else {
-                            viewModel.refreshScreenshot(targetWebsite.id)
+                            val isPlaceholder = com.example.ui.util.isPlaceholderTitle(targetWebsite.title, targetWebsite.domain, targetWebsite.url)
+                            viewModel.refreshWebsite(targetWebsite)
                             refreshTokens[targetWebsite.id] = System.currentTimeMillis()
-                            Toast.makeText(context, "Refreshing ${targetWebsite.title}...", Toast.LENGTH_SHORT).show()
+                            val msg = if (isPlaceholder) {
+                                "Refreshing snapshot and title for ${targetWebsite.domain}..."
+                            } else {
+                                "Refreshing ${targetWebsite.title}..."
+                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                         websiteForOptions = null
                     },
@@ -1160,7 +1228,7 @@ fun WebStackScreen(
         ) {
             VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 8).apply()
+                    prefs.edit().putInt("last_seen_version_code", 9).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {

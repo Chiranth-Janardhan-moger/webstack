@@ -1,0 +1,2 @@
+- Title & Snapshot Refresh: Tap refresh on any bookmark card to update live webpage titles and snapshots, with full Markdown link support
+- Added Security: Safe multi-hop redirect handling with continuous SSRF and internal network protection

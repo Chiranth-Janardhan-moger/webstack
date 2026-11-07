@@ -27,6 +27,7 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.zip.GZIPInputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -448,5 +449,181 @@ class LocalHttpServerTest {
         val catsConn = catsUrl.openConnection() as HttpURLConnection
         assertEquals(200, catsConn.responseCode)
         catsConn.disconnect()
+    }
+
+    @Test
+    fun testAuthRateLimiting_fiveFailuresLockout() = runBlocking {
+        server.start(testPort)
+        delay(150)
+        val port = server.status.value.port
+
+        for (i in 1..4) {
+            val conn = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.use { it.write("""{"pin":"000000"}""".toByteArray()) }
+            }
+            assertEquals("Attempt $i should be 403 Forbidden", 403, conn.responseCode)
+            conn.disconnect()
+        }
+
+        // 5th failed attempt triggers 429
+        val conn5 = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            outputStream.use { it.write("""{"pin":"000000"}""".toByteArray()) }
+        }
+        assertEquals(429, conn5.responseCode)
+        conn5.disconnect()
+
+        // 6th attempt while locked out is rejected with 429 immediately
+        val conn6 = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            outputStream.use { it.write("""{"pin":"000000"}""".toByteArray()) }
+        }
+        assertEquals(429, conn6.responseCode)
+        conn6.disconnect()
+    }
+
+    @Test
+    fun testCorsOriginValidation_privateAllowedPublicRejected() = runBlocking {
+        server.start(testPort)
+        delay(150)
+        val port = server.status.value.port
+
+        fun sendRawOptions(originHeader: String): String {
+            val socket = java.net.Socket("127.0.0.1", port)
+            val request = "OPTIONS /api/status HTTP/1.1\r\n" +
+                    "Host: 127.0.0.1:$port\r\n" +
+                    "Origin: $originHeader\r\n" +
+                    "Connection: close\r\n\r\n"
+            socket.getOutputStream().write(request.toByteArray(Charsets.UTF_8))
+            socket.getOutputStream().flush()
+            val response = socket.getInputStream().bufferedReader().readText()
+            socket.close()
+            return response
+        }
+
+        // 1. Allowed private origin on preflight OPTIONS
+        val allowedResp = sendRawOptions("http://192.168.1.50:5173")
+        assertTrue("Response should start with 204 No Content", allowedResp.startsWith("HTTP/1.1 204"))
+        assertTrue("Should contain allowed origin", allowedResp.contains("Access-Control-Allow-Origin: http://192.168.1.50:5173"))
+        assertTrue("Should contain private network header", allowedResp.contains("Access-Control-Allow-Private-Network: true"))
+
+        // 2. Disallowed public/external origin on preflight OPTIONS returns 403
+        val rejectedResp = sendRawOptions("http://attacker.com")
+        assertTrue("Response should be 403 Forbidden", rejectedResp.startsWith("HTTP/1.1 403 Forbidden"))
+        assertFalse("Should not contain allow origin header", rejectedResp.contains("Access-Control-Allow-Origin"))
+
+        // 3. Prefix spoofing attempt (192.168.attacker.com) returns 403
+        val spoofResp = sendRawOptions("http://192.168.attacker.com")
+        assertTrue("Spoof response should be 403 Forbidden", spoofResp.startsWith("HTTP/1.1 403 Forbidden"))
+        assertFalse("Should not contain allow origin header", spoofResp.contains("Access-Control-Allow-Origin"))
+    }
+
+    @Test
+    fun testDisconnect_rotatesPinAndAllowsReauth() = runBlocking {
+        server.start(testPort)
+        delay(150)
+        val port = server.status.value.port
+        val initialPin = server.status.value.pin
+
+        // Auth with initial PIN
+        val authConn = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            outputStream.use { it.write("""{"pin":"$initialPin"}""".toByteArray()) }
+        }
+        assertEquals(200, authConn.responseCode)
+        val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+        authConn.disconnect()
+
+        // Disconnect with token
+        val disconn = (URL("http://127.0.0.1:$port/api/disconnect").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+        assertEquals(200, disconn.responseCode)
+        disconn.disconnect()
+
+        // Verify old token is rejected
+        val oldTokenConn = (URL("http://127.0.0.1:$port/api/status?token=$token").openConnection() as HttpURLConnection)
+        assertEquals(401, oldTokenConn.responseCode)
+        oldTokenConn.disconnect()
+
+        // Verify PIN rotated
+        val newPin = server.status.value.pin
+        assertNotEquals("PIN should have rotated", initialPin, newPin)
+        assertEquals(6, newPin.length)
+
+        // Verify re-auth with new PIN succeeds
+        val reauthConn = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            outputStream.use { it.write("""{"pin":"$newPin"}""".toByteArray()) }
+        }
+        assertEquals(200, reauthConn.responseCode)
+        val newToken = JSONObject(reauthConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+        assertNotEquals("Token should be different", token, newToken)
+        reauthConn.disconnect()
+    }
+    @Test
+    fun testBookmarksEndpoint_gzipCompressionSupported() = runBlocking {
+        // Seed multiple bookmarks to exceed 512 bytes payload
+        for (i in 1..10) {
+            val site = Website(
+                id = 0,
+                title = "Bookmark $i for GZIP Compression Testing",
+                url = "https://example.com/long-path-segment-testing/item/$i",
+                category = "Development",
+                dedupeKey = "example.com/long-path-segment-testing/item/$i",
+                createdAtMs = System.currentTimeMillis() + i
+            )
+            dao.insertWebsite(site)
+        }
+
+        server.start(testPort)
+        delay(150)
+        val port = server.status.value.port
+        val pin = server.status.value.pin
+
+        // Auth to get token
+        val authConn = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            outputStream.use { it.write("""{"pin":"$pin"}""".toByteArray()) }
+        }
+        val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+        authConn.disconnect()
+
+        // 1. Request with Accept-Encoding: gzip
+        val gzipConn = (URL("http://127.0.0.1:$port/api/bookmarks").openConnection() as HttpURLConnection).apply {
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Accept-Encoding", "gzip")
+        }
+        assertEquals(200, gzipConn.responseCode)
+        assertEquals("gzip", gzipConn.getHeaderField("Content-Encoding"))
+        val gzipBody = GZIPInputStream(gzipConn.inputStream).bufferedReader().use { it.readText() }
+        val gzipArray = JSONArray(gzipBody)
+        assertTrue(gzipArray.length() >= 10)
+        gzipConn.disconnect()
+
+        // 2. Request without Accept-Encoding: gzip (standard client)
+        val plainConn = (URL("http://127.0.0.1:$port/api/bookmarks").openConnection() as HttpURLConnection).apply {
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+        assertEquals(200, plainConn.responseCode)
+        assertFalse(plainConn.headerFields.containsKey("Content-Encoding"))
+        val plainBody = plainConn.inputStream.bufferedReader().use { it.readText() }
+        val plainArray = JSONArray(plainBody)
+        assertEquals(gzipArray.length(), plainArray.length())
+        plainConn.disconnect()
     }
 }

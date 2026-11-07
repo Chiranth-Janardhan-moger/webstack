@@ -75,13 +75,14 @@ object BackupManager {
                     val category = siteObj.optString("category", "Personal").ifBlank { "Personal" }
                     val createdAt = siteObj.optLong("createdAt", System.currentTimeMillis())
 
+                    val dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: continue
                     websitesList.add(
                         Website(
                             id = 0,
                             url = url,
                             title = title,
                             category = category,
-                            dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey(url) ?: url,
+                            dedupeKey = dedupeKey,
                             createdAtMs = createdAt
                         )
                     )
@@ -125,12 +126,19 @@ object BackupManager {
                 val line = rawLine.trim()
                 if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue
 
-                val urlCandidate = extractUrlFromLine(line) ?: continue
+                val markdownMatch = Regex("""\[([^\]]+)\]\((https?://[^\s)]+)\)""").find(line)
+                val (title, urlCandidate) = if (markdownMatch != null) {
+                    val rawTitle = markdownMatch.groupValues[1].replace(Regex("""\s+"""), " ").trim().take(300)
+                    val rawUrl = markdownMatch.groupValues[2].trim()
+                    Pair(if (rawTitle.isNotBlank()) rawTitle else com.example.ui.util.extractDomain(rawUrl), rawUrl)
+                } else {
+                    val u = extractUrlFromLine(line) ?: continue
+                    val domain = com.example.ui.util.extractDomain(u)
+                    Pair(if (domain.isNotBlank()) domain else u, u)
+                }
+
                 val dedupe = com.example.bookmarks.BookmarkNormalizer.dedupeKey(urlCandidate) ?: continue
                 if (!seenDedupeKeys.add(dedupe)) continue
-
-                val domain = com.example.ui.util.extractDomain(urlCandidate)
-                val title = if (domain.isNotBlank()) domain else urlCandidate
 
                 websites.add(
                     Website(

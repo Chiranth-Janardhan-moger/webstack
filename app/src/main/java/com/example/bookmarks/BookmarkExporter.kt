@@ -48,8 +48,12 @@ object BookmarkExporter {
     }
 
     private fun Writer.writeLink(s: Website, nowS: Long, indent: String) {
+        val url = s.url.trim()
+        if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
+            return
+        }
         val addS = if (s.createdAtMs > 0) s.createdAtMs / 1000 else nowS
-        val title = s.title.ifBlank { s.url }.escapeHtml()
-        write("$indent<DT><A HREF=\"${s.url.escapeHtml()}\" ADD_DATE=\"$addS\">$title</A>\n")
+        val title = s.title.ifBlank { url }.escapeHtml()
+        write("$indent<DT><A HREF=\"${url.escapeHtml()}\" ADD_DATE=\"$addS\">$title</A>\n")
     }
 }

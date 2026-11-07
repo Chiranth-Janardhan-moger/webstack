@@ -540,11 +540,32 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private val _activeRefreshingIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+
     fun refreshScreenshot(id: Long) {
         try {
             java.io.File(getApplication<Application>().filesDir, "screenshot_${id}.jpg").delete()
         } catch (_: Exception) {}
         _cachedScreenshotIds.value = _cachedScreenshotIds.value - id
+    }
+
+    fun refreshWebsite(website: Website) {
+        refreshScreenshot(website.id)
+        if (com.example.ui.util.isPlaceholderTitle(website.title, website.domain, website.url)) {
+            if (!_activeRefreshingIds.add(website.id)) return
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    repository.fetchTitleAsync(
+                        id = website.id,
+                        url = website.url,
+                        domain = website.domain,
+                        fallbackToDomainOnFailure = false
+                    )
+                } finally {
+                    _activeRefreshingIds.remove(website.id)
+                }
+            }
+        }
     }
 
     fun updateWebsite(website: Website, onResult: ((Boolean, String?) -> Unit)? = null) {

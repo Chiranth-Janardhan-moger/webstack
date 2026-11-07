@@ -102,6 +102,49 @@ export function renderCategories(
   });
 }
 
+function safeOpenUrl(url: string | undefined): void {
+  if (!url) return;
+  try {
+    const parsed = new URL(url, window.location.href);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      window.open(parsed.href, '_blank', 'noopener,noreferrer');
+    }
+  } catch {}
+}
+
+function ensureBookmarksGridListener(grid: HTMLElement): void {
+  if (grid.dataset.listenerAttached === 'true') return;
+  grid.dataset.listenerAttached = 'true';
+
+  grid.addEventListener('click', (event: MouseEvent) => {
+    const target = event.target as Element | null;
+    if (!target) return;
+
+    // 1. Handle Copy Link Button
+    const copyBtn = target.closest('button[data-action="copy"]') as HTMLElement | null;
+    if (copyBtn) {
+      if (copyBtn.dataset.url) {
+        copyToClipboard(copyBtn.dataset.url);
+        showToast('Copied link!');
+      }
+      return;
+    }
+
+    // 2. Handle Open in New Tab Button
+    const openBtn = target.closest('button[data-action="open"]') as HTMLElement | null;
+    if (openBtn) {
+      safeOpenUrl(openBtn.dataset.url);
+      return;
+    }
+
+    // 3. Handle Card Click
+    const card = target.closest('.bookmark-card') as HTMLElement | null;
+    if (card) {
+      safeOpenUrl(card.dataset.url);
+    }
+  });
+}
+
 export function renderBookmarks(
   bookmarks: Bookmark[],
   activeCategory: string,
@@ -110,6 +153,8 @@ export function renderBookmarks(
 ): void {
   const bookmarksGrid = document.getElementById('bookmarksGrid');
   if (!bookmarksGrid) return;
+
+  ensureBookmarksGridListener(bookmarksGrid);
 
   const query = searchQuery.toLowerCase().trim();
   const filtered = bookmarks.filter((b) => {
@@ -159,10 +204,11 @@ export function renderBookmarks(
     .map((b) => {
       const displayDomain = b.domain || b.url.replace(/^https?:\/\//, '').split('/')[0];
       const initial = (displayDomain || 'W').charAt(0).toUpperCase();
-      const faviconUrl = `https://www.google.com/s2/favicons?domain=${displayDomain}&sz=64`;
+      const safeDomain = encodeURIComponent(displayDomain);
+      const faviconUrl = escapeHtml(`https://www.google.com/s2/favicons?domain=${safeDomain}&sz=64`);
 
       return `
-        <div class="bookmark-card ${b.isPendingSync ? 'card-pending-sync' : ''}" onclick="window.open('${escapeJs(b.url)}', '_blank')">
+        <div class="bookmark-card ${b.isPendingSync ? 'card-pending-sync' : ''}" data-url="${escapeHtml(b.url)}">
           <div class="card-top">
             <div class="card-icon-wrapper">
               <img src="${faviconUrl}" class="card-favicon" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -180,13 +226,13 @@ export function renderBookmarks(
               ${b.isPendingSync ? '<span class="tag-pending-sync" title="Saved locally, will sync when phone connects">Pending Sync</span>' : ''}
             </div>
             <div class="card-actions">
-              <button class="action-btn" onclick="event.stopPropagation(); window.webstackCopyLink('${escapeJs(b.url)}');" title="Copy link">
+              <button class="action-btn" data-action="copy" data-url="${escapeHtml(b.url)}" title="Copy link">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                 </svg>
               </button>
-              <button class="action-btn" onclick="event.stopPropagation(); window.open('${escapeJs(b.url)}', '_blank')" title="Open in new tab">
+              <button class="action-btn" data-action="open" data-url="${escapeHtml(b.url)}" title="Open in new tab">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                   <polyline points="15 3 21 3 21 9"></polyline>

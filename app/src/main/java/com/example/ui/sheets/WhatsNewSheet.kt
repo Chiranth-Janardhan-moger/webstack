@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OfflineBolt
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -85,7 +86,7 @@ fun WhatsNewBottomSheetContent(
                     border = BorderStroke(0.5.dp, appColors.separator)
                 ) {
                     Text(
-                        text = "v2.0.0",
+                        text = "v2.0.1",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = appColors.secondaryLabel,
@@ -107,14 +108,45 @@ fun WhatsNewBottomSheetContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         // ==========================================
-        // VERSION 2.0.0 (FLAGSHIP)
+        // VERSION 2.0.1 (FLAGSHIP)
+        // ==========================================
+        VersionSectionHeader(version = "v2.0.1")
+        Spacer(modifier = Modifier.height(10.dp))
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = appColors.surface,
+            border = BorderStroke(1.dp, if (appColors.isDark) Color.White else Color.Black),
+            shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                WhatsNewRichRow(
+                    icon = Icons.Outlined.Refresh,
+                    title = "Title & Snapshot Refresh",
+                    description = "Refreshing a bookmark re-fetches its live webpage title and preview snapshot, with full Markdown link support."
+                )
+                WhatsNewRichRow(
+                    icon = Icons.Outlined.Lock,
+                    title = "Added Security",
+                    description = "Continuous SSRF and internal network protection across multi-hop redirects."
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        // ==========================================
+        // VERSION 2.0.0
         // ==========================================
         VersionSectionHeader(version = "v2.0.0")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = appColors.surface,
-            border = BorderStroke(1.dp, if (appColors.isDark) Color.White else Color.Black),
+            border = BorderStroke(0.5.dp, appColors.separator),
             shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
