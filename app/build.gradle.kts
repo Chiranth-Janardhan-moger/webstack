@@ -29,9 +29,9 @@ android {
       val keystoreFile = if (customKeystore != null) file(customKeystore) else file("${rootDir}/release.keystore")
       if (keystoreFile.exists()) {
         storeFile = keystoreFile
-        storePassword = System.getenv("STORE_PASSWORD") ?: "webstack123"
-        keyAlias = System.getenv("KEY_ALIAS") ?: "webstack"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: "webstack123"
+        storePassword = System.getenv("STORE_PASSWORD").takeUnless { it.isNullOrBlank() } ?: "webstack123"
+        keyAlias = System.getenv("KEY_ALIAS").takeUnless { it.isNullOrBlank() } ?: "webstack"
+        keyPassword = System.getenv("KEY_PASSWORD").takeUnless { it.isNullOrBlank() } ?: "webstack123"
       }
       enableV1Signing = true
       enableV2Signing = true

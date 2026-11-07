@@ -57,9 +57,9 @@ jobs:
           ./gradlew assembleRelease --no-configuration-cache
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'webstack123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'webstack' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'webstack123' }}
 
       - name: Prepare Release Artifacts
         run: |
