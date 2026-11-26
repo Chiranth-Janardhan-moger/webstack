@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.DashboardCustomize
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.components.AppExplainerDialog
 import com.example.ui.components.AppSubSheetHeader
+import com.example.ui.components.AppSwitch
 import com.example.ui.model.AppFabShape
 import com.example.ui.model.AppThemeMode
 import com.example.ui.model.FavoriteBadgeShape
@@ -102,6 +104,8 @@ fun CustomizationSubSheetContent(
     favoriteIconType: FavoriteIconType = FavoriteIconType.HEART,
     favoriteBadgeShape: FavoriteBadgeShape = FavoriteBadgeShape.PURE_FLOAT,
     favoriteColorPreset: FavoriteColorPreset = FavoriteColorPreset.CRIMSON_PINK,
+    appLockEnabled: Boolean = false,
+    onToggleAppLock: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -117,9 +121,9 @@ fun CustomizationSubSheetContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Sub-sheet Header: Back button on start, centered "Customization" title, and close button on end
+        // Sub-sheet Header: Back button on start, centered "General" title, and close button on end
         AppSubSheetHeader(
-            title = "Customization",
+            title = "General",
             onBack = onBack,
             onDismiss = onDismiss
         )
@@ -524,6 +528,76 @@ fun CustomizationSubSheetContent(
                             contentDescription = "Customize tags",
                             tint = appColors.tertiaryLabel,
                             modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 6. App Lock
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onToggleAppLock(!appLockEnabled)
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                activeExplainer = CustomizationExplainer(
+                                    title = "App Lock",
+                                    description = "Require fingerprint, face, or device lock when opening WebStack.",
+                                    icon = Icons.Outlined.Lock
+                                )
+                            }
+                        )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                color = if (appLockEnabled) appColors.label else if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Lock,
+                                        contentDescription = null,
+                                        tint = if (appLockEnabled) appColors.systemBackground else appColors.label,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "App Lock",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = appColors.label
+                            )
+                        }
+
+                        AppSwitch(
+                            checked = appLockEnabled,
+                            onCheckedChange = onToggleAppLock
                         )
                     }
                 }

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Visibility
@@ -51,6 +52,7 @@ fun TagOptionsBottomSheetContent(
     tagName: String,
     bookmarkCount: Int = 0,
     isParked: Boolean = false,
+    isLocked: Boolean = false,
     onEdit: () -> Unit,
     onToggleHide: () -> Unit,
     onSelectAll: () -> Unit,
@@ -151,8 +153,16 @@ fun TagOptionsBottomSheetContent(
                     testTag = "action_edit_tag"
                 )
                 ActionTile(
-                    label = if (isParked) "Show on Home" else "Hide from Home",
-                    icon = if (isParked) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                    label = when {
+                        isLocked -> "Unlock Tag"
+                        isParked -> "Show on Home"
+                        else -> "Hide from Home"
+                    },
+                    icon = when {
+                        isLocked -> Icons.Outlined.LockOpen
+                        isParked -> Icons.Outlined.Visibility
+                        else -> Icons.Outlined.VisibilityOff
+                    },
                     onClick = {
                         if (isDefault) {
                             Toast.makeText(context, "Personal is the default category and cannot be hidden", Toast.LENGTH_SHORT).show()

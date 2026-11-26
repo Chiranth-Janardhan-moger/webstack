@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OfflineBolt
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -86,7 +87,7 @@ fun WhatsNewBottomSheetContent(
                     border = BorderStroke(0.5.dp, appColors.separator)
                 ) {
                     Text(
-                        text = "v2.0.1",
+                        text = "v2.1.0",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = appColors.secondaryLabel,
@@ -108,14 +109,45 @@ fun WhatsNewBottomSheetContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         // ==========================================
-        // VERSION 2.0.1 (FLAGSHIP)
+        // VERSION 2.1.0 (FLAGSHIP)
+        // ==========================================
+        VersionSectionHeader(version = "v2.1.0")
+        Spacer(modifier = Modifier.height(10.dp))
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = appColors.surface,
+            border = BorderStroke(1.dp, if (appColors.isDark) Color.White else Color.Black),
+            shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                WhatsNewRichRow(
+                    icon = Icons.Outlined.Sync,
+                    title = "Auto Backup to Folder",
+                    description = "Pick any local or cloud-synced folder once to automatically save your stack to webstack_autobackup.webstack whenever bookmarks or tags change."
+                )
+                WhatsNewRichRow(
+                    icon = Icons.Outlined.Lock,
+                    title = "App Lock & Locked Tags",
+                    description = "Require fingerprint or device lock when opening WebStack, or protect private tags so they stay hidden from All, Favorites, Search, and PC Companion."
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        // ==========================================
+        // VERSION 2.0.1
         // ==========================================
         VersionSectionHeader(version = "v2.0.1")
         Spacer(modifier = Modifier.height(10.dp))
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = appColors.surface,
-            border = BorderStroke(1.dp, if (appColors.isDark) Color.White else Color.Black),
+            border = BorderStroke(0.5.dp, appColors.separator),
             shadowElevation = if (appColors.isDark) 0.dp else 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {

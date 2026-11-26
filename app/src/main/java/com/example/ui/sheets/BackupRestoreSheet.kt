@@ -1,5 +1,6 @@
 package com.example.ui.sheets
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,10 +39,13 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.ui.components.AppExplainerDialog
 import com.example.ui.components.AppSubSheetHeader
+import com.example.ui.components.AppSwitch
 import com.example.ui.components.BackupFormatsExplainerDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,9 +65,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.AppRed
 import com.example.ui.theme.LocalAppColors
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class ExportFormat {
     WEBSTACK,
@@ -81,6 +90,14 @@ fun BackupRestoreSubSheetContent(
     onExportHtml: () -> Unit = {},
     onExportTxt: () -> Unit = {},
     onRestore: () -> Unit,
+    autoBackupEnabled: Boolean = false,
+    autoBackupFolderName: String = "",
+    autoBackupLastTimestamp: Long = 0L,
+    autoBackupError: String? = null,
+    isAutoBackingUp: Boolean = false,
+    onToggleAutoBackup: (Boolean) -> Unit = {},
+    onSelectAutoBackupFolder: () -> Unit = {},
+    onTriggerAutoBackupNow: () -> Unit = {},
     onBack: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -88,6 +105,7 @@ fun BackupRestoreSubSheetContent(
     val appColors = LocalAppColors.current
     var selectedFormat by remember { mutableStateOf(ExportFormat.WEBSTACK) }
     var showFormatsExplainer by remember { mutableStateOf(false) }
+    var showAutoBackupExplainer by remember { mutableStateOf(false) }
     var showImportExplainer by remember { mutableStateOf(false) }
 
     Column(
@@ -404,7 +422,213 @@ fun BackupRestoreSubSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section 2: Restore
+        // Section 2: Auto Backup
+        Text(
+            text = "AUTO BACKUP",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.secondaryLabel,
+            letterSpacing = 1.4.sp
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = appColors.surface,
+            border = BorderStroke(0.75.dp, appColors.separator),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onToggleAutoBackup(!autoBackupEnabled)
+                            },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showAutoBackupExplainer = true
+                            }
+                        )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            color = if (autoBackupEnabled) {
+                                appColors.label
+                            } else if (appColors.isDark) {
+                                Color(0xFF2C2C2E)
+                            } else {
+                                Color(0xFFE5E5EA)
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Sync,
+                                    contentDescription = null,
+                                    tint = if (autoBackupEnabled) appColors.systemBackground else appColors.label,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Auto Backup",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = appColors.label
+                        )
+                    }
+
+                    AppSwitch(
+                        checked = autoBackupEnabled,
+                        onCheckedChange = onToggleAutoBackup
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = autoBackupEnabled || autoBackupFolderName.isNotBlank() || !autoBackupError.isNullOrBlank()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        androidx.compose.material3.HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = appColors.separator
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSelectAutoBackupFolder()
+                                    },
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        showAutoBackupExplainer = true
+                                    }
+                                )
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Folder",
+                                fontSize = 13.sp,
+                                color = appColors.secondaryLabel
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.FolderOpen,
+                                    contentDescription = null,
+                                    tint = appColors.secondaryLabel,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = autoBackupFolderName.ifBlank { "Choose folder" },
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = appColors.label,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (isAutoBackingUp || autoBackupLastTimestamp > 0L) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Last saved",
+                                    fontSize = 13.sp,
+                                    color = appColors.secondaryLabel
+                                )
+                                Text(
+                                    text = if (isAutoBackingUp) {
+                                        "Backing up..."
+                                    } else {
+                                        formatAutoBackupTimestamp(autoBackupLastTimestamp)
+                                    },
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = appColors.secondaryLabel
+                                )
+                            }
+                        }
+
+                        if (!autoBackupError.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = autoBackupError,
+                                fontSize = 12.sp,
+                                color = AppRed
+                            )
+                        }
+
+                        if (autoBackupEnabled && autoBackupFolderName.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Surface(
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onTriggerAutoBackupNow()
+                                },
+                                enabled = !isAutoBackingUp,
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (appColors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA),
+                                border = BorderStroke(0.75.dp, appColors.separator),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(42.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(
+                                        text = if (isAutoBackingUp) "Backing Up..." else "Back Up Now",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.5.sp,
+                                        color = appColors.label
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section 3: Restore
         Text(
             text = "RESTORE BOOKMARKS",
             fontSize = 11.sp,
@@ -560,6 +784,15 @@ fun BackupRestoreSubSheetContent(
         BackupFormatsExplainerDialog(onDismiss = { showFormatsExplainer = false })
     }
 
+    if (showAutoBackupExplainer) {
+        AppExplainerDialog(
+            title = "Auto Backup",
+            description = "Automatically saves your bookmarks and tags to webstack_autobackup.webstack in your chosen folder whenever changes occur.",
+            icon = Icons.Outlined.Sync,
+            onDismiss = { showAutoBackupExplainer = false }
+        )
+    }
+
     if (showImportExplainer) {
         AppExplainerDialog(
             title = "Import Backup",
@@ -567,5 +800,17 @@ fun BackupRestoreSubSheetContent(
             icon = Icons.Outlined.Restore,
             onDismiss = { showImportExplainer = false }
         )
+    }
+}
+
+private fun formatAutoBackupTimestamp(timestampMs: Long): String {
+    if (timestampMs <= 0L) return "Never"
+    val diffMs = (System.currentTimeMillis() - timestampMs).coerceAtLeast(0L)
+    val diffMins = diffMs / 60_000L
+    return when {
+        diffMins < 1L -> "Just now"
+        diffMins < 60L -> "${diffMins}m ago"
+        diffMins < 1440L -> "${diffMins / 60L}h ago"
+        else -> SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(timestampMs))
     }
 }

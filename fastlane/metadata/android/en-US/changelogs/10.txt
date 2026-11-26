@@ -1,0 +1,2 @@
+- Auto Backup to Folder: Choose a persistent folder once to automatically save your stack to webstack_autobackup.webstack on changes
+- App Lock & Locked Tags: Require fingerprint or device lock when opening WebStack, or lock sensitive tags so they stay hidden from All, Favorites, Search, and PC Companion

@@ -72,4 +72,96 @@ class AppCategoryCapsuleBarTest {
         composeTestRule.onNodeWithTag("category_item_favorites").performClick()
         assertEquals("Favorites", selectedCat)
     }
+
+    @Test
+    fun testAppCategoryCapsuleBar_displaysLockedAndUnlockedCapsulesAndCountsInAll() {
+        var clickedCategory: String? = null
+        val mixedWebsites = sampleWebsites + Website(
+            id = 3L,
+            url = "https://vault.example.com",
+            title = "Vault Link",
+            category = "Secret",
+            dedupeKey = "vault.example.com"
+        )
+
+        composeTestRule.setContent {
+            MyApplicationTheme {
+                AppCategoryCapsuleBar(
+                    allWebsites = mixedWebsites,
+                    categories = listOf("Tech", "Tools"),
+                    selectedCategory = "All",
+                    favoriteCount = 0,
+                    onSelectCategory = { clickedCategory = it },
+                    onTagLongPress = {},
+                    onAddNewTag = {},
+                    lockedCategories = listOf("Secret"),
+                    unlockedCategories = emptySet()
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("All").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Locked Secret", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Count 3", useUnmergedTree = true).assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Secret").performClick()
+        assertEquals("Secret", clickedCategory)
+    }
+
+    @Test
+    fun testAppCategoryCapsuleBar_unlockedCategoryShowsLockOpenIcon() {
+        val mixedWebsites = sampleWebsites + Website(
+            id = 3L,
+            url = "https://vault.example.com",
+            title = "Vault Link",
+            category = "Secret",
+            dedupeKey = "vault.example.com"
+        )
+
+        composeTestRule.setContent {
+            MyApplicationTheme {
+                AppCategoryCapsuleBar(
+                    allWebsites = mixedWebsites,
+                    categories = listOf("Tech", "Tools"),
+                    selectedCategory = "Secret",
+                    favoriteCount = 0,
+                    onSelectCategory = {},
+                    onTagLongPress = {},
+                    onAddNewTag = {},
+                    lockedCategories = listOf("Secret"),
+                    unlockedCategories = setOf("secret")
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Unlocked Secret", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun testAppCategoryCapsuleBar_excludesParkedCategoriesFromAllCount() {
+        val mixedWebsites = sampleWebsites + listOf(
+            Website(id = 3L, url = "https://vault.example.com", title = "Vault Link", category = "Secret", dedupeKey = "vault.example.com"),
+            Website(id = 4L, url = "https://hidden.example.com", title = "Hidden Link", category = "Archived", dedupeKey = "hidden.example.com")
+        )
+
+        composeTestRule.setContent {
+            MyApplicationTheme {
+                AppCategoryCapsuleBar(
+                    allWebsites = mixedWebsites,
+                    categories = listOf("Tech", "Tools"),
+                    selectedCategory = "All",
+                    favoriteCount = 0,
+                    onSelectCategory = {},
+                    onTagLongPress = {},
+                    onAddNewTag = {},
+                    lockedCategories = listOf("Secret"),
+                    parkedCategories = listOf("Archived")
+                )
+            }
+        }
+
+        // Tech (1) + Tools (1) + Locked Secret (1) = 3; Archived (1) is excluded from All count
+        composeTestRule.onNodeWithContentDescription("Count 3", useUnmergedTree = true).assertIsDisplayed()
+    }
 }

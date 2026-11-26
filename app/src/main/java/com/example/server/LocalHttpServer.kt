@@ -41,7 +41,8 @@ class LocalHttpServer(
     private val context: Context,
     private val repository: WebsiteRepository,
     private val getCategories: () -> List<String>,
-    private val getOfflineExpiryHours: () -> Int = { 24 }
+    private val getOfflineExpiryHours: () -> Int = { 24 },
+    private val getLockedCategories: () -> List<String> = { emptyList() }
 ) {
     private var serverSocket: ServerSocket? = null
     private var udpSocket: DatagramSocket? = null
@@ -355,12 +356,18 @@ class LocalHttpServer(
                             sendJsonResponse(output, 401, """{"error":"Unauthorized: Invalid or expired session token","status":"online","authenticated":false}""", origin)
                             return
                         }
+                        val lockedSet = getLockedCategories().map { it.lowercase() }.toSet()
                         val json = JSONObject().apply {
                             put("status", "online")
                             put("authenticated", isAuth)
                             if (isAuth) {
                                 put("device", Build.MODEL ?: "Android Device")
-                                put("bookmarksCount", repository.getCount())
+                                val visibleCount = if (lockedSet.isEmpty()) {
+                                    repository.getCount()
+                                } else {
+                                    repository.getAllWebsitesList().count { !lockedSet.contains(it.category.lowercase()) }
+                                }
+                                put("bookmarksCount", visibleCount)
                             } else {
                                 put("device", "WebStack Device")
                                 put("bookmarksCount", 0)
@@ -402,7 +409,8 @@ class LocalHttpServer(
                             return
                         }
                         recordClientActivity(remoteIp)
-                        val categories = getCategories()
+                        val lockedSet = getLockedCategories().map { it.lowercase() }.toSet()
+                        val categories = getCategories().filterNot { lockedSet.contains(it.lowercase()) }
                         val jsonArray = JSONArray(categories)
                         val acceptGzip = headers["accept-encoding"]?.contains("gzip", ignoreCase = true) == true
                         sendJsonResponse(output, 200, jsonArray.toString(), origin, acceptGzip = acceptGzip)
@@ -413,7 +421,9 @@ class LocalHttpServer(
                             return
                         }
                         recordClientActivity(remoteIp)
+                        val lockedSet = getLockedCategories().map { it.lowercase() }.toSet()
                         val bookmarks = repository.getAllWebsitesList()
+                            .filterNot { lockedSet.contains(it.category.lowercase()) }
                         val array = JSONArray()
                         bookmarks.forEach { b ->
                             val obj = JSONObject().apply {
@@ -498,6 +508,13 @@ class LocalHttpServer(
 
             if (rawUrl.isBlank()) {
                 sendJsonResponse(output, 400, """{"error":"URL cannot be empty"}""", origin)
+                return
+            }
+
+            val lockedSet = getLockedCategories().map { it.lowercase() }.toSet()
+            val duplicate = repository.findDuplicate(rawUrl)
+            if (duplicate != null && lockedSet.contains(duplicate.category.lowercase())) {
+                sendJsonResponse(output, 422, """{"error":"Link already exists in your stack"}""", origin)
                 return
             }
 

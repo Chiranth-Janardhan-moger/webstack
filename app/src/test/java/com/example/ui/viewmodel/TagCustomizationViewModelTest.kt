@@ -212,5 +212,109 @@ class TagCustomizationViewModelTest {
         assertFalse(vm.fallbackCategory.value.equals("Work", ignoreCase = true))
         assertTrue(vm.categories.value.contains(vm.fallbackCategory.value))
     }
+
+    @Test
+    fun testLockCategory_movesFromActiveAndPersists_unlockRestoresToActive() {
+        val vm = WebsiteViewModel(app)
+        assertTrue(vm.categories.value.contains("Work"))
+
+        val locked = vm.lockCategory("Work")
+        assertTrue(locked)
+        assertFalse(vm.categories.value.contains("Work"))
+        assertTrue(vm.lockedCategories.value.contains("Work"))
+
+        // Verify persistence across new ViewModel instance
+        val newVm = WebsiteViewModel(app)
+        assertFalse(newVm.categories.value.contains("Work"))
+        assertTrue(newVm.lockedCategories.value.contains("Work"))
+
+        newVm.unlockCategoryPermanently("Work")
+        assertFalse(newVm.lockedCategories.value.contains("Work"))
+        assertTrue(newVm.categories.value.contains("Work"))
+    }
+
+    @Test
+    fun testLockCategory_guardsPersonalAndMovesFallbackIfLocked() {
+        val vm = WebsiteViewModel(app)
+        assertFalse("Personal must not be lockable", vm.lockCategory("Personal"))
+        assertFalse(vm.isCategoryLocked("Personal"))
+
+        vm.setFallbackCategory("Tools")
+        assertTrue(vm.lockCategory("Tools"))
+        assertFalse(vm.fallbackCategory.value.equals("Tools", ignoreCase = true))
+        assertTrue(vm.categories.value.contains(vm.fallbackCategory.value))
+    }
+
+    @Test
+    fun testLockedSessionUnlock_andLockAllSessionCategories() {
+        val vm = WebsiteViewModel(app)
+        assertTrue(vm.lockCategory("Work"))
+        assertFalse(vm.isCategorySessionUnlocked("Work"))
+
+        vm.unlockCategoryForSession("Work")
+        assertTrue(vm.isCategorySessionUnlocked("Work"))
+        assertTrue(vm.unlockedCategories.value.contains("work"))
+
+        vm.lockAllSessionCategories()
+        assertFalse(vm.isCategorySessionUnlocked("Work"))
+        assertTrue(vm.unlockedCategories.value.isEmpty())
+    }
+
+    @Test
+    fun testSaveWebsite_duplicateInLockedTagMasksTitle() = kotlinx.coroutines.runBlocking {
+        val vm = WebsiteViewModel(app)
+        assertTrue(vm.lockCategory("Work"))
+
+        vm.websiteDao.insertWebsite(
+            com.example.data.Website(
+                url = "https://secret.internal.example/doc",
+                title = "Confidential Project Roadmap",
+                category = "Work",
+                dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey("https://secret.internal.example/doc")!!
+            )
+        )
+        var tries = 0
+        while (vm.websitesList.value.isNullOrEmpty() && tries++ < 40) {
+            kotlinx.coroutines.delay(25)
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        }
+
+        var succeeded = false
+        vm.saveWebsite("https://secret.internal.example/doc", category = "Personal") {
+            succeeded = true
+        }
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        assertFalse(succeeded)
+        val err = vm.saveError.value ?: ""
+        assertEquals("Link already saved in a locked tag", err)
+        assertFalse(err.contains("Confidential Project Roadmap"))
+    }
+
+    @Test
+    fun testAppLock_persistsAndRelocksCleanly() {
+        val vm = WebsiteViewModel(app)
+        assertFalse(vm.appLockEnabled.value)
+        assertTrue(vm.isAppUnlocked.value)
+
+        // Enabling keeps current session unlocked, persists preference, and locks on restart/background
+        vm.setAppLockEnabled(true)
+        assertTrue(vm.appLockEnabled.value)
+        assertTrue(vm.isAppUnlocked.value)
+
+        vm.lockApp()
+        assertFalse(vm.isAppUnlocked.value)
+
+        vm.unlockApp()
+        assertTrue(vm.isAppUnlocked.value)
+
+        // Fresh launch while enabled starts locked
+        val relaunchedVm = WebsiteViewModel(app)
+        assertTrue(relaunchedVm.appLockEnabled.value)
+        assertFalse(relaunchedVm.isAppUnlocked.value)
+
+        relaunchedVm.setAppLockEnabled(false)
+        assertFalse(relaunchedVm.appLockEnabled.value)
+        assertTrue(relaunchedVm.isAppUnlocked.value)
+    }
 }
 

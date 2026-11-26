@@ -626,4 +626,94 @@ class LocalHttpServerTest {
         assertEquals(gzipArray.length(), plainArray.length())
         plainConn.disconnect()
     }
+
+    @Test
+    fun testLockedCategories_excludedFromStatusCategoriesBookmarksAndDuplicateErrors() = runBlocking {
+        val isolatedServer = LocalHttpServer(
+            context = ApplicationProvider.getApplicationContext(),
+            repository = repository,
+            getCategories = { listOf("Personal", "Work", "Secret") },
+            getLockedCategories = { listOf("Secret") }
+        )
+        dao.insertWebsite(
+            Website(
+                id = 0,
+                url = "https://work.example.com",
+                title = "Public Work Doc",
+                category = "Work",
+                dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey("https://work.example.com")!!,
+                createdAtMs = 1710000000000L
+            )
+        )
+        dao.insertWebsite(
+            Website(
+                id = 0,
+                url = "https://secret.example.com",
+                title = "Top Secret Diary",
+                category = "Secret",
+                dedupeKey = com.example.bookmarks.BookmarkNormalizer.dedupeKey("https://secret.example.com")!!,
+                createdAtMs = 1710000001000L
+            )
+        )
+
+        isolatedServer.start(18910)
+        try {
+            delay(150)
+            val port = isolatedServer.status.value.port
+            val pin = isolatedServer.status.value.pin
+
+            val authConn = (URL("http://127.0.0.1:$port/api/auth").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.use { it.write("""{"pin":"$pin"}""".toByteArray()) }
+            }
+            val token = JSONObject(authConn.inputStream.bufferedReader().use { it.readText() }).getString("token")
+            authConn.disconnect()
+
+            val statusConn = (URL("http://127.0.0.1:$port/api/status").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(200, statusConn.responseCode)
+            val statusJson = JSONObject(statusConn.inputStream.bufferedReader().use { it.readText() })
+            assertEquals(1, statusJson.getInt("bookmarksCount"))
+            statusConn.disconnect()
+
+            val catsConn = (URL("http://127.0.0.1:$port/api/categories").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(200, catsConn.responseCode)
+            val catsJson = JSONArray(catsConn.inputStream.bufferedReader().use { it.readText() })
+            val catNames = (0 until catsJson.length()).map { catsJson.getString(it) }
+            assertEquals(listOf("Personal", "Work"), catNames)
+            assertFalse(catNames.contains("Secret"))
+            catsConn.disconnect()
+
+            val bookmarksConn = (URL("http://127.0.0.1:$port/api/bookmarks").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(200, bookmarksConn.responseCode)
+            val bookmarksJson = JSONArray(bookmarksConn.inputStream.bufferedReader().use { it.readText() })
+            assertEquals(1, bookmarksJson.length())
+            assertEquals("Public Work Doc", bookmarksJson.getJSONObject(0).getString("title"))
+            bookmarksConn.disconnect()
+
+            val dupConn = (URL("http://127.0.0.1:$port/api/bookmarks").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.use {
+                    it.write("""{"url":"https://secret.example.com","category":"Work"}""".toByteArray())
+                }
+            }
+            assertEquals(422, dupConn.responseCode)
+            val errorBody = dupConn.errorStream.bufferedReader().use { it.readText() }
+            assertFalse("Duplicate error must not reveal locked title", errorBody.contains("Top Secret Diary"))
+            assertTrue(errorBody.contains("Link already exists in your stack"))
+            dupConn.disconnect()
+        } finally {
+            isolatedServer.stop()
+        }
+    }
 }

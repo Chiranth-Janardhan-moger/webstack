@@ -240,4 +240,44 @@ class BackupManagerTest {
         assertFalse(com.example.ui.util.isPlaceholderTitle("torvalds/linux: Linux kernel source tree", domain, url))
         assertFalse(com.example.ui.util.isPlaceholderTitle("My Awesome Project", domain, url))
     }
+
+    @Test
+    fun testExportAndParseBackup_roundTripsLockedCategories() {
+        val websites = listOf(
+            Website(
+                id = 1,
+                url = "https://vault.example.com",
+                title = "Private Note",
+                category = "Vault",
+                dedupeKey = "vault.example.com",
+                createdAtMs = 1727610000000L
+            )
+        )
+        val categories = listOf("Personal", "Vault")
+        val lockedCategories = listOf("Vault")
+
+        val jsonString = BackupManager.exportToJson(websites, categories, lockedCategories)
+        val parsed = BackupManager.parseBackup(jsonString).getOrThrow()
+
+        assertEquals(listOf("Personal", "Vault"), parsed.categories)
+        assertEquals(listOf("Vault"), parsed.lockedCategories)
+        assertEquals(1, parsed.websites.size)
+        assertEquals("Vault", parsed.websites[0].category)
+    }
+
+    @Test
+    fun testParseBackup_withoutLockedCategories_defaultsToEmptyList() {
+        val legacyJson = """
+            {
+              "version": 1,
+              "appName": "WebStack",
+              "categories": ["Personal", "Work"],
+              "websites": []
+            }
+        """.trimIndent()
+
+        val parsed = BackupManager.parseBackup(legacyJson).getOrThrow()
+        assertEquals(listOf("Personal", "Work"), parsed.categories)
+        assertTrue(parsed.lockedCategories.isEmpty())
+    }
 }

@@ -5,10 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -65,6 +65,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,6 +74,12 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.ui.util.BiometricAuthHelper
+import com.example.ui.util.findFragmentActivity
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +107,7 @@ import com.example.ui.components.AppBottomSheet
 import com.example.ui.components.AppCategoryCapsuleBar
 import com.example.ui.components.AppEmptyState
 import com.example.ui.components.AppFloatingActionButton
+import com.example.ui.components.AppLockOverlay
 import com.example.ui.components.AppNavigationHeader
 import com.example.ui.dialogs.AddTagDialog
 import com.example.ui.dialogs.DeleteTagConfirmDialog
@@ -126,7 +134,7 @@ import com.example.ui.viewmodel.WebsiteViewModel
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val sharedUrlState = MutableStateFlow<String?>(null)
     private val sharedBackupUriState = MutableStateFlow<android.net.Uri?>(null)
     private val shortcutActionState = MutableStateFlow<String?>(null)
@@ -220,6 +228,11 @@ fun WebStackScreen(
     val websitesState by viewModel.websitesList.collectAsState()
     val categoriesState by viewModel.categories.collectAsState()
     val parkedCategoriesState by viewModel.parkedCategories.collectAsState()
+    val lockedCategoriesState by viewModel.lockedCategories.collectAsState()
+    val unlockedCategoriesState by viewModel.unlockedCategories.collectAsState()
+    val appLockEnabled by viewModel.appLockEnabled.collectAsState()
+    val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
+    val isAppLocked = appLockEnabled && !isAppUnlocked
     val isSaving by viewModel.isSaving.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
     val cachedScreenshotIds by viewModel.cachedScreenshotIds.collectAsState()
@@ -237,7 +250,26 @@ fun WebStackScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("webstack_prefs", Context.MODE_PRIVATE) }
     val lastSeenVersion = remember { prefs.getInt("last_seen_version_code", 0) }
-    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 9) }
+    var showVersion110Screen by remember { mutableStateOf(lastSeenVersion < 10) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentSelectedCategory by rememberUpdatedState(selectedCategory)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && !BiometricAuthHelper.isPromptInProgress) {
+                val hadLockedSelected = viewModel.isCategoryLocked(currentSelectedCategory)
+                viewModel.lockAllSessionCategories()
+                if (hadLockedSelected) {
+                    selectedCategory = "All"
+                }
+                viewModel.lockApp()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     var layoutMode by remember {
         mutableStateOf(
             runCatching { WebStackLayoutMode.valueOf(prefs.getString("layout_mode", "") ?: "") }
@@ -354,7 +386,7 @@ fun WebStackScreen(
         }
     }
 
-    if (pendingRestoreDialogUri != null) {
+    if (!isAppLocked && pendingRestoreDialogUri != null) {
         AlertDialog(
             onDismissRequest = {
                 pendingRestoreDialogUri = null
@@ -419,8 +451,20 @@ fun WebStackScreen(
         )
     }
 
-    val favoriteCount = remember(websitesState, favoriteIds) {
-        websitesState?.count { favoriteIds.contains(it.id) } ?: 0
+    val favoriteCount = remember(
+        websitesState,
+        favoriteIds,
+        parkedCategoriesState,
+        lockedCategoriesState,
+        unlockedCategoriesState
+    ) {
+        com.example.ui.util.WebsiteFilterUtils.countVisibleFavorites(
+            websites = websitesState ?: emptyList(),
+            favoriteIds = favoriteIds,
+            parkedCategories = parkedCategoriesState,
+            lockedCategories = lockedCategoriesState,
+            unlockedCategories = unlockedCategoriesState
+        )
     }
 
     LaunchedEffect(favoriteCount) {
@@ -429,33 +473,31 @@ fun WebStackScreen(
         }
     }
 
-    // Filter websites according to selected category, search query, and sort order
-    val filteredWebsites = remember(websitesState, selectedCategory, searchQuery, bookmarkSortOrder, favoriteIds) {
+    // Filter websites according to selected category, search query, sort order, and hidden/locked state
+    val filteredWebsites = remember(
+        websitesState,
+        selectedCategory,
+        searchQuery,
+        bookmarkSortOrder,
+        favoriteIds,
+        parkedCategoriesState,
+        lockedCategoriesState,
+        unlockedCategoriesState
+    ) {
         val current = websitesState ?: return@remember emptyList()
-        val sorted = when (bookmarkSortOrder) {
-            BookmarkSortOrder.NEWEST -> current
-            BookmarkSortOrder.OLDEST -> current.asReversed()
-        }
-        val categoryFiltered = when {
-            selectedCategory.equals("All", ignoreCase = true) -> sorted
-            selectedCategory.equals("Favorites", ignoreCase = true) -> sorted.filter { favoriteIds.contains(it.id) }
-            else -> sorted.filter {
-                it.category.equals(selectedCategory, ignoreCase = true)
-            }
-        }
-        if (searchQuery.isBlank()) {
-            categoryFiltered
-        } else {
-            val query = searchQuery.trim()
-            categoryFiltered.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                it.url.contains(query, ignoreCase = true) ||
-                it.domain.contains(query, ignoreCase = true) ||
-                it.category.contains(query, ignoreCase = true)
-            }
-        }
+        com.example.ui.util.WebsiteFilterUtils.filterHomeWebsites(
+            websites = current,
+            selectedCategory = selectedCategory,
+            searchQuery = searchQuery,
+            sortOrder = bookmarkSortOrder,
+            favoriteIds = favoriteIds,
+            parkedCategories = parkedCategoriesState,
+            lockedCategories = lockedCategoriesState,
+            unlockedCategories = unlockedCategoriesState
+        )
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = appColors.groupedBackground,
@@ -527,6 +569,28 @@ fun WebStackScreen(
                 )
 
                 // Category / Tag Capsule Selector Bar (Single tap filter, long press options)
+                fun authenticateAndUnlockTag(cat: String, subtitle: String, onUnlocked: () -> Unit) {
+                    BiometricAuthHelper.authenticateContext(
+                        context = context,
+                        title = "Unlock \"$cat\"",
+                        subtitle = subtitle,
+                        onSuccess = {
+                            viewModel.unlockCategoryForSession(cat)
+                            onUnlocked()
+                        },
+                        onUnavailable = {
+                            Toast.makeText(
+                                context,
+                                "Set up a device screen lock or fingerprint to unlock tags",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        },
+                        onError = { err ->
+                            Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+
                 AppCategoryCapsuleBar(
                     allWebsites = websitesState ?: emptyList(),
                     categories = categoriesState,
@@ -536,16 +600,39 @@ fun WebStackScreen(
                     favoriteColor = favoriteColorPreset.color,
                     onSelectCategory = { cat ->
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        selectedCategory = cat
+                        if (viewModel.isCategoryLocked(cat) &&
+                            unlockedCategoriesState.none { it.equals(cat, ignoreCase = true) }
+                        ) {
+                            authenticateAndUnlockTag(
+                                cat = cat,
+                                subtitle = "Verify your identity to view bookmarks in this tag",
+                                onUnlocked = { selectedCategory = cat }
+                            )
+                        } else {
+                            selectedCategory = cat
+                        }
                     },
                     onTagLongPress = { cat ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        categoryForOptions = cat
+                        if (viewModel.isCategoryLocked(cat) &&
+                            unlockedCategoriesState.none { it.equals(cat, ignoreCase = true) }
+                        ) {
+                            authenticateAndUnlockTag(
+                                cat = cat,
+                                subtitle = "Verify your identity to manage this locked tag",
+                                onUnlocked = { categoryForOptions = cat }
+                            )
+                        } else {
+                            categoryForOptions = cat
+                        }
                     },
                     onAddNewTag = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         showAddTagDialog = true
-                    }
+                    },
+                    lockedCategories = lockedCategoriesState,
+                    unlockedCategories = unlockedCategoriesState,
+                    parkedCategories = parkedCategoriesState
                 )
 
                 // Main Content Area (Cards or Inset Grouped Rows)
@@ -739,6 +826,7 @@ fun WebStackScreen(
             }
         }
 
+        if (!isAppLocked) {
         // Tag Options Sheet
         if (categoryForOptions != null) {
             val targetTag = categoryForOptions!!
@@ -746,12 +834,14 @@ fun WebStackScreen(
                 (websitesState ?: emptyList()).filter { it.category.equals(targetTag, ignoreCase = true) }
             }
             val isParked = parkedCategoriesState.any { it.equals(targetTag, ignoreCase = true) }
+            val isLocked = lockedCategoriesState.any { it.equals(targetTag, ignoreCase = true) }
 
             AppBottomSheet(onDismissRequest = { categoryForOptions = null }) {
                 TagOptionsBottomSheetContent(
                     tagName = targetTag,
                     bookmarkCount = tagWebsites.size,
                     isParked = isParked,
+                    isLocked = isLocked,
                     onEdit = {
                         categoryToEdit = targetTag
                         categoryForOptions = null
@@ -759,6 +849,11 @@ fun WebStackScreen(
                     onToggleHide = {
                         if (targetTag.equals("Personal", ignoreCase = true)) {
                             Toast.makeText(context, "Personal is the default category and cannot be hidden", Toast.LENGTH_SHORT).show()
+                        } else if (isLocked) {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.unlockCategoryPermanently(targetTag)
+                            Toast.makeText(context, "Removed lock from \"$targetTag\"", Toast.LENGTH_SHORT).show()
+                            categoryForOptions = null
                         } else if (isParked) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             viewModel.unparkCategory(targetTag)
@@ -974,7 +1069,9 @@ fun WebStackScreen(
             ) {
                 AddWebsiteSheetContent(
                     initialUrl = initialAddUrl,
-                    categories = categoriesState,
+                    categories = remember(categoriesState, lockedCategoriesState) {
+                        (categoriesState + lockedCategoriesState).distinctBy { it.lowercase() }
+                    },
                     isSaving = isSaving,
                     saveError = saveError,
                     onAddNewTag = {
@@ -1068,7 +1165,9 @@ fun WebStackScreen(
             AppBottomSheet(onDismissRequest = { websiteToEdit = null }) {
                 EditWebsiteSheetContent(
                     website = targetWebsite,
-                    categories = categoriesState,
+                    categories = remember(categoriesState, lockedCategoriesState) {
+                        (categoriesState + lockedCategoriesState).distinctBy { it.lowercase() }
+                    },
                     isFavorite = favoriteIds.contains(targetWebsite.id),
                     onToggleFavorite = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -1152,7 +1251,9 @@ fun WebStackScreen(
             AppBottomSheet(onDismissRequest = { showBulkMoveSheet = false }) {
                 MoveToCategoryBottomSheetContent(
                     selectedCount = selectedWebsiteIds.size,
-                    categories = categoriesState,
+                    categories = remember(categoriesState, lockedCategoriesState) {
+                        (categoriesState + lockedCategoriesState).distinctBy { it.lowercase() }
+                    },
                     allWebsites = websitesState,
                     onSelectCategory = { targetCategory ->
                         val toMove = selectedWebsiteIds.toList()
@@ -1228,7 +1329,7 @@ fun WebStackScreen(
         ) {
             VersionUpdateScreen(
                 onDismiss = {
-                    prefs.edit().putInt("last_seen_version_code", 9).apply()
+                    prefs.edit().putInt("last_seen_version_code", 10).apply()
                     showVersion110Screen = false
                 },
                 onViewAllFeatures = {
@@ -1236,5 +1337,40 @@ fun WebStackScreen(
                 }
             )
         }
+        }
+    }
+
+    if (isAppLocked) {
+        val requestAppUnlock: () -> Unit = {
+            BiometricAuthHelper.authenticateContext(
+                context = context,
+                title = "Unlock WebStack",
+                subtitle = "Verify your identity to access your bookmarks",
+                onSuccess = { viewModel.unlockApp() },
+                onUnavailable = {
+                    viewModel.setAppLockEnabled(false)
+                    viewModel.unlockApp()
+                    Toast.makeText(
+                        context,
+                        "App Lock disabled because no device screen lock is configured",
+                        Toast.LENGTH_LONG
+                    ).show()
+                },
+                onError = { err ->
+                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        BackHandler(enabled = true) {
+            context.findFragmentActivity()?.moveTaskToBack(true)
+        }
+        LaunchedEffect(Unit) {
+            if (!BiometricAuthHelper.isPromptInProgress) {
+                requestAppUnlock()
+            }
+        }
+        AppLockOverlay(onUnlockClick = requestAppUnlock)
+    }
     }
 }

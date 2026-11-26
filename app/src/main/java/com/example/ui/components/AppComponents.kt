@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,6 +62,8 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -514,11 +518,17 @@ fun AppCategoryCapsuleBar(
     favoriteColor: Color = Color(0xFFFF2D55),
     onSelectCategory: (String) -> Unit,
     onTagLongPress: (String) -> Unit,
-    onAddNewTag: () -> Unit
+    onAddNewTag: () -> Unit,
+    lockedCategories: List<String> = emptyList(),
+    unlockedCategories: Set<String> = emptySet(),
+    parkedCategories: List<String> = emptyList()
 ) {
     val appColors = LocalAppColors.current
     val categoryCounts = remember(allWebsites) {
         allWebsites.groupingBy { it.category.lowercase() }.eachCount()
+    }
+    val visibleAllCount = remember(allWebsites, parkedCategories) {
+        com.example.ui.util.WebsiteFilterUtils.countVisibleAllWebsites(allWebsites, parkedCategories)
     }
 
     LazyRow(
@@ -534,7 +544,7 @@ fun AppCategoryCapsuleBar(
         item {
             AppCapsule(
                 text = "All",
-                count = allWebsites.size,
+                count = visibleAllCount,
                 isSelected = isAllSelected,
                 onClick = { onSelectCategory("All") },
                 onLongClick = null
@@ -578,6 +588,34 @@ fun AppCategoryCapsuleBar(
                 count = count,
                 isSelected = isSelected,
                 customAccentColor = if (isSelected) null else accentColor,
+                onClick = { onSelectCategory(cat) },
+                onLongClick = { onTagLongPress(cat) }
+            )
+        }
+
+        // Locked Category Capsules (Visible on bar with lock indicator; gated by biometric/device credential)
+        items(lockedCategories) { cat ->
+            val isSelected = selectedCategory.equals(cat, ignoreCase = true)
+            val isUnlocked = unlockedCategories.any { it.equals(cat, ignoreCase = true) }
+            val count = categoryCounts[cat.lowercase()] ?: 0
+            val iconTint = when {
+                isSelected -> appColors.systemBackground
+                isUnlocked -> appColors.label
+                else -> appColors.secondaryLabel
+            }
+
+            AppCapsule(
+                text = cat,
+                count = count,
+                isSelected = isSelected,
+                leadingIcon = {
+                    Icon(
+                        imageVector = if (isUnlocked) Icons.Outlined.LockOpen else Icons.Outlined.Lock,
+                        contentDescription = if (isUnlocked) "Unlocked $cat" else "Locked $cat",
+                        tint = iconTint,
+                        modifier = Modifier.size(13.dp)
+                    )
+                },
                 onClick = { onSelectCategory(cat) },
                 onLongClick = { onTagLongPress(cat) }
             )
@@ -734,6 +772,7 @@ private fun CapsuleCountBadge(
         modifier = modifier
             .height(18.dp)
             .width(badgeWidthDp)
+            .semantics { contentDescription = "Count $count" }
     ) {
         drawRoundRect(
             color = bgColor,
@@ -1403,6 +1442,93 @@ private fun BackupFormatCard(
                     fontSize = 12.sp,
                     color = appColors.secondaryLabel,
                     lineHeight = 16.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppLockOverlay(
+    onUnlockClick: () -> Unit
+) {
+    val appColors = LocalAppColors.current
+    val haptics = LocalHapticFeedback.current
+
+    Surface(
+        color = appColors.groupedBackground,
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+            .testTag("app_lock_overlay")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = appColors.fill,
+                border = BorderStroke(0.75.dp, appColors.separator),
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = appColors.label,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Text(
+                text = "WebStack Locked",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = appColors.label,
+                letterSpacing = (-0.3).sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Verify identity to open your stack.",
+                fontSize = 14.sp,
+                color = appColors.secondaryLabel,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onUnlockClick()
+                },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = appColors.label,
+                    contentColor = appColors.systemBackground
+                ),
+                modifier = Modifier
+                    .height(48.dp)
+                    .testTag("app_lock_unlock_button")
+            ) {
+                Text(
+                    text = "Unlock",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 )
             }
         }

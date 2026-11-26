@@ -7,7 +7,8 @@ data class BackupData(
     val version: Int,
     val exportedAt: Long,
     val categories: List<String>,
-    val websites: List<Website>
+    val websites: List<Website>,
+    val lockedCategories: List<String> = emptyList()
 )
 
 object BackupManager {
@@ -17,7 +18,11 @@ object BackupManager {
     /**
      * Serializes saved bookmarks and categories into formatted JSON string.
      */
-    fun exportToJson(websites: List<Website>, categories: List<String>): String {
+    fun exportToJson(
+        websites: List<Website>,
+        categories: List<String>,
+        lockedCategories: List<String> = emptyList()
+    ): String {
         val root = JSONObject()
         root.put("version", CURRENT_VERSION)
         root.put("appName", APP_NAME)
@@ -26,6 +31,12 @@ object BackupManager {
         val categoriesArray = JSONArray()
         categories.forEach { categoriesArray.put(it) }
         root.put("categories", categoriesArray)
+
+        if (lockedCategories.isNotEmpty()) {
+            val lockedArray = JSONArray()
+            lockedCategories.forEach { lockedArray.put(it) }
+            root.put("lockedCategories", lockedArray)
+        }
 
         val websitesArray = JSONArray()
         websites.forEach { site ->
@@ -89,12 +100,28 @@ object BackupManager {
                 }
             }
 
+            val lockedList = mutableListOf<String>()
+            val lockedArray = root.optJSONArray("lockedCategories")
+            if (lockedArray != null) {
+                for (i in 0 until lockedArray.length()) {
+                    val cat = lockedArray.optString(i, "").trim()
+                    if (cat.isNotBlank() &&
+                        !cat.equals("All", ignoreCase = true) &&
+                        !cat.equals("Personal", ignoreCase = true) &&
+                        !lockedList.any { it.equals(cat, ignoreCase = true) }
+                    ) {
+                        lockedList.add(cat)
+                    }
+                }
+            }
+
             Result.success(
                 BackupData(
                     version = version,
                     exportedAt = exportedAt,
                     categories = categoriesList,
-                    websites = websitesList
+                    websites = websitesList,
+                    lockedCategories = lockedList
                 )
             )
         } catch (e: Exception) {

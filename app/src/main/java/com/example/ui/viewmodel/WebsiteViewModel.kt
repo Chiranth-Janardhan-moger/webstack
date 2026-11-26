@@ -1,27 +1,37 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.AutoBackupManager
+import com.example.data.BackupManager
 import com.example.data.Website
 import com.example.data.WebsiteDatabase
 import com.example.data.WebsiteRepository
-import com.example.ui.util.DEFAULT_CATEGORIES
 import com.example.ui.model.FavoriteBadgeShape
 import com.example.ui.model.FavoriteColorPreset
 import com.example.ui.model.FavoriteIconType
-import android.content.Context
-import com.example.data.BackupManager
+import com.example.ui.util.DEFAULT_CATEGORIES
 import com.example.ui.util.resolveDedupeKey
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -40,8 +50,40 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     private val _parkedCategories = MutableStateFlow<List<String>>(emptyList())
     val parkedCategories: StateFlow<List<String>> = _parkedCategories.asStateFlow()
 
+    private val _lockedCategories = MutableStateFlow<List<String>>(emptyList())
+    val lockedCategories: StateFlow<List<String>> = _lockedCategories.asStateFlow()
+
+    private val _unlockedCategories = MutableStateFlow<Set<String>>(emptySet())
+    val unlockedCategories: StateFlow<Set<String>> = _unlockedCategories.asStateFlow()
+
+    private val _appLockEnabled = MutableStateFlow(prefs.getBoolean("app_lock_enabled", false))
+    val appLockEnabled: StateFlow<Boolean> = _appLockEnabled.asStateFlow()
+
+    private val _isAppUnlocked = MutableStateFlow(!prefs.getBoolean("app_lock_enabled", false))
+    val isAppUnlocked: StateFlow<Boolean> = _isAppUnlocked.asStateFlow()
+
     private val _fallbackCategory = MutableStateFlow<String>("Personal")
     val fallbackCategory: StateFlow<String> = _fallbackCategory.asStateFlow()
+
+    private val _autoBackupEnabled = MutableStateFlow(false)
+    val autoBackupEnabled: StateFlow<Boolean> = _autoBackupEnabled.asStateFlow()
+
+    private val _autoBackupFolderUri = MutableStateFlow<String?>(null)
+    val autoBackupFolderUri: StateFlow<String?> = _autoBackupFolderUri.asStateFlow()
+
+    private val _autoBackupFolderName = MutableStateFlow<String>("")
+    val autoBackupFolderName: StateFlow<String> = _autoBackupFolderName.asStateFlow()
+
+    private val _autoBackupLastTimestamp = MutableStateFlow(0L)
+    val autoBackupLastTimestamp: StateFlow<Long> = _autoBackupLastTimestamp.asStateFlow()
+
+    private val _autoBackupError = MutableStateFlow<String?>(null)
+    val autoBackupError: StateFlow<String?> = _autoBackupError.asStateFlow()
+
+    private val _isAutoBackingUp = MutableStateFlow(false)
+    val isAutoBackingUp: StateFlow<Boolean> = _isAutoBackingUp.asStateFlow()
+
+    private val autoBackupMutex = Mutex()
 
     private val _cachedScreenshotIds = MutableStateFlow<Set<Long>>(emptySet())
     val cachedScreenshotIds: StateFlow<Set<Long>> = _cachedScreenshotIds.asStateFlow()
@@ -87,7 +129,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             context = application,
             repository = repository,
             getCategories = { _categories.value },
-            getOfflineExpiryHours = { _companionOfflineExpiryHours.value }
+            getOfflineExpiryHours = { _companionOfflineExpiryHours.value },
+            getLockedCategories = { _lockedCategories.value }
         )
     }
     val serverStatus: StateFlow<com.example.server.ServerStatus> get() = localServer.status
@@ -152,9 +195,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     init {
         repository = WebsiteRepository(database.websiteDao())
         loadCategories()
+        loadAutoBackupPrefs()
         loadCachedScreenshotIds()
         loadFavorites()
         loadFavoriteCustomization()
+        startAutoBackupObserver()
     }
 
     private fun loadCachedScreenshotIds() {
@@ -246,10 +291,19 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun loadCategories() {
+        val lockedList = prefs.getString("locked_categories_csv", null)
+            ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+            ?.filterNot { it.equals("Personal", ignoreCase = true) || it.equals("All", ignoreCase = true) }
+            ?.distinctBy { it.lowercase() }
+            ?: emptyList()
+        _lockedCategories.value = lockedList
+        val lockedSet = lockedList.map { it.lowercase() }.toSet()
+
         val list = prefs.getString("saved_categories_csv", null)
             ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+            ?.filterNot { lockedSet.contains(it.lowercase()) }
         val ensuredList = if (list.isNullOrEmpty()) {
-            DEFAULT_CATEGORIES
+            DEFAULT_CATEGORIES.filterNot { lockedSet.contains(it.lowercase()) }
         } else if (!list.any { it.equals("Personal", ignoreCase = true) }) {
             listOf("Personal") + list
         } else {
@@ -260,14 +314,127 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
         val parkedList = prefs.getString("parked_categories_csv", null)
             ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
-            ?.filterNot { it.equals("Personal", ignoreCase = true) } ?: emptyList()
+            ?.filterNot { it.equals("Personal", ignoreCase = true) || lockedSet.contains(it.lowercase()) }
+            ?: emptyList()
         _parkedCategories.value = parkedList
         if (parkedList.size != (prefs.getString("parked_categories_csv", null)?.split(",")?.size ?: 0)) {
             saveParkedCategoriesToPrefs(parkedList)
         }
 
-        val fallback = prefs.getString("fallback_deleted_category", "Personal")?.trim()?.takeIf { it.isNotBlank() } ?: "Personal"
+        val fallback = prefs.getString("fallback_deleted_category", "Personal")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && !lockedSet.contains(it.lowercase()) }
+            ?: "Personal"
         _fallbackCategory.value = fallback
+    }
+
+    private fun loadAutoBackupPrefs() {
+        val uriStr = prefs.getString("auto_backup_folder_uri", null)?.takeIf { it.isNotBlank() }
+        val enabled = prefs.getBoolean("auto_backup_enabled", false) && uriStr != null
+        _autoBackupFolderUri.value = uriStr
+        _autoBackupFolderName.value = prefs.getString("auto_backup_folder_name", "") ?: ""
+        _autoBackupLastTimestamp.value = prefs.getLong("auto_backup_last_timestamp", 0L)
+        if (enabled && !AutoBackupManager.hasPersistedWritePermission(getApplication(), Uri.parse(uriStr!!))) {
+            _autoBackupError.value = "Folder unavailable — tap to reselect"
+        } else {
+            _autoBackupError.value = null
+        }
+        _autoBackupEnabled.value = enabled
+    }
+
+    fun enableAutoBackupWithFolder(treeUri: Uri, persistPermission: Boolean = true) {
+        val app = getApplication<Application>()
+        if (persistPermission) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                app.contentResolver.takePersistableUriPermission(treeUri, flags)
+            } catch (_: SecurityException) {}
+        }
+        val folderName = AutoBackupManager.formatFolderDisplayName(treeUri)
+        val uriStr = treeUri.toString()
+        prefs.edit()
+            .putString("auto_backup_folder_uri", uriStr)
+            .putString("auto_backup_folder_name", folderName)
+            .putBoolean("auto_backup_enabled", true)
+            .apply()
+        _autoBackupFolderUri.value = uriStr
+        _autoBackupFolderName.value = folderName
+        _autoBackupError.value = null
+        _autoBackupEnabled.value = true
+        triggerManualAutoBackup()
+    }
+
+    fun setAutoBackupEnabled(enabled: Boolean) {
+        if (enabled && _autoBackupFolderUri.value.isNullOrBlank()) {
+            return
+        }
+        _autoBackupEnabled.value = enabled
+        prefs.edit().putBoolean("auto_backup_enabled", enabled).apply()
+        if (enabled) {
+            _autoBackupError.value = null
+            triggerManualAutoBackup()
+        }
+    }
+
+    fun triggerManualAutoBackup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            performAutoBackupInternal()
+        }
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun startAutoBackupObserver() {
+        viewModelScope.launch(Dispatchers.IO) {
+            combine(
+                repository.allWebsites,
+                _categories,
+                _parkedCategories,
+                _lockedCategories
+            ) { websites, activeCats, parkedCats, lockedCats ->
+                val maxCreated = websites.maxOfOrNull { it.createdAtMs } ?: 0L
+                val titleHash = websites.fold(0) { acc, w -> 31 * acc + w.id.hashCode() + w.title.hashCode() + w.category.hashCode() + w.url.hashCode() }
+                Triple(websites.size to maxCreated, titleHash, Triple(activeCats, parkedCats, lockedCats))
+            }
+                .distinctUntilChanged()
+                .drop(1)
+                .debounce(3000L)
+                .collect {
+                    if (_autoBackupEnabled.value && !_autoBackupFolderUri.value.isNullOrBlank()) {
+                        performAutoBackupInternal()
+                    }
+                }
+        }
+    }
+
+    private suspend fun performAutoBackupInternal() {
+        val uriStr = _autoBackupFolderUri.value ?: return
+        if (!_autoBackupEnabled.value || uriStr.isBlank()) return
+
+        autoBackupMutex.withLock {
+            if (!_autoBackupEnabled.value) return
+            _isAutoBackingUp.value = true
+            try {
+                val websites = repository.getAllWebsitesList()
+                val exportCats = (_categories.value + _lockedCategories.value).distinctBy { it.lowercase() }
+                val json = BackupManager.exportToJson(websites, exportCats, _lockedCategories.value)
+                val treeUri = Uri.parse(uriStr)
+                val writeResult = AutoBackupManager.writeBackupToDirectory(getApplication(), treeUri, json)
+                writeResult.onSuccess {
+                    val now = System.currentTimeMillis()
+                    prefs.edit().putLong("auto_backup_last_timestamp", now).apply()
+                    getApplication<Application>().getSharedPreferences("webstack_settings", Context.MODE_PRIVATE)
+                        .edit().putLong("last_backup_timestamp", now).apply()
+                    _autoBackupLastTimestamp.value = now
+                    _autoBackupError.value = null
+                }.onFailure {
+                    _autoBackupError.value = "Folder unavailable — tap to reselect"
+                }
+            } catch (_: Exception) {
+                _autoBackupError.value = "Folder unavailable — tap to reselect"
+            } finally {
+                _isAutoBackingUp.value = false
+            }
+        }
     }
 
     fun setFallbackCategory(name: String) {
@@ -284,6 +451,99 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
     private fun saveParkedCategoriesToPrefs(list: List<String>) {
         prefs.edit().putString("parked_categories_csv", list.joinToString(",")).apply()
+    }
+
+    private fun saveLockedCategoriesToPrefs(list: List<String>) {
+        prefs.edit().putString("locked_categories_csv", list.joinToString(",")).apply()
+    }
+
+    fun isCategoryLocked(tag: String): Boolean {
+        return _lockedCategories.value.any { it.equals(tag.trim(), ignoreCase = true) }
+    }
+
+    fun isCategorySessionUnlocked(tag: String): Boolean {
+        return _unlockedCategories.value.contains(tag.trim().lowercase())
+    }
+
+    fun unlockCategoryForSession(tag: String) {
+        val key = tag.trim().lowercase()
+        if (key.isNotBlank()) {
+            _unlockedCategories.update { it + key }
+        }
+    }
+
+    fun lockAllSessionCategories() {
+        if (_unlockedCategories.value.isNotEmpty()) {
+            _unlockedCategories.value = emptySet()
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("app_lock_enabled", enabled).apply()
+        _appLockEnabled.value = enabled
+        _isAppUnlocked.value = true
+    }
+
+    fun unlockApp() {
+        _isAppUnlocked.value = true
+    }
+
+    fun lockApp() {
+        if (_appLockEnabled.value) {
+            _isAppUnlocked.value = false
+        }
+    }
+
+    fun lockCategory(tag: String): Boolean {
+        val trimmed = tag.trim()
+        if (trimmed.isBlank() || trimmed.equals("Personal", ignoreCase = true) || trimmed.equals("All", ignoreCase = true)) {
+            return false
+        }
+        val active = _categories.value.toMutableList()
+        val parked = _parkedCategories.value.toMutableList()
+        val locked = _lockedCategories.value.toMutableList()
+        if (locked.any { it.equals(trimmed, ignoreCase = true) }) {
+            return false
+        }
+        val removedActive = active.removeAll { it.equals(trimmed, ignoreCase = true) }
+        val removedParked = parked.removeAll { it.equals(trimmed, ignoreCase = true) }
+        if (!removedActive && !removedParked) {
+            return false
+        }
+        locked.add(trimmed)
+        if (removedActive) {
+            _categories.value = active
+            saveCategoriesToPrefs(active)
+        }
+        if (removedParked) {
+            _parkedCategories.value = parked
+            saveParkedCategoriesToPrefs(parked)
+        }
+        _lockedCategories.value = locked
+        saveLockedCategoriesToPrefs(locked)
+        _unlockedCategories.update { it - trimmed.lowercase() }
+        if (_fallbackCategory.value.equals(trimmed, ignoreCase = true)) {
+            val replacement = active.firstOrNull() ?: "Personal"
+            setFallbackCategory(replacement)
+        }
+        return true
+    }
+
+    fun unlockCategoryPermanently(tag: String) {
+        val trimmed = tag.trim()
+        val locked = _lockedCategories.value.toMutableList()
+        val active = _categories.value.toMutableList()
+        val removed = locked.removeAll { it.equals(trimmed, ignoreCase = true) }
+        if (removed) {
+            if (!active.any { it.equals(trimmed, ignoreCase = true) }) {
+                active.add(trimmed)
+            }
+            _lockedCategories.value = locked
+            _categories.value = active
+            saveLockedCategoriesToPrefs(locked)
+            saveCategoriesToPrefs(active)
+            _unlockedCategories.update { it - trimmed.lowercase() }
+        }
     }
 
     private fun loadCachedWebsites(): List<Website>? {
@@ -345,7 +605,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         if (trimmed.isBlank() || trimmed.equals("All", ignoreCase = true)) return false
         val current = _categories.value.toMutableList()
         val parked = _parkedCategories.value.toMutableList()
-        if (current.any { it.equals(trimmed, ignoreCase = true) } || parked.any { it.equals(trimmed, ignoreCase = true) }) {
+        val locked = _lockedCategories.value
+        if (current.any { it.equals(trimmed, ignoreCase = true) } ||
+            parked.any { it.equals(trimmed, ignoreCase = true) } ||
+            locked.any { it.equals(trimmed, ignoreCase = true) }
+        ) {
             return false
         }
         current.add(trimmed)
@@ -360,11 +624,15 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         if (trimmedNew.isBlank() || trimmedNew.equals("All", ignoreCase = true) || trimmedNew.equals("Personal", ignoreCase = true)) return false
         val current = _categories.value.toMutableList()
         val parked = _parkedCategories.value.toMutableList()
+        val locked = _lockedCategories.value.toMutableList()
         val indexActive = current.indexOfFirst { it.equals(oldName, ignoreCase = true) }
         val indexParked = parked.indexOfFirst { it.equals(oldName, ignoreCase = true) }
-        if (indexActive == -1 && indexParked == -1) return false
+        val indexLocked = locked.indexOfFirst { it.equals(oldName, ignoreCase = true) }
+        if (indexActive == -1 && indexParked == -1 && indexLocked == -1) return false
         if (current.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) } ||
-            parked.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) }) {
+            parked.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) } ||
+            locked.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) }
+        ) {
             return false
         }
         if (indexActive != -1) {
@@ -376,6 +644,14 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             parked[indexParked] = trimmedNew
             _parkedCategories.value = parked
             saveParkedCategoriesToPrefs(parked)
+        }
+        if (indexLocked != -1) {
+            locked[indexLocked] = trimmedNew
+            _lockedCategories.value = locked
+            saveLockedCategoriesToPrefs(locked)
+            _unlockedCategories.update { set ->
+                if (set.contains(oldName.lowercase())) set - oldName.lowercase() + trimmedNew.lowercase() else set
+            }
         }
 
         if (oldName.equals(_fallbackCategory.value, ignoreCase = true)) {
@@ -394,9 +670,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
         val current = _categories.value.toMutableList()
         val parked = _parkedCategories.value.toMutableList()
+        val locked = _lockedCategories.value.toMutableList()
         val removedActive = current.removeAll { it.equals(name, ignoreCase = true) }
         val removedParked = parked.removeAll { it.equals(name, ignoreCase = true) }
-        if (removedActive || removedParked) {
+        val removedLocked = locked.removeAll { it.equals(name, ignoreCase = true) }
+        if (removedActive || removedParked || removedLocked) {
             if (removedActive) {
                 _categories.value = current
                 saveCategoriesToPrefs(current)
@@ -404,6 +682,11 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
             if (removedParked) {
                 _parkedCategories.value = parked
                 saveParkedCategoriesToPrefs(parked)
+            }
+            if (removedLocked) {
+                _lockedCategories.value = locked
+                saveLockedCategoriesToPrefs(locked)
+                _unlockedCategories.update { it - name.lowercase() }
             }
 
             var target = fallbackOverride?.trim()?.takeIf { it.isNotBlank() } ?: _fallbackCategory.value
@@ -476,10 +759,12 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun resetCategoriesToDefaults() {
-        _categories.value = DEFAULT_CATEGORIES
+        val lockedSet = _lockedCategories.value.map { it.lowercase() }.toSet()
+        val restoredDefaults = DEFAULT_CATEGORIES.filterNot { lockedSet.contains(it.lowercase()) }
+        _categories.value = restoredDefaults
         _parkedCategories.value = emptyList()
         _fallbackCategory.value = "Personal"
-        saveCategoriesToPrefs(DEFAULT_CATEGORIES)
+        saveCategoriesToPrefs(restoredDefaults)
         saveParkedCategoriesToPrefs(emptyList())
         prefs.edit().putString("fallback_deleted_category", "Personal").apply()
     }
@@ -506,6 +791,15 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun formatDuplicateError(duplicate: Website): String {
+        return if (isCategoryLocked(duplicate.category) && !isCategorySessionUnlocked(duplicate.category)) {
+            "Link already saved in a locked tag"
+        } else {
+            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
+            "Link already in your stack: \"$titleDisplay\""
+        }
+    }
+
     fun saveWebsite(url: String, category: String? = null, isFavorite: Boolean = false, onSuccess: () -> Unit) {
         val trimmed = url.trim()
         if (trimmed.isBlank()) {
@@ -515,14 +809,19 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
         val duplicate = findDuplicateUrl(trimmed)
         if (duplicate != null) {
-            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
-            _saveError.value = "Link already in your stack: \"$titleDisplay\""
+            _saveError.value = formatDuplicateError(duplicate)
             return
         }
 
         viewModelScope.launch {
             _isSaving.value = true
             _saveError.value = null
+            val dbDuplicate = withContext(Dispatchers.IO) { repository.findDuplicate(trimmed) }
+            if (dbDuplicate != null) {
+                _isSaving.value = false
+                _saveError.value = formatDuplicateError(dbDuplicate)
+                return@launch
+            }
             val result = repository.fetchAndSave(trimmed, category)
             _isSaving.value = false
             if (result.isSuccess) {
@@ -571,8 +870,7 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     fun updateWebsite(website: Website, onResult: ((Boolean, String?) -> Unit)? = null) {
         val duplicate = findDuplicateUrl(website.url, excludeId = website.id)
         if (duplicate != null) {
-            val titleDisplay = duplicate.title.ifBlank { duplicate.domain }
-            onResult?.invoke(false, "Link already in your stack: \"$titleDisplay\"")
+            onResult?.invoke(false, formatDuplicateError(duplicate))
             return
         }
         viewModelScope.launch {
@@ -627,8 +925,8 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
     suspend fun exportBackup(outputStream: OutputStream): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val websites = repository.getAllWebsitesList()
-            val categories = _categories.value
-            val json = BackupManager.exportToJson(websites, categories)
+            val categories = (_categories.value + _lockedCategories.value).distinctBy { it.lowercase() }
+            val json = BackupManager.exportToJson(websites, categories, _lockedCategories.value)
             outputStream.bufferedWriter().use { writer ->
                 writer.write(json)
                 writer.flush()
@@ -649,16 +947,48 @@ class WebsiteViewModel(application: Application) : AndroidViewModel(application)
 
             val backupData = parseResult.getOrThrow()
 
-            // 1. Merge categories
+            // 1. Merge locked & active categories cleanly
             var newCategoriesCount = 0
+            val lockedCats = _lockedCategories.value.toMutableList()
+            val parkedCats = _parkedCategories.value.toMutableList()
             val existingCategories = _categories.value.toMutableList()
+            var lockedChanged = false
+            var parkedChanged = false
+
+            backupData.lockedCategories.forEach { lockedCat ->
+                if (!lockedCats.any { it.equals(lockedCat, ignoreCase = true) }) {
+                    lockedCats.add(lockedCat)
+                    lockedChanged = true
+                    newCategoriesCount++
+                }
+                if (existingCategories.removeAll { it.equals(lockedCat, ignoreCase = true) }) {
+                    // Moved from active into locked cleanly
+                }
+                if (parkedCats.removeAll { it.equals(lockedCat, ignoreCase = true) }) {
+                    parkedChanged = true
+                }
+            }
+
+            val lockedSet = lockedCats.map { it.lowercase() }.toSet()
             backupData.categories.forEach { cat ->
-                if (!existingCategories.any { it.equals(cat, ignoreCase = true) }) {
+                if (!lockedSet.contains(cat.lowercase()) &&
+                    !existingCategories.any { it.equals(cat, ignoreCase = true) } &&
+                    !parkedCats.any { it.equals(cat, ignoreCase = true) }
+                ) {
                     existingCategories.add(cat)
                     newCategoriesCount++
                 }
             }
-            if (newCategoriesCount > 0) {
+
+            if (lockedChanged) {
+                _lockedCategories.value = lockedCats
+                saveLockedCategoriesToPrefs(lockedCats)
+            }
+            if (parkedChanged) {
+                _parkedCategories.value = parkedCats
+                saveParkedCategoriesToPrefs(parkedCats)
+            }
+            if (newCategoriesCount > 0 || lockedChanged) {
                 _categories.value = existingCategories
                 saveCategoriesToPrefs(existingCategories)
             }

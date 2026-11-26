@@ -37,9 +37,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.TouchApp
+import com.example.ui.util.BiometricAuthHelper
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -274,6 +276,18 @@ fun SettingsBottomSheetContent(
         }
     }
 
+    val openAutoBackupFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { treeUri ->
+        if (treeUri != null && viewModel != null) {
+            viewModel.enableAutoBackupWithFolder(treeUri)
+            val now = System.currentTimeMillis()
+            lastBackupTimestamp = now
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            Toast.makeText(context, "Auto backup enabled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -395,6 +409,38 @@ fun SettingsBottomSheetContent(
     when (currentSubScreen) {
         SettingsSubScreen.APPEARANCE -> {
             BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
+            val appLockEnabled = viewModel?.appLockEnabled?.collectAsState()?.value ?: false
+            val handleToggleAppLock: (Boolean) -> Unit = { wantEnabled ->
+                if (viewModel != null) {
+                    if (wantEnabled && !BiometricAuthHelper.canAuthenticate(context)) {
+                        Toast.makeText(
+                            context,
+                            "Set up a device screen lock or fingerprint first",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        BiometricAuthHelper.authenticateContext(
+                            context = context,
+                            title = if (wantEnabled) "Enable App Lock" else "Disable App Lock",
+                            onSuccess = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.setAppLockEnabled(wantEnabled)
+                            },
+                            onUnavailable = {
+                                Toast.makeText(
+                                    context,
+                                    "Set up a device screen lock or fingerprint first",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            },
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            }
+
             CustomizationSubSheetContent(
                 themeMode = themeMode,
                 layoutMode = layoutMode,
@@ -407,6 +453,8 @@ fun SettingsBottomSheetContent(
                 favoriteIconType = vmFavIcon,
                 favoriteBadgeShape = vmFavShape,
                 favoriteColorPreset = vmFavColor,
+                appLockEnabled = appLockEnabled,
+                onToggleAppLock = handleToggleAppLock,
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
                 onDismiss = handleDismiss
             )
@@ -459,6 +507,13 @@ fun SettingsBottomSheetContent(
         }
         SettingsSubScreen.BACKUP_RESTORE -> {
             BackHandler { navigateToSubScreen(SettingsSubScreen.MAIN) }
+            val autoBackupEnabled = viewModel?.autoBackupEnabled?.collectAsState()?.value ?: false
+            val autoBackupFolderUri = viewModel?.autoBackupFolderUri?.collectAsState()?.value
+            val autoBackupFolderName = viewModel?.autoBackupFolderName?.collectAsState()?.value ?: ""
+            val autoBackupLastTimestamp = viewModel?.autoBackupLastTimestamp?.collectAsState()?.value ?: 0L
+            val autoBackupError = viewModel?.autoBackupError?.collectAsState()?.value
+            val isAutoBackingUp = viewModel?.isAutoBackingUp?.collectAsState()?.value ?: false
+
             BackupRestoreSubSheetContent(
                 totalBookmarks = totalBookmarks,
                 onExportWebstack = {
@@ -487,6 +542,24 @@ fun SettingsBottomSheetContent(
                             "*/*"
                         )
                     )
+                },
+                autoBackupEnabled = autoBackupEnabled,
+                autoBackupFolderName = autoBackupFolderName,
+                autoBackupLastTimestamp = autoBackupLastTimestamp,
+                autoBackupError = autoBackupError,
+                isAutoBackingUp = isAutoBackingUp,
+                onToggleAutoBackup = { wantEnabled ->
+                    if (wantEnabled && autoBackupFolderUri.isNullOrBlank()) {
+                        openAutoBackupFolderLauncher.launch(null)
+                    } else {
+                        viewModel?.setAutoBackupEnabled(wantEnabled)
+                    }
+                },
+                onSelectAutoBackupFolder = {
+                    openAutoBackupFolderLauncher.launch(null)
+                },
+                onTriggerAutoBackupNow = {
+                    viewModel?.triggerManualAutoBackup()
                 },
                 onBack = { navigateToSubScreen(SettingsSubScreen.MAIN) },
                 onDismiss = handleDismiss
@@ -635,7 +708,7 @@ fun SettingsBottomSheetContent(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Single Unified Grouped Settings Card
+        // Group 1: General, Fetch Web Previews, Backup and restore
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = appColors.surface,
@@ -643,15 +716,15 @@ fun SettingsBottomSheetContent(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. Customization
+                // 1. General
                 SettingsGroupedNavRow(
-                    title = "Customization",
+                    title = "General",
                     iconPainter = painterResource(id = R.drawable.ic_appearance),
                     onClick = { navigateToSubScreen(SettingsSubScreen.APPEARANCE) },
                     onLongClick = {
                         activeExplainer = SettingsExplainer(
-                            title = "Customization",
-                            description = "Personalize your theme, layouts, interface controls, and favorite indicators.",
+                            title = "General",
+                            description = "Personalize your theme, layouts, interface controls, tags, and App Lock.",
                             icon = Icons.Outlined.Palette
                         )
                     }
@@ -663,39 +736,7 @@ fun SettingsBottomSheetContent(
                     color = appColors.separator
                 )
 
-                // 2. PC Companion
-                SettingsGroupedNavRow(
-                    title = "PC Companion",
-                    subtitle = if (isServerLive) "Online on local Wi-Fi" else "Browse & send links from desktop browser",
-                    icon = Icons.Outlined.DesktopWindows,
-                    iconBackground = if (isServerLive) appColors.label else null,
-                    iconTint = if (isServerLive) appColors.systemBackground else null,
-                    titleSuffix = if (isServerLive) {
-                        {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF34C759), CircleShape)
-                            )
-                        }
-                    } else null,
-                    onClick = { navigateToSubScreen(SettingsSubScreen.PC_SHARE) },
-                    onLongClick = {
-                        activeExplainer = SettingsExplainer(
-                            title = "PC Companion",
-                            description = "Connect your computer or tablet over local Wi-Fi to browse, search, and instantly save bookmarks to your phone.",
-                            icon = Icons.Outlined.DesktopWindows
-                        )
-                    }
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 0.5.dp,
-                    color = appColors.separator
-                )
-
-                // 3. Fetch Web Previews
+                // 2. Fetch Web Previews
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -780,6 +821,37 @@ fun SettingsBottomSheetContent(
                             title = "Backup and Restore",
                             description = "Safely export or restore your stack. Imports merge cleanly without duplicates.",
                             icon = Icons.Outlined.Restore
+                        )
+                    }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = appColors.separator
+                )
+
+                // 4. PC Companion
+                SettingsGroupedNavRow(
+                    title = "PC Companion",
+                    subtitle = if (isServerLive) "Online on local Wi-Fi" else "Browse & send links from desktop browser",
+                    icon = Icons.Outlined.DesktopWindows,
+                    iconBackground = if (isServerLive) appColors.label else null,
+                    iconTint = if (isServerLive) appColors.systemBackground else null,
+                    titleSuffix = if (isServerLive) {
+                        {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF34C759), CircleShape)
+                            )
+                        }
+                    } else null,
+                    onClick = { navigateToSubScreen(SettingsSubScreen.PC_SHARE) },
+                    onLongClick = {
+                        activeExplainer = SettingsExplainer(
+                            title = "PC Companion",
+                            description = "Connect your computer or tablet over local Wi-Fi to browse, search, and instantly save bookmarks to your phone.",
+                            icon = Icons.Outlined.DesktopWindows
                         )
                     }
                 )

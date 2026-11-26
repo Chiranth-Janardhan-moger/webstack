@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.OfflineBolt
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -76,14 +77,14 @@ fun VersionUpdateScreen(
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
-    // Odometer digits: 2.0.0 -> 2.0.1
-    var patchDigit by remember { mutableStateOf("0") }
+    // Odometer digits: 2.0.1 -> 2.1.0
+    var versionSuffix by remember { mutableStateOf("0.1") }
 
     LaunchedEffect(Unit) {
-        // Step 1: Start at 2.0.0
+        // Step 1: Start at 2.0.1
         delay(400)
-        // Step 2: Patch digit springs up 0 -> 1 (becomes 2.0.1)
-        patchDigit = "1"
+        // Step 2: Digits spring up 0.1 -> 1.0 (becomes 2.1.0)
+        versionSuffix = "1.0"
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
@@ -119,7 +120,7 @@ fun VersionUpdateScreen(
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Screen 1: Pure Giant 2.0.1 Odometer (2.0.0 -> 2.0.1)
+                        // Screen 1: Pure Giant 2.1.0 Odometer (2.0.1 -> 2.1.0)
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -129,16 +130,16 @@ fun VersionUpdateScreen(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "2.0.",
+                                    text = "2.",
                                     fontSize = 72.sp,
                                     fontWeight = FontWeight.Black,
                                     color = appColors.label,
                                     letterSpacing = (-2).sp
                                 )
 
-                                // Patch digit: 0 -> 1 (springs upward)
+                                // Minor/patch digits: 0.1 -> 1.0 (springs upward)
                                 AnimatedContent(
-                                    targetState = patchDigit,
+                                    targetState = versionSuffix,
                                     transitionSpec = {
                                         (slideInVertically(
                                             animationSpec = spring(
@@ -177,7 +178,7 @@ fun VersionUpdateScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "What's New in 2.0.1",
+                                text = "What's New in 2.1.0",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = appColors.label,
@@ -196,23 +197,23 @@ fun VersionUpdateScreen(
                                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                                     verticalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    // Point 1: Title & Snapshot Refresh
+                                    // Point 1: Auto Backup to Folder
                                     VersionFeatureTile(
-                                        title = "Title & Snapshot Refresh",
-                                        description = "Tap refresh on any card to update live webpage titles and snapshots."
+                                        title = "Auto Backup to Folder",
+                                        description = "Automatically saves your bookmarks and tags as .webstack in any chosen folder."
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Refresh,
+                                            imageVector = Icons.Outlined.Sync,
                                             contentDescription = null,
                                             tint = appColors.label,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
 
-                                    // Point 2: Added Security
+                                    // Point 2: App Lock & Locked Tags
                                     VersionFeatureTile(
-                                        title = "Added Security",
-                                        description = "Continuous SSRF and internal network protection across multi-hop redirects."
+                                        title = "App Lock & Locked Tags",
+                                        description = "Lock WebStack on open or protect sensitive tags with fingerprint or device credential."
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Lock,

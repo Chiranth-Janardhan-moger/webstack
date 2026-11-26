@@ -564,26 +564,14 @@ private fun FeedbackOptionsDialog(
                                 )
                             }
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "GitHub Issues",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                lineHeight = 18.sp,
-                                color = appColors.label
-                            )
-                            Text(
-                                text = "Bugs & feature requests",
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = appColors.secondaryLabel
-                            )
-                        }
+                        Text(
+                            text = "GitHub Issues",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            color = appColors.label,
+                            modifier = Modifier.weight(1f)
+                        )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
@@ -638,26 +626,14 @@ private fun FeedbackOptionsDialog(
                                 )
                             }
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Send Email",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                lineHeight = 18.sp,
-                                color = appColors.label
-                            )
-                            Text(
-                                text = DEVELOPER_EMAIL,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = appColors.secondaryLabel
-                            )
-                        }
+                        Text(
+                            text = "Send Email",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            color = appColors.label,
+                            modifier = Modifier.weight(1f)
+                        )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,

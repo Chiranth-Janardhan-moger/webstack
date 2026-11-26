@@ -17,10 +17,14 @@ android {
     applicationId = "com.chiranth7.webstack"
     minSdk = 24
     targetSdk = 36
-    versionCode = 9
-    versionName = "2.0.1"
+    versionCode = 10
+    versionName = "2.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    androidResources {
+      localeFilters += listOf("en")
+    }
   }
 
   signingConfigs {
@@ -53,6 +57,7 @@ android {
     release {
       isCrunchPngs = false
       isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
       vcsInfo {
@@ -81,7 +86,12 @@ android {
   }
   packaging {
     resources {
-      excludes += "META-INF/version-control-info.textproto"
+      excludes += listOf(
+        "META-INF/version-control-info.textproto",
+        "DebugProbesKt.bin",
+        "META-INF/*.version",
+        "META-INF/README.md"
+      )
     }
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
@@ -92,12 +102,12 @@ dependencies {
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
-  implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.core.splashscreen)
+  implementation(libs.androidx.biometric)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -8,8 +8,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,6 +40,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
@@ -48,6 +50,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -90,24 +94,31 @@ import androidx.compose.ui.zIndex
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import com.example.ui.components.AppCapsule
+import com.example.ui.components.AppExplainerDialog
 import com.example.ui.components.AppSubSheetHeader
 import com.example.ui.dialogs.EditTagDialog
 import com.example.ui.theme.AppRed
 import com.example.ui.theme.LocalAppColors
+import com.example.ui.util.BiometricAuthHelper
 import com.example.ui.viewmodel.WebsiteViewModel
 
 private enum class TagFilterTab {
     ALL,
-    HIDDEN
+    HIDDEN,
+    LOCKED
 }
 
 /**
@@ -291,6 +302,7 @@ private fun rememberTagDragDropState(
     return state
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CustomizeTagsSheetContent(
     viewModel: WebsiteViewModel,
@@ -305,10 +317,26 @@ fun CustomizeTagsSheetContent(
 
     val activeCategories by viewModel.categories.collectAsState()
     val parkedCategories by viewModel.parkedCategories.collectAsState()
+    val lockedCategories by viewModel.lockedCategories.collectAsState()
     val fallbackCategory by viewModel.fallbackCategory.collectAsState()
     val allWebsites by viewModel.websitesList.collectAsState()
 
     var selectedTab by remember { mutableStateOf(TagFilterTab.ALL) }
+    var explainedTab by remember { mutableStateOf<TagFilterTab?>(null) }
+    var isLockedTabVerified by remember { mutableStateOf(false) }
+
+    val sheetLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(sheetLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && !BiometricAuthHelper.isPromptInProgress) {
+                isLockedTabVerified = false
+            }
+        }
+        sheetLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            sheetLifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     var localActiveCategories by remember(activeCategories) { mutableStateOf(activeCategories) }
 
     var expandedMenuTag by remember { mutableStateOf<String?>(null) }
@@ -390,7 +418,10 @@ fun CustomizeTagsSheetContent(
                             AppCapsule(
                                 text = "All",
                                 isSelected = true,
-                                count = allWebsites?.size ?: 0,
+                                count = com.example.ui.util.WebsiteFilterUtils.countVisibleAllWebsites(
+                                    allWebsites ?: emptyList(),
+                                    parkedCategories
+                                ),
                                 onClick = {}
                             )
                         }
@@ -404,11 +435,47 @@ fun CustomizeTagsSheetContent(
                                 onClick = {}
                             )
                         }
+
+                        items(lockedCategories, key = { "locked_$it" }) { cat ->
+                            val count = categoryCounts[cat.lowercase()] ?: 0
+                            AppCapsule(
+                                text = cat,
+                                isSelected = false,
+                                count = count,
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Lock,
+                                        contentDescription = "Locked $cat",
+                                        tint = appColors.secondaryLabel,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                },
+                                onClick = {}
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            val promptLockedAuth: () -> Unit = {
+                BiometricAuthHelper.authenticateContext(
+                    context = context,
+                    title = "Locked Tags",
+                    onSuccess = { isLockedTabVerified = true },
+                    onUnavailable = {
+                        Toast.makeText(
+                            context,
+                            "Set up a device screen lock or fingerprint to view locked tags",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    onError = { err ->
+                        Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
 
             // 2. Segmented Slider (Matching Sort Order shape: Black thumb on white theme, White thumb on dark theme)
             Surface(
@@ -420,8 +487,12 @@ fun CustomizeTagsSheetContent(
                     .padding(3.dp)
             ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val segmentWidth = maxWidth / 2
-                    val selectedIndex = if (selectedTab == TagFilterTab.ALL) 0 else 1
+                    val segmentWidth = maxWidth / 3
+                    val selectedIndex = when (selectedTab) {
+                        TagFilterTab.ALL -> 0
+                        TagFilterTab.HIDDEN -> 1
+                        TagFilterTab.LOCKED -> 2
+                    }
                     val targetOffset = segmentWidth * selectedIndex
                     val animatedOffset by animateDpAsState(
                         targetValue = targetOffset,
@@ -450,7 +521,7 @@ fun CustomizeTagsSheetContent(
                             )
                     )
 
-                    // Interactive touch segments: [ All tags (X) | Hidden (Y) ]
+                    // Interactive touch segments: [ All tags (X) | Hidden (Y) | Locked (Z) ]
                     Row(modifier = Modifier.fillMaxSize()) {
                         // All tags tab
                         val isAllSelected = selectedTab == TagFilterTab.ALL
@@ -463,22 +534,29 @@ fun CustomizeTagsSheetContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clickable(
+                                .combinedClickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    if (selectedTab != TagFilterTab.ALL) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        selectedTab = TagFilterTab.ALL
+                                    indication = null,
+                                    onClick = {
+                                        if (selectedTab != TagFilterTab.ALL) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedTab = TagFilterTab.ALL
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        explainedTab = TagFilterTab.ALL
                                     }
-                                },
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "All tags (${activeCategories.size})",
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = if (isAllSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = allTextColor
+                                color = allTextColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
@@ -493,22 +571,69 @@ fun CustomizeTagsSheetContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clickable(
+                                .combinedClickable(
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    if (selectedTab != TagFilterTab.HIDDEN) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        selectedTab = TagFilterTab.HIDDEN
+                                    indication = null,
+                                    onClick = {
+                                        if (selectedTab != TagFilterTab.HIDDEN) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedTab = TagFilterTab.HIDDEN
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        explainedTab = TagFilterTab.HIDDEN
                                     }
-                                },
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "Hidden (${parkedCategories.size})",
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = if (isHiddenSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = hiddenTextColor
+                                color = hiddenTextColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        // Locked tab
+                        val isLockedSelected = selectedTab == TagFilterTab.LOCKED
+                        val lockedTextColor by animateColorAsState(
+                            targetValue = if (isLockedSelected) appColors.systemBackground else appColors.secondaryLabel,
+                            animationSpec = tween(durationMillis = 200),
+                            label = "locked_tags_text_color"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        if (selectedTab != TagFilterTab.LOCKED) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedTab = TagFilterTab.LOCKED
+                                            if (lockedCategories.isNotEmpty() && !isLockedTabVerified) {
+                                                promptLockedAuth()
+                                            }
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        explainedTab = TagFilterTab.LOCKED
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Locked (${lockedCategories.size})",
+                                fontSize = 12.sp,
+                                fontWeight = if (isLockedSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = lockedTextColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -518,7 +643,11 @@ fun CustomizeTagsSheetContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             // 3. Tag Items Grouped Card (Consistent fixed height prevents layout shifts between tabs)
-            val currentList = if (selectedTab == TagFilterTab.ALL) localActiveCategories else parkedCategories
+            val currentList = when (selectedTab) {
+                TagFilterTab.ALL -> localActiveCategories
+                TagFilterTab.HIDDEN -> parkedCategories
+                TagFilterTab.LOCKED -> lockedCategories
+            }
 
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -528,16 +657,51 @@ fun CustomizeTagsSheetContent(
                     .fillMaxWidth()
                     .height(240.dp)
             ) {
-                if (currentList.isEmpty()) {
+                if (selectedTab == TagFilterTab.LOCKED && currentList.isNotEmpty() && !isLockedTabVerified) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = appColors.secondaryLabel,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Locked Tags Protected",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = appColors.label
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { promptLockedAuth() },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(0.75.dp, appColors.separator)
+                        ) {
+                            Text(
+                                text = "Unlock",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = appColors.label
+                            )
+                        }
+                    }
+                } else if (currentList.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (selectedTab == TagFilterTab.ALL) {
-                                "No active tags"
-                            } else {
-                                "No hidden tags\nTags hidden from Home will appear here."
+                            text = when (selectedTab) {
+                                TagFilterTab.ALL -> "No active tags"
+                                TagFilterTab.HIDDEN -> "No hidden tags\nTags muted from All and Favorites will appear here."
+                                TagFilterTab.LOCKED -> "No locked tags\nLock a tag from the 3-dot menu to protect its bookmarks."
                             },
                             fontSize = 13.sp,
                             color = appColors.secondaryLabel,
@@ -591,14 +755,18 @@ fun CustomizeTagsSheetContent(
                                             modifier = Modifier.weight(1f),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            // Drag Handle Icon
+                                            // Leading Icon (Lock for Locked tab, Drag Handle otherwise)
                                             Box(
                                                 modifier = Modifier.size(28.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Default.DragIndicator,
-                                                    contentDescription = "Reorder",
+                                                    imageVector = if (selectedTab == TagFilterTab.LOCKED) {
+                                                        Icons.Outlined.Lock
+                                                    } else {
+                                                        Icons.Default.DragIndicator
+                                                    },
+                                                    contentDescription = if (selectedTab == TagFilterTab.LOCKED) "Locked" else "Reorder",
                                                     tint = if (isBeingDragged) appColors.accent else appColors.tertiaryLabel,
                                                     modifier = Modifier.size(16.dp)
                                                 )
@@ -748,10 +916,46 @@ fun CustomizeTagsSheetContent(
                                                         }
                                                     }
                                                 )
+                                                if (selectedTab != TagFilterTab.LOCKED) {
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(
+                                                                text = if (selectedTab == TagFilterTab.ALL) "Hide from Home" else "Show on Home",
+                                                                fontSize = 14.sp,
+                                                                fontWeight = FontWeight.Medium,
+                                                                color = appColors.label
+                                                            )
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(
+                                                                imageVector = if (selectedTab == TagFilterTab.ALL) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                                                contentDescription = null,
+                                                                tint = appColors.label,
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        },
+                                                        onClick = {
+                                                            expandedMenuTag = null
+                                                            if (selectedTab == TagFilterTab.ALL) {
+                                                                if (tag.equals("Personal", ignoreCase = true)) {
+                                                                    Toast.makeText(context, "Personal is the default category and cannot be hidden", Toast.LENGTH_SHORT).show()
+                                                                } else {
+                                                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                    viewModel.parkCategory(tag)
+                                                                    Toast.makeText(context, "Hidden \"$tag\" from Home", Toast.LENGTH_SHORT).show()
+                                                                }
+                                                            } else {
+                                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                viewModel.unparkCategory(tag)
+                                                                Toast.makeText(context, "Showing \"$tag\" on Home", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    )
+                                                }
                                                 DropdownMenuItem(
                                                     text = {
                                                         Text(
-                                                            text = if (selectedTab == TagFilterTab.ALL) "Hide from Home" else "Show on Home",
+                                                            text = if (selectedTab == TagFilterTab.LOCKED) "Unlock Tag" else "Lock Tag",
                                                             fontSize = 14.sp,
                                                             fontWeight = FontWeight.Medium,
                                                             color = appColors.label
@@ -759,7 +963,7 @@ fun CustomizeTagsSheetContent(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            imageVector = if (selectedTab == TagFilterTab.ALL) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                                            imageVector = if (selectedTab == TagFilterTab.LOCKED) Icons.Outlined.LockOpen else Icons.Outlined.Lock,
                                                             contentDescription = null,
                                                             tint = appColors.label,
                                                             modifier = Modifier.size(18.dp)
@@ -767,18 +971,18 @@ fun CustomizeTagsSheetContent(
                                                     },
                                                     onClick = {
                                                         expandedMenuTag = null
-                                                        if (selectedTab == TagFilterTab.ALL) {
-                                                            if (tag.equals("Personal", ignoreCase = true)) {
-                                                                Toast.makeText(context, "Personal is the default category and cannot be hidden", Toast.LENGTH_SHORT).show()
-                                                            } else {
-                                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                viewModel.parkCategory(tag)
-                                                                Toast.makeText(context, "Hidden \"$tag\" from Home", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        } else {
+                                                        if (selectedTab == TagFilterTab.LOCKED) {
                                                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            viewModel.unparkCategory(tag)
-                                                            Toast.makeText(context, "Showing \"$tag\" on Home", Toast.LENGTH_SHORT).show()
+                                                            viewModel.unlockCategoryPermanently(tag)
+                                                            Toast.makeText(context, "Removed lock from \"$tag\"", Toast.LENGTH_SHORT).show()
+                                                        } else if (tag.equals("Personal", ignoreCase = true)) {
+                                                            Toast.makeText(context, "Personal is the default tag and cannot be locked", Toast.LENGTH_SHORT).show()
+                                                        } else if (!BiometricAuthHelper.canAuthenticate(context)) {
+                                                            Toast.makeText(context, "Set up a device screen lock or fingerprint first to lock tags", Toast.LENGTH_LONG).show()
+                                                        } else {
+                                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            viewModel.lockCategory(tag)
+                                                            Toast.makeText(context, "Locked \"$tag\"", Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
                                                 )
@@ -1144,6 +1348,32 @@ fun CustomizeTagsSheetContent(
             },
             containerColor = appColors.secondaryGroupedBackground,
             shape = RoundedCornerShape(22.dp)
+        )
+    }
+
+    if (explainedTab != null) {
+        val (title, description, icon) = when (explainedTab!!) {
+            TagFilterTab.ALL -> Triple(
+                "All Tags",
+                "Active tags shown on the Home tag bar. Long-press and drag any row or use the 3-dot menu to reorder them.",
+                Icons.AutoMirrored.Outlined.Label
+            )
+            TagFilterTab.HIDDEN -> Triple(
+                "Hidden Tags",
+                "Muted and archived tags. Their tag pill and bookmarks stay hidden from All and Favorites without requiring a lock. Use the 3-dot menu to show on Home anytime.",
+                Icons.Outlined.VisibilityOff
+            )
+            TagFilterTab.LOCKED -> Triple(
+                "Locked Tags",
+                "Protected by fingerprint or device lock. Bookmarks in locked tags are counted in All, but stay hidden from All, Favorites (until unlocked), Search, and PC Companion.",
+                Icons.Outlined.Lock
+            )
+        }
+        AppExplainerDialog(
+            title = title,
+            description = description,
+            icon = icon,
+            onDismiss = { explainedTab = null }
         )
     }
 }
