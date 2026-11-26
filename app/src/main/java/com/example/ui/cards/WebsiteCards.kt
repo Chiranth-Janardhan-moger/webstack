@@ -41,11 +41,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.example.ui.util.PreviewUrlResolver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -166,38 +169,34 @@ fun WebsiteSnapshotImage(
                 contentScale = ContentScale.Crop
             )
         } else if (fetchWebPreviews) {
-            var activePreviewUrl by remember(website.url, refreshToken) {
-                val initialUrl = try {
-                    val encodedUrl = java.net.URLEncoder.encode(website.url, "UTF-8")
-                    val ts = if (refreshToken > 0) "&t=$refreshToken" else ""
-                    "https://api.microlink.io/?url=$encodedUrl&screenshot=true&embed=screenshot.url$ts"
-                } catch (e: Exception) {
-                    website.url
-                }
-                mutableStateOf(initialUrl)
+            var candidateUrls by remember(website.url, refreshToken) {
+                mutableStateOf(PreviewUrlResolver.fastThumbnailChain(website.url, refreshToken))
+            }
+            var candidateIndex by remember(website.url, refreshToken) {
+                mutableIntStateOf(0)
             }
 
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(activePreviewUrl)
-                    .crossfade(true)
-                    .build(),
-                onError = {
-                    if (activePreviewUrl.startsWith("https://api.microlink.io")) {
-                        val fullUrl = if (website.url.startsWith("http://") || website.url.startsWith("https://")) {
-                            website.url
-                        } else {
-                            "https://${website.url}"
+            LaunchedEffect(website.url, refreshToken) {
+                if (candidateUrls == null) {
+                    candidateUrls = PreviewUrlResolver.resolvePreviewChain(website.url, refreshToken)
+                }
+            }
+
+            val activePreviewUrl = candidateUrls?.getOrNull(candidateIndex)
+            if (activePreviewUrl == null) {
+                TiltedShimmerBox(modifier = Modifier.fillMaxSize())
+            } else {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(activePreviewUrl)
+                        .crossfade(true)
+                        .build(),
+                    onError = {
+                        val urls = candidateUrls
+                        if (urls != null && candidateIndex + 1 < urls.size) {
+                            candidateIndex += 1
                         }
-                        val target = if (refreshToken > 0) {
-                            val sep = if (fullUrl.contains("?")) "&" else "?"
-                            "$fullUrl${sep}t=$refreshToken"
-                        } else {
-                            fullUrl
-                        }
-                        activePreviewUrl = "https://image.thum.io/get/noanimate/width/800/crop/600/$target"
-                    }
-                },
+                    },
                 onSuccess = { state ->
                     val drawable = state.result.drawable
                     coroutineScope.launch(Dispatchers.IO) {
@@ -260,6 +259,7 @@ fun WebsiteSnapshotImage(
                     }
                 }
             )
+            }
         } else {
             // Card representation when Fetch Web Previews is OFF
             val catAccent = getCategoryAccentColor(website.category, appColors.isDark)
